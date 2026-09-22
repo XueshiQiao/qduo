@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QDuo 配置文件是怎么工作的</title>
+<style>
+  :root {
+    --bg: #faf9f5; --surface: #ffffff; --ink: #1f1e1c; --ink-soft: #5a5751;
+    --ink-faint: #8a857c; --rule: #e6e2d4; --rule-soft: #efece1; --code-bg: #f3f0e6;
+    --accent: #d97757; --accent-soft: #f4e2d6;
+    --good: #4f8a5c; --warn: #b6711c; --bad: #b14338;
+    --serif: "Tiempos", "Source Serif Pro", "Iowan Old Style", Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans);
+         font-size: 16px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 880px; margin: 0 auto; padding: 80px 40px 120px; }
+  header.hero { margin-bottom: 56px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; text-transform: uppercase;
+             letter-spacing: 0.08em; color: var(--accent); margin-bottom: 18px; }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: 46px; line-height: 1.15;
+       margin: 0 0 20px; letter-spacing: -0.015em; }
+  .lede { font-family: var(--serif); font-size: 22px; line-height: 1.5;
+          color: var(--ink-soft); margin: 0; max-width: 660px; }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 30px; line-height: 1.25;
+       margin: 64px 0 16px; letter-spacing: -0.01em; }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 17px; margin: 36px 0 10px; }
+  p { margin: 0 0 16px; }
+  ul, ol { padding-left: 24px; margin: 0 0 16px; }
+  li { margin-bottom: 8px; }
+  code { font-family: var(--mono); background: var(--code-bg); padding: 1px 6px;
+         border-radius: 4px; font-size: 0.88em; }
+  pre { background: #1f1e1c; color: #f6f3eb; padding: 20px 24px; border-radius: 8px;
+        overflow-x: auto; line-height: 1.6; font-size: 13px; margin: 20px 0 28px; }
+  pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
+  .tok-comment { color: #9b9081; font-style: italic; }
+  .tok-keyword { color: #e89b6f; }
+  .tok-string  { color: #b8d49d; }
+  .tok-num     { color: #d8b9e3; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 18px 32px; margin: 32px 0 48px;
+              padding: 18px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+              font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); }
+  .meta-row b { color: var(--ink); font-weight: 500; margin-right: 8px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft);
+             padding: 18px 22px; margin: 28px 0; border-radius: 0 6px 6px 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+                    letter-spacing: 0.08em; color: var(--accent); font-weight: 600;
+                    margin-bottom: 6px; display: block; }
+  .figure { margin: 36px 0; background: var(--surface); border: 1px solid var(--rule);
+            border-radius: 10px; padding: 28px 24px 18px; }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .figure .caption { font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+                     margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--rule);
+                     line-height: 1.6; }
+  .figure .caption b { color: var(--ink-soft); font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; margin: 24px 0 32px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); background: var(--rule-soft); font-size: 13px; }
+  td code { font-size: 0.86em; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px;
+          font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+          white-space: nowrap; }
+  .pill.good { background: #e3f0e2; color: var(--good); }
+  .pill.warn { background: #f5e7d0; color: var(--warn); }
+  .pill.bad  { background: #f5dad6; color: var(--bad); }
+  .pill.neutral { background: var(--rule-soft); color: var(--ink-soft); }
+  .footer { margin-top: 96px; padding-top: 24px; border-top: 1px solid var(--rule);
+            font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  svg text { font-family: var(--sans); font-size: 12.5px; fill: var(--ink); }
+  svg .label-mono { font-family: var(--mono); font-size: 11.5px; fill: var(--ink-soft); }
+  svg .label-soft { fill: var(--ink-soft); }
+  svg .label-faint { fill: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="hero">
+  <div class="eyebrow">工程笔记 · QDuo · 2026-09-22</div>
+  <h1>配置文件是怎么工作的</h1>
+  <p class="lede">一个文件，两个人可以改它 —— 你和 App。这篇讲清楚它们怎么不打架、为什么你手写的东西不会被吃掉，以及「两条反应路径」到底是什么意思。</p>
+</header>
+
+<div class="meta-row">
+  <span><b>文件</b><code>~/.config/qduo/config.json</code></span>
+  <span><b>代码</b><code>Sources/Core/Config/</code></span>
+  <span><b>状态</b><span class="pill good">已实测</span></span>
+</div>
+
+<h2>1 · 这个文件是什么</h2>
+
+<p>设置窗口里的每一项，都存在这一个文件里。不再有散落在系统偏好设置数据库里的几十个键，也不再有单独的动作 JSON 文件。你随时能打开它、能 <code>git diff</code>、能软链进 dotfiles 仓库、能拷到另一台机器上。</p>
+
+<pre><code>~/.config/qduo/
+├── config.json          <span class="tok-comment">← 所有设置都在这儿</span>
+└── config.schema.json   <span class="tok-comment">← 自动生成，给编辑器用的</span></code></pre>
+
+<p><b>为什么是 <code>~/.config</code> 而不是 Application Support。</b>Application Support 在访达里默认是隐藏的、路径里带空格、没人会把它软链进 dotfiles —— 那是放「App 自己的东西、用户别碰」的地方。这个文件正好相反，它就是给你改的。你的 <code>starship.toml</code> 已经是这么放的。</p>
+
+<p><b>API Key 不在里面。</b>密钥留在系统钥匙串。这是刻意的：正因为文件里没有密钥，它才能放心地提交进一个公开仓库。</p>
+
+<pre><code>{
+  <span class="tok-string">"$schema"</span>: <span class="tok-string">"./config.schema.json"</span>,
+  <span class="tok-string">"version"</span>: <span class="tok-num">1</span>,
+  <span class="tok-string">"popup"</span>:  { <span class="tok-string">"style"</span>: <span class="tok-string">"liquidGlass"</span>, <span class="tok-string">"resultFontSize"</span>: <span class="tok-num">16</span> },
+  <span class="tok-string">"wheel"</span>:  { <span class="tok-string">"outerRadius"</span>: <span class="tok-num">116</span>, <span class="tok-string">"innerRadius"</span>: <span class="tok-num">53</span> },
+  <span class="tok-string">"ocr"</span>:    { <span class="tok-string">"enabled"</span>: <span class="tok-keyword">true</span>, <span class="tok-string">"hotKey"</span>: <span class="tok-string">"shift+cmd+s"</span> },
+  <span class="tok-string">"models"</span>: { <span class="tok-string">"provider"</span>: <span class="tok-string">"deepseek"</span>, <span class="tok-string">"model"</span>: <span class="tok-string">"deepseek-v4-flash"</span> },
+  <span class="tok-string">"actions"</span>: [ <span class="tok-comment">/* 你那 7 个动作 */</span> ]
+}</code></pre>
+
+<p>快捷键写成 <code>"shift+cmd+s"</code> 而不是 <code>{"keyCode":1,"carbonModifiers":768}</code> —— 后者是系统接口要的形状，对着它没法改。</p>
+
+<div class="callout">
+<span class="label">关于注释</span>
+<p>JSON 写不了注释，这是选 JSON 唯一的真实代价。换来的是：schema 文件让编辑器给你自动补全、列出某个字段的合法取值、鼠标悬停显示说明 —— 而且 App 回写文件时不会把它弄没。换成 TOML 能写注释，但 App 一回写，你写的注释就全没了，那更糟。</p>
+</div>
+
+<h2>2 · 两个方向，谁都能改</h2>
+
+<p>这个文件有两个作者：你（在编辑器里）和 App（你点设置界面的时候）。难点全在「怎么让两边不互相覆盖，又不陷入死循环」。</p>
+
+<div class="figure">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" aria-label="配置文件的两个方向">
+  <defs>
+    <marker id="arr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a5751"/>
+    </marker>
+    <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d97757"/>
+    </marker>
+  </defs>
+
+  <rect x="20" y="40" width="180" height="70" rx="8" fill="#ffffff" stroke="#e6e2d4" stroke-width="1.5"/>
+  <text x="110" y="70" text-anchor="middle" font-weight="600">设置窗口</text>
+  <text x="110" y="92" text-anchor="middle" class="label-soft" font-size="11.5">你拖了个滑块</text>
+
+  <rect x="310" y="120" width="180" height="70" rx="8" fill="#f4e2d6" stroke="#d97757" stroke-width="1.5"/>
+  <text x="400" y="150" text-anchor="middle" font-weight="600" fill="#1f1e1c">内存里的那份</text>
+  <text x="400" y="172" text-anchor="middle" class="label-mono" fill="#a8543a">ConfigStore.document</text>
+
+  <rect x="600" y="40" width="180" height="70" rx="8" fill="#ffffff" stroke="#e6e2d4" stroke-width="1.5"/>
+  <text x="690" y="70" text-anchor="middle" font-weight="600">编辑器</text>
+  <text x="690" y="92" text-anchor="middle" class="label-soft" font-size="11.5">你在 vim 里保存</text>
+
+  <rect x="310" y="230" width="180" height="56" rx="8" fill="#1f1e1c"/>
+  <text x="400" y="255" text-anchor="middle" font-weight="600" fill="#f6f3eb">config.json</text>
+  <text x="400" y="274" text-anchor="middle" class="label-mono" fill="#9b9081">磁盘上的文件</text>
+
+  <path d="M150,112 L340,120" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr1)" fill="none"/>
+  <text x="185" y="140" class="label-mono">① 立刻改内存</text>
+
+  <path d="M400,192 L400,226" stroke="#d97757" stroke-width="2" marker-end="url(#arrA)" fill="none"/>
+  <text x="412" y="214" class="label-mono" fill="#a8543a">② 0.4 秒后写盘</text>
+
+  <path d="M650,112 L470,226" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr1)" fill="none"/>
+  <text x="560" y="150" class="label-mono">③ 直接改文件</text>
+
+  <path d="M330,230 L330,196" stroke="#d97757" stroke-width="2" marker-end="url(#arrA)" fill="none" stroke-dasharray="4 3"/>
+  <text x="120" y="215" class="label-mono" fill="#a8543a">④ 每秒看一眼，变了就读回来</text>
+</svg>
+<div class="caption"><b>图 1.</b> 写是「立刻改内存、0.4 秒后落盘」——拖滑块一秒钟产生几十次变化，不攒一下的话文件会被写烂。读是「每秒 stat 一次」，变了才真的去读。</div>
+</div>
+
+<h3>为什么是每秒轮询，而不是文件监听</h3>
+
+<p>这一条我原来做错过，而且是<b>跑出来才发现的</b>，光看代码看不出来。macOS 的文件监听（<code>DispatchSource</code>）看起来更精确，但在这件事上全是洞：</p>
+
+<ul>
+  <li><b>监听目录</b>：看不见「就地改写」。目录事件只在文件被创建、删除、改名时触发。很多编辑器（包括 vim 在文件是软链时）是就地改写的 —— 完全静默。</li>
+  <li><b>监听文件</b>：挺不过「原子替换」。原子保存是「写临时文件 → rename 盖过去」，换掉了 inode，老的文件描述符从此变聋。</li>
+  <li><b>文件是软链进 dotfiles 时</b>：上面两个还都盯错了目录 —— 真实文件在 dotfiles 仓库里，而监听挂在 <code>~/.config</code> 这一侧。</li>
+</ul>
+
+<p>要覆盖这三种情况得同时开两个监听、解析软链、删除时重新挂载、还要处理文件还不存在的情况。而一次 <code>stat</code> 是几微秒（走 vnode 缓存），每秒两次，对以上所有情况一概免疫。一秒的延迟，比你从编辑器切回浏览器的时间还短。</p>
+
+<h3>死循环是怎么断开的</h3>
+
+<p>最容易出的 bug：App 写文件 → 触发「文件变了」→ App 读回来 → 觉得不一样 → 又写 → 无限循环。</p>
+
+<div class="figure">
+<svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-label="字节比对怎么断开死循环">
+  <text x="0" y="18" font-weight="600">App 记着「我最后一次读到／写出的那串字节」</text>
+
+  <line x1="30" y1="80" x2="770" y2="80" stroke="#e6e2d4" stroke-width="1.5"/>
+
+  <circle cx="110" cy="80" r="6" fill="#d97757"/>
+  <text x="110" y="62" text-anchor="middle" class="label-mono" fill="#a8543a">App 写盘</text>
+  <text x="110" y="104" text-anchor="middle" class="label-mono">记下这串字节</text>
+
+  <circle cx="330" cy="80" r="6" fill="#5a5751"/>
+  <text x="330" y="62" text-anchor="middle" class="label-mono">轮询发现文件变了</text>
+  <text x="330" y="104" text-anchor="middle" class="label-mono">读出来一比 → 一样</text>
+  <text x="330" y="124" text-anchor="middle" class="label-mono" fill="#4f8a5c" font-weight="600">→ 忽略，环断在这儿</text>
+
+  <circle cx="580" cy="80" r="6" fill="#5a5751"/>
+  <text x="580" y="62" text-anchor="middle" class="label-mono">你在编辑器里保存</text>
+  <text x="580" y="104" text-anchor="middle" class="label-mono">读出来一比 → 不一样</text>
+  <text x="580" y="124" text-anchor="middle" class="label-mono" fill="#a8543a" font-weight="600">→ 这才是真的外部改动</text>
+
+  <rect x="40" y="160" width="720" height="38" rx="6" fill="#f3f0e6"/>
+  <text x="56" y="184" class="label-mono" fill="#5a5751">判据是「内容一不一样」，不是「是谁写的」—— 所以跟事件什么时候到、到几次都没关系。</text>
+</svg>
+<div class="caption"><b>图 2.</b> 用「一个标志位表示我正在写」会漏：通知是异步到的，经常在你把标志清掉之后才到。比内容就不会 —— App 自己写出去的字节，一定等于它记着的那串。</div>
+</div>
+
+<h2>3 · 为什么你手写的东西不会被吃掉</h2>
+
+<p>这是整套设计里最要紧的一条，分两层。</p>
+
+<h3>第一层：整个文件按「JSON 树」存，不按结构体存</h3>
+
+<p>常规做法是把 JSON 解析成一个 Swift 结构体。问题是：<b>结构体不认识的字段，在解析的那一刻就没了</b>，下次保存写回去的时候自然也就不见了。你在文件里手写一个 App 还不认识的键（比如为了以后的版本先写上），或者用新版 App 写了个键再用旧版打开 —— 都会被悄无声息地删掉。</p>
+
+<div class="figure">
+<svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-label="结构体 vs JSON 树">
+  <text x="0" y="18" font-weight="600">同一个文件，两种存法</text>
+
+  <rect x="10" y="40" width="370" height="190" rx="8" fill="#ffffff" stroke="#e6e2d4" stroke-width="1.5"/>
+  <text x="30" y="66" font-weight="600" fill="#b14338">解析成结构体（没这么做）</text>
+  <text x="30" y="92" class="label-mono">读到：{ style, radius, myNote }</text>
+  <text x="30" y="116" class="label-mono">结构体只有：{ style, radius }</text>
+  <line x1="30" y1="132" x2="360" y2="132" stroke="#e6e2d4" stroke-dasharray="3 3"/>
+  <text x="30" y="156" class="label-mono" fill="#b14338">myNote 在这一步就没了</text>
+  <text x="30" y="180" class="label-mono">写回：{ style, radius }</text>
+  <rect x="30" y="196" width="330" height="22" rx="4" fill="#f5dad6"/>
+  <text x="42" y="211" class="label-mono" fill="#b14338">你写的那行，永远消失</text>
+
+  <rect x="420" y="40" width="370" height="190" rx="8" fill="#ffffff" stroke="#d97757" stroke-width="1.5"/>
+  <text x="440" y="66" font-weight="600" fill="#4f8a5c">存成 JSON 树（实际做法）</text>
+  <text x="440" y="92" class="label-mono">读到：{ style, radius, myNote }</text>
+  <text x="440" y="116" class="label-mono">内存里：{ style, radius, myNote }</text>
+  <line x1="440" y1="132" x2="770" y2="132" stroke="#e6e2d4" stroke-dasharray="3 3"/>
+  <text x="440" y="156" class="label-mono">只改 App 认识的那条路径</text>
+  <text x="440" y="180" class="label-mono">写回：{ style, radius, myNote }</text>
+  <rect x="440" y="196" width="330" height="22" rx="4" fill="#e3f0e2"/>
+  <text x="452" y="211" class="label-mono" fill="#4f8a5c">不是「小心保住的」，是碰都没碰</text>
+</svg>
+<div class="caption"><b>图 3.</b> 区别不在于代码写得多仔细，而在于结构不一样：App 只会去动 <code>popup.style</code> 这种它明确知道的路径，别的字段它根本没有机会碰到。</div>
+</div>
+
+<h3>第二层：动作列表里的每一个动作，单独再保一次</h3>
+
+<p>有个例外：<b>动作</b>是要解析成结构体的（App 得知道每个动作的标题、图标、提示词、属于哪个分组）。所以上面那套对动作内部不成立 —— 你在某个动作上手写一个字段，只要动过列表（改一个动作、拖一下顺序、删一个），全部动作的未知字段都会被抹掉。</p>
+
+<p>所以动作结构体里加了一个「收纳格」：解析时把所有不认识的键收进去，写回时再原样吐出来。这不是新发明 —— 代码里本来就有一个只针对 <code>kind</code> 字段的同类机制（防止旧版 App 把新版做的动作类型改坏），现在把它从一个字段推广到所有字段。<span class="pill neutral">5 个单元测试锁住</span></p>
+
+<h2>4 · 四道保命的门</h2>
+
+<p>这些都是「不会丢你东西」的承诺，每一条都对应一个具体的失败场景。</p>
+
+<table>
+  <thead>
+    <tr><th style="width:26%">门</th><th>挡住的是什么</th><th style="width:16%">验证</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>写之前先读盘</b></td>
+      <td>你在 vim 里保存，0.1 秒后 App 的延迟写落盘、把你的改动盖掉。现在 App 写之前先看一眼盘上的内容，发现变了就<b>先把那一版另存成 <code>.bak-时间戳</code></b> 再写。你打的字永远有一份在。</td>
+      <td><span class="pill good">已实测</span></td>
+    </tr>
+    <tr>
+      <td><b>解析失败不覆盖</b></td>
+      <td>文件里少个逗号 → App 读不懂。此时<b>绝不</b>用默认值把它盖掉（那是你的劳动成果，错的多半只是一个标点）。而是另存一份 <code>.bad-时间戳</code>，日志里大声说，然后用上一次好的设置继续跑。你改边正在编辑、文件暂时不合法的那几秒，App 就是静静等着。</td>
+      <td><span class="pill good">已实测</span></td>
+    </tr>
+    <tr>
+      <td><b>空列表是你的决定</b></td>
+      <td>你把动作删光 → 下次启动 7 个默认动作全回来了，等于没法真正清空。现在只有「字段缺失或读不懂」才用默认值。</td>
+      <td><span class="pill good">已实测</span></td>
+    </tr>
+    <tr>
+      <td><b>退出时同步写盘</b></td>
+      <td>改完设置马上退出 App，写操作还在后台队列里排队，进程就被杀了 —— 改动没了。现在写盘是同步的，函数返回时字节已经在盘上。</td>
+      <td><span class="pill good">已实测</span></td>
+    </tr>
+    <tr>
+      <td><b>（附带）软链不会被写坏</b></td>
+      <td>你把 <code>config.json</code> 软链进 dotfiles 仓库之后，原子写会把<b>软链本身替换成普通文件</b>，dotfiles 那份停在旧内容，两边悄悄分叉。现在所有读写先解析软链。</td>
+      <td><span class="pill good">已实测</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>5 · 「两条反应路径」是什么意思</h2>
+
+<p>你问的就是这个。用最具体的例子讲：<b>「换一个快捷键」这件事，需要做两件事</b> —— 一是把新快捷键记下来（存进配置文件），二是去系统里把旧快捷键注销、把新的注册上。第二件事不做，你改了也没用。</p>
+
+<p>问题在于，<b>「改快捷键」有两个入口</b>：你在设置窗口里录一个，或者你在配置文件里手写一行。现在的代码是这样的：</p>
+
+<div class="figure">
+<svg viewBox="0 0 800 330" xmlns="http://www.w3.org/2000/svg" aria-label="现在的两条路径">
+  <defs>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a5751"/>
+    </marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b14338"/>
+    </marker>
+  </defs>
+
+  <text x="0" y="18" font-weight="600" fill="#b14338">现在：两个入口，各走各的路</text>
+
+  <rect x="20" y="50" width="160" height="52" rx="8" fill="#ffffff" stroke="#e6e2d4" stroke-width="1.5"/>
+  <text x="100" y="82" text-anchor="middle" font-weight="600">设置窗口</text>
+
+  <rect x="20" y="210" width="160" height="52" rx="8" fill="#ffffff" stroke="#e6e2d4" stroke-width="1.5"/>
+  <text x="100" y="242" text-anchor="middle" font-weight="600">手改配置文件</text>
+
+  <rect x="310" y="40" width="180" height="46" rx="6" fill="#f3f0e6"/>
+  <text x="400" y="68" text-anchor="middle" class="label-mono">① 存进配置</text>
+
+  <rect x="310" y="106" width="180" height="46" rx="6" fill="#f3f0e6"/>
+  <text x="400" y="134" text-anchor="middle" class="label-mono">② 重新注册快捷键</text>
+
+  <rect x="310" y="200" width="180" height="46" rx="6" fill="#f3f0e6"/>
+  <text x="400" y="228" text-anchor="middle" class="label-mono">读出新值</text>
+
+  <rect x="310" y="266" width="180" height="46" rx="6" fill="#f3f0e6"/>
+  <text x="400" y="294" text-anchor="middle" class="label-mono">② 重新注册快捷键</text>
+
+  <path d="M185,70 L305,63" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr2)" fill="none"/>
+  <path d="M185,88 L305,129" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr2)" fill="none"/>
+  <path d="M185,230 L305,223" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr2)" fill="none"/>
+  <path d="M185,248 L305,289" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr2)" fill="none"/>
+
+  <rect x="545" y="106" width="235" height="46" rx="6" fill="#f5dad6" stroke="#b14338" stroke-width="1.2"/>
+  <text x="662" y="127" text-anchor="middle" class="label-mono" fill="#b14338">同一件事写了两遍</text>
+  <text x="662" y="144" text-anchor="middle" class="label-mono" fill="#b14338">改一处忘另一处 = bug</text>
+  <path d="M495,129 L540,129" stroke="#b14338" stroke-width="1.5" marker-end="url(#arrB)" fill="none"/>
+  <path d="M495,289 L520,289 L520,152" stroke="#b14338" stroke-width="1.5" marker-end="url(#arrB)" fill="none"/>
+</svg>
+<div class="caption"><b>图 4.</b> 「重新注册快捷键」这个动作，在两条路径里各写了一遍。以后加第三个需要副作用的设置时，很容易只在设置窗口那边加、忘了文件重载那边 —— 于是「手改文件不生效」。</div>
+</div>
+
+<p><b>这不是假想的隐患，它真实发生过。</b>前面那个「总开关」就是这个坑：设置窗口里的开关会同时「记下来」和「真的启停监听」，而文件重载那条路只「记下来」了。结果就是手改文件把开关关掉，配置里显示关了，监听却还在跑。我当时是单独在重载那条路上补了一遍，才没漏。</p>
+
+<p>Frank 的建议是把它变成一条路：</p>
+
+<div class="figure">
+<svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" aria-label="合并成一条路径">
+  <defs>
+    <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a5751"/>
+    </marker>
+    <marker id="arrC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4f8a5c"/>
+    </marker>
+  </defs>
+
+  <text x="0" y="18" font-weight="600" fill="#4f8a5c">改成一条：谁都只负责改数据，副作用统一订阅数据</text>
+
+  <rect x="20" y="60" width="160" height="48" rx="8" fill="#ffffff" stroke="#e6e2d4" stroke-width="1.5"/>
+  <text x="100" y="90" text-anchor="middle" font-weight="600">设置窗口</text>
+
+  <rect x="20" y="150" width="160" height="48" rx="8" fill="#ffffff" stroke="#e6e2d4" stroke-width="1.5"/>
+  <text x="100" y="180" text-anchor="middle" font-weight="600">手改配置文件</text>
+
+  <rect x="300" y="100" width="190" height="58" rx="8" fill="#f4e2d6" stroke="#d97757" stroke-width="1.5"/>
+  <text x="395" y="125" text-anchor="middle" font-weight="600">配置数据</text>
+  <text x="395" y="145" text-anchor="middle" class="label-mono" fill="#a8543a">只有它变了这一件事</text>
+
+  <path d="M185,88 L295,115" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr3)" fill="none"/>
+  <path d="M185,172 L295,146" stroke="#5a5751" stroke-width="1.5" marker-end="url(#arr3)" fill="none"/>
+  <text x="200" y="80" class="label-mono">只改数据</text>
+  <text x="200" y="196" class="label-mono">只改数据</text>
+
+  <rect x="600" y="52" width="185" height="42" rx="6" fill="#e3f0e2"/>
+  <text x="692" y="78" text-anchor="middle" class="label-mono" fill="#3d6b47">快捷键 → 重新注册</text>
+
+  <rect x="600" y="108" width="185" height="42" rx="6" fill="#e3f0e2"/>
+  <text x="692" y="134" text-anchor="middle" class="label-mono" fill="#3d6b47">语言 → 重建界面</text>
+
+  <rect x="600" y="164" width="185" height="42" rx="6" fill="#e3f0e2"/>
+  <text x="692" y="190" text-anchor="middle" class="label-mono" fill="#3d6b47">模型 → 换服务商</text>
+
+  <path d="M495,120 L560,73 L595,73" stroke="#4f8a5c" stroke-width="1.5" marker-end="url(#arrC)" fill="none"/>
+  <path d="M495,129 L595,129" stroke="#4f8a5c" stroke-width="1.5" marker-end="url(#arrC)" fill="none"/>
+  <path d="M495,138 L560,185 L595,185" stroke="#4f8a5c" stroke-width="1.5" marker-end="url(#arrC)" fill="none"/>
+
+  <rect x="300" y="200" width="190" height="40" rx="6" fill="#f3f0e6"/>
+  <text x="395" y="225" text-anchor="middle" class="label-mono" fill="#5a5751">副作用只写一遍</text>
+</svg>
+<div class="caption"><b>图 5.</b> 设置窗口不再直接指挥任何东西，它只改数据。需要做副作用的那几处（快捷键、语言、模型）各自盯着自己关心的那个字段，谁改的它们都不关心。「界面改的」和「文件改的」从此没有区别。</div>
+</div>
+
+<p><b>代价</b>：设置界面现在那 15 个「setXxx」方法会全部消失，换成「只改数据」；控制器那边要新增几处订阅。改动面不小，而且要动已经跑通的代码。</p>
+
+<p><b>我的判断</b>：方向是对的，但不是现在做。它预防的那个具体 bug 我已经单独处理掉了；等以后要加第三、第四个「改了要立刻生效」的设置时，再一次性改过来更划算 —— 那时候收益才真正大于风险。</p>
+
+<h2>6 · 为什么没拆成两个文件</h2>
+
+<p>Frank 建议把动作单独拆成 <code>actions.json</code>，理由是「调个滑块就会重写整个动作区域，万一动作解析出过问题，就会把默认值覆盖到你手写的内容上」。</p>
+
+<p>这个担心在他假设的实现里成立，在实际实现里不成立：动作在内存里是以<b>原始 JSON 树</b>的形式存着的，只有你真的改了动作时才会重新编码。调滑块只会改 <code>wheel.outerRadius</code> 那一条路径，动作那一段是原样搬过去的 —— 它根本没被解析过，也就谈不上被默认值覆盖。</p>
+
+<p>加上你明确说了要一个文件，所以保持一个。</p>
+
+<h2>7 · 拿掉任何一块会怎么样</h2>
+
+<table>
+  <thead>
+    <tr><th style="width:30%">拿掉…</th><th>会发生什么</th><th style="width:14%">严重度</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>JSON 树（改用结构体）</td><td>你在文件里手写的任何 App 不认识的字段，下次保存就没了</td><td><span class="pill bad">高</span></td></tr>
+    <tr><td>动作的「收纳格」</td><td>同上，但只针对动作内部；改一个动作就会抹掉所有动作的未知字段</td><td><span class="pill bad">高</span></td></tr>
+    <tr><td>写前备份</td><td>你在编辑器里刚保存的内容，可能被 App 的延迟写盖掉，且无处可寻</td><td><span class="pill bad">高</span></td></tr>
+    <tr><td>解析失败保护</td><td>文件里打错一个字符，整份配置被默认值覆盖</td><td><span class="pill bad">高</span></td></tr>
+    <tr><td>同步写盘</td><td>改完马上退出 App，改动丢失</td><td><span class="pill warn">中</span></td></tr>
+    <tr><td>解析软链</td><td>软链进 dotfiles 后，App 一保存就把软链替换成普通文件，两边分叉</td><td><span class="pill warn">中</span></td></tr>
+    <tr><td>字节比对</td><td>App 写 → 收到通知 → 又写，无限循环，文件疯狂改动</td><td><span class="pill warn">中</span></td></tr>
+    <tr><td>写入去抖（0.4 秒）</td><td>拖滑块时每帧写一次盘，编辑器里的文件疯狂闪烁</td><td><span class="pill neutral">低</span></td></tr>
+    <tr><td>schema 文件</td><td>编辑器里没有自动补全和字段说明，只能对着 JSON 猜</td><td><span class="pill neutral">低</span></td></tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  <span>QDuo · 配置文件设计 · 2026-09-22</span>
+  <span><code>Sources/Core/Config/</code></span>
+</div>
+
+</div>
+</body>
+</html>
