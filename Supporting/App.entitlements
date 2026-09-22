@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Must stay OFF. The app reads the selected text out of whatever app you
+         are in (Accessibility API), watches the mouse globally (event tap) and
+         captures the screen for OCR. The App Sandbox forbids all three. -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+
+    <!-- Data-protection keychain group, so the LLM API keys live in the Keychain
+         rather than in the config file — the config file is meant to be readable,
+         diffable and committable, and a key must never end up in it.
+         The group name comes from the build setting so it follows a rename.
+
+         WARNING: keychain-access-groups is a RESTRICTED entitlement (Apple TN3125).
+         A Developer ID + notarized build carrying it is SIGKILLed by AMFI at launch
+         unless an authorizing provisioning profile is embedded in the bundle. The
+         release workflow embeds one and fails loudly if the secret is missing;
+         every static check passes either way, so the check has to be explicit. -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)$(BRAND_KEYCHAIN_GROUP)</string>
+    </array>
+</dict>
+</plist>

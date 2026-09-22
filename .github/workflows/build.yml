@@ -1,0 +1,459 @@
+name: Build and Notarize macOS App
+
+on:
+  push:
+    # Only tag pushes cut a release. Pre-merge validation comes from the
+    # pull_request trigger; workflow_dispatch lets us validate the build manually.
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  # Serialize release (tag) builds so an older run can never overwrite a newer
+  # appcast on main; PR/manual validation runs still parallelize per-ref.
+  group: ${{ startsWith(github.ref, 'refs/tags/v') && 'release' || format('ci-{0}', github.ref) }}
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    env:
+      HAS_APPLE_SECRETS: ${{ secrets.MAC_CERTS_P12_BASE64 != '' }}
+      HAS_SPARKLE_KEY: ${{ secrets.SPARKLE_EDDSA_KEY != '' }}
+      HAS_HOMEBREW_PAT: ${{ secrets.HOMEBREW_TAP_PAT != '' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The one place the app's name enters CI: read straight out of project.yml,
+      # which is also the only place it is written down in the source. A rename
+      # therefore needs no edit in this file.
+      - name: Read app name from project.yml
+        run: |
+          APP_NAME=$(awk '/^name:/ {print $NF; exit}' project.yml)
+          KEYCHAIN_GROUP=$(awk '/BRAND_KEYCHAIN_GROUP:/ {print $2; exit}' project.yml)
+          [ -n "$APP_NAME" ] || { echo "::error::could not read the app name from project.yml"; exit 1; }
+          echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
+          # The Homebrew tap keys every app by a lowercase token; it is the app
+          # name lowercased, so it follows a rename like everything else here.
+          echo "APP_TOKEN=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_GROUP=$KEYCHAIN_GROUP" >> "$GITHUB_ENV"
+          echo "app: $APP_NAME   keychain group: $KEYCHAIN_GROUP"
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install Build Tools
+        run: brew install xcodegen create-dmg
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      # Before anything is built for release: the pure-logic tests. They run in a
+      # second or two, need no signing and no app host, so there is no reason for a
+      # tagged build to get as far as notarising something that fails them.
+      - name: Run Tests
+        run: |
+          xcodebuild test \
+            -project ${APP_NAME}.xcodeproj \
+            -scheme "${APP_NAME}" \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Install Apple Certificate
+        if: ${{ env.HAS_APPLE_SECRETS == 'true' }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.MAC_CERTS_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.MAC_CERTS_P12_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(uuidgen)
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+      - name: Build App
+        run: |
+          xcodebuild -project ${APP_NAME}.xcodeproj \
+            -scheme "${APP_NAME}" \
+            -configuration Release \
+            ARCHS="x86_64 arm64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build \
+            SYMROOT=$(PWD)/build
+
+      - name: Sign App
+        if: ${{ env.HAS_APPLE_SECRETS == 'true' }}
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MAC_PROVISION_PROFILE_BASE64: ${{ secrets.MAC_PROVISION_PROFILE_BASE64 }}
+        run: |
+          APP_PATH="build/Release/${APP_NAME}.app"
+          ENTITLEMENTS="Supporting/App.entitlements"
+
+          # Sign embedded frameworks inside-out (deepest first)
+          if [ -d "$APP_PATH/Contents/Frameworks" ]; then
+            find "$APP_PATH/Contents/Frameworks" -type f | while read -r f; do
+              if file "$f" | grep -q "Mach-O"; then
+                echo "Signing Mach-O: $f"
+                codesign --force --options runtime --timestamp \
+                  --sign "Developer ID Application" "$f"
+              fi
+            done
+
+            find "$APP_PATH/Contents/Frameworks" -name "*.xpc" -type d | while read -r b; do
+              echo "Signing bundle: $b"
+              codesign --force --options runtime --timestamp \
+                --sign "Developer ID Application" "$b"
+            done
+            find "$APP_PATH/Contents/Frameworks" -name "*.app" -type d | while read -r b; do
+              echo "Signing bundle: $b"
+              codesign --force --options runtime --timestamp \
+                --sign "Developer ID Application" "$b"
+            done
+            find "$APP_PATH/Contents/Frameworks" \( -name "*.framework" -o -name "*.dylib" \) | while read -r b; do
+              echo "Signing bundle: $b"
+              codesign --force --options runtime --timestamp \
+                --sign "Developer ID Application" "$b"
+            done
+          fi
+
+          # Embed the Developer ID provisioning profile that AUTHORIZES the restricted
+          # keychain-access-groups entitlement. keychain-access-groups is a *restricted*
+          # entitlement (Apple TN3125): under Hardened Runtime it must be allowlisted by
+          # an embedded profile, or AMFI SIGKILLs the notarized app at launch
+          # ("restricted entitlements not validated / no matching profile found").
+          # Must be in place BEFORE codesign so it's covered by the seal.
+          if [ -z "$MAC_PROVISION_PROFILE_BASE64" ]; then
+            echo "::error::MAC_PROVISION_PROFILE_BASE64 secret is missing — keychain-access-groups would fail AMFI at launch"; exit 1
+          fi
+          echo -n "$MAC_PROVISION_PROFILE_BASE64" | base64 --decode -o "$APP_PATH/Contents/embedded.provisionprofile"
+          echo "Embedded provisioning profile ($(stat -f%z "$APP_PATH/Contents/embedded.provisionprofile") bytes)"
+
+          # Sign the main app bundle with entitlements.
+          # codesign signs the entitlements plist VERBATIM — unlike Xcode it does NOT
+          # expand $(AppIdentifierPrefix). The signed keychain group must be team-prefixed
+          # so it matches the profile's allowlist, so expand it to the team prefix here.
+          SIGN_ENT="${RUNNER_TEMP:-/tmp}/signing.entitlements"
+          sed "s/\$(AppIdentifierPrefix)/${TEAM_ID}./g" "$ENTITLEMENTS" > "$SIGN_ENT"
+          echo "Signing entitlements (expanded):"; cat "$SIGN_ENT"
+          if grep -q 'AppIdentifierPrefix' "$SIGN_ENT"; then
+            echo "::error::\$(AppIdentifierPrefix) was not expanded — is the APPLE_TEAM_ID secret set?"; exit 1
+          fi
+          codesign --force --options runtime --timestamp \
+            --entitlements "$SIGN_ENT" \
+            --sign "Developer ID Application" "$APP_PATH"
+
+          # Verify: signature valid, keychain group team-prefixed, AND the authorizing
+          # profile is embedded — guards against ever re-shipping the AMFI-kill bug.
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign -d --entitlements - "$APP_PATH" 2>/dev/null | grep -q "${TEAM_ID}.${KEYCHAIN_GROUP}" \
+            || { echo "::error::signed keychain-access-group is not team-prefixed — AMFI would kill the app"; exit 1; }
+          test -f "$APP_PATH/Contents/embedded.provisionprofile" \
+            || { echo "::error::embedded.provisionprofile missing after signing — AMFI would kill the app"; exit 1; }
+
+      - name: Notarize App
+        if: ${{ env.HAS_APPLE_SECRETS == 'true' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent \
+            "build/Release/${APP_NAME}.app" \
+            "$RUNNER_TEMP/notarize.zip"
+
+          SUBMISSION_OUT=$(xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$TEAM_ID" \
+            --password "$APP_SPECIFIC_PASSWORD" \
+            --wait 2>&1) || true
+          echo "$SUBMISSION_OUT"
+
+          SUBMISSION_ID=$(echo "$SUBMISSION_OUT" | grep -m1 "^  id:" | awk '{print $NF}')
+          STATUS=$(echo "$SUBMISSION_OUT" | grep "^  status:" | awk '{print $NF}')
+
+          if [[ "$STATUS" != "Accepted" ]]; then
+            echo "--- Notarization log ---"
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --team-id "$TEAM_ID" \
+              --password "$APP_SPECIFIC_PASSWORD" 2>&1 || true
+            echo "error: Notarization failed with status: $STATUS" >&2
+            exit 1
+          fi
+
+          xcrun stapler staple "build/Release/${APP_NAME}.app"
+
+      - name: Create DMG
+        run: |
+          cd build/Release
+          create-dmg \
+            --volname "${APP_NAME}" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "${APP_NAME}.app" 150 190 \
+            --hide-extension "${APP_NAME}.app" \
+            --app-drop-link 450 190 \
+            "${APP_NAME}.dmg" \
+            "${APP_NAME}.app"
+
+      - name: Download Sparkle Tools
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.HAS_SPARKLE_KEY == 'true' }}
+        run: |
+          SPARKLE_VERSION="2.9.0"
+          curl -sL -o "$RUNNER_TEMP/sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          tar -xf "$RUNNER_TEMP/sparkle.tar.xz" -C "$RUNNER_TEMP/sparkle"
+
+      - name: Generate Release Notes
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.HAS_SPARKLE_KEY == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -f RELEASE_NOTES.html ]]; then
+            cp RELEASE_NOTES.html "$RUNNER_TEMP/release_notes.html"
+            exit 0
+          fi
+          PREV_TAG=$(git tag -l 'v*' --sort=-v:refname | grep -v "${GITHUB_REF_NAME}" | head -1)
+          if [[ -n "$PREV_TAG" ]]; then
+            NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="${GITHUB_REF_NAME}" \
+              -f previous_tag_name="${PREV_TAG}" \
+              --jq '.body' 2>/dev/null || echo "")
+          fi
+          if [[ -z "$NOTES" && -n "$PREV_TAG" ]]; then
+            NOTES=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s" --no-merges 2>/dev/null || echo "")
+          fi
+          if [[ -z "$NOTES" ]]; then
+            NOTES="Bug fixes and improvements."
+          fi
+          NOTES_HTML=$(echo "$NOTES" | sed 's/^## .*$/<h3>\0<\/h3>/; s/^- \(.*\)$/<li>\1<\/li>/' | sed 's/<h3>## /<h3>/g')
+          NOTES_HTML="<ul>${NOTES_HTML}</ul>"
+          echo "$NOTES_HTML" > "$RUNNER_TEMP/release_notes.html"
+
+      - name: Sign DMG and Generate Appcast
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.HAS_SPARKLE_KEY == 'true' }}
+        env:
+          SPARKLE_EDDSA_KEY: ${{ secrets.SPARKLE_EDDSA_KEY }}
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=$(grep -E '^[[:space:]]*MARKETING_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+          BUILD=$(grep -E '^[[:space:]]*CURRENT_PROJECT_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+          PUB_DATE=$(date -u "+%a, %d %b %Y %H:%M:%S %z")
+          FILE_LENGTH=$(stat -f%z "build/Release/${APP_NAME}.dmg")
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/${APP_NAME}.dmg"
+
+          # Sign DMG with EdDSA private key (temp file, not process substitution)
+          echo -n "$SPARKLE_EDDSA_KEY" > "$RUNNER_TEMP/sparkle_eddsa.key"
+          SIGN_OUTPUT=$("$RUNNER_TEMP/sparkle/bin/sign_update" "build/Release/${APP_NAME}.dmg" -f "$RUNNER_TEMP/sparkle_eddsa.key")
+          rm -f "$RUNNER_TEMP/sparkle_eddsa.key"
+
+          ED_SIGNATURE=$(echo "$SIGN_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
+          if [[ -z "$ED_SIGNATURE" ]]; then
+            echo "error: Failed to generate EdDSA signature." >&2
+            echo "sign_update output: $SIGN_OUTPUT" >&2
+            exit 1
+          fi
+
+          RELEASE_NOTES=$(cat "$RUNNER_TEMP/release_notes.html")
+
+          {
+            echo '<?xml version="1.0" encoding="utf-8"?>'
+            echo '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">'
+            echo '  <channel>'
+            echo '    <title>${APP_NAME} Updates</title>'
+            echo '    <link>https://github.com/${{ github.repository }}</link>'
+            echo '    <language>en</language>'
+            echo '    <item>'
+            echo "      <title>Version ${VERSION}</title>"
+            echo "      <description><![CDATA[${RELEASE_NOTES}]]></description>"
+            echo "      <pubDate>${PUB_DATE}</pubDate>"
+            echo "      <sparkle:version>${BUILD}</sparkle:version>"
+            echo "      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"
+            echo '      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>'
+            echo "      <enclosure url=\"${DOWNLOAD_URL}\" length=\"${FILE_LENGTH}\" type=\"application/octet-stream\" sparkle:edSignature=\"${ED_SIGNATURE}\" />"
+            echo '    </item>'
+            echo '  </channel>'
+            echo '</rss>'
+          } > appcast.xml
+
+          echo "--- Appcast ---"
+          cat appcast.xml
+
+          # Commit the appcast on top of CURRENT origin/main, never on the tag's
+          # detached HEAD: the tag can legally sit off main (e.g. tagged before a
+          # pull --rebase rewrote the release commit), and main gains an appcast
+          # commit per release — committing on the tag commit then makes
+          # `push HEAD:main` a non-fast-forward rejection. A temp worktree keeps
+          # the build tree (tag contents + appcast.xml for the Release step) intact.
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          WT="$RUNNER_TEMP/appcast-wt"
+          for attempt in 1 2 3; do
+            # Explicit refspec: the CI checkout is a shallow/single-ref clone, so a
+            # plain `git fetch origin main` would not create refs/remotes/origin/main.
+            git fetch origin +refs/heads/main:refs/remotes/origin/main
+            git worktree remove --force "$WT" 2>/dev/null || true
+            git worktree add --detach "$WT" origin/main
+            cp appcast.xml "$WT/appcast.xml"
+            git -C "$WT" add appcast.xml
+            if git -C "$WT" diff --cached --quiet; then
+              echo "appcast.xml already up to date on main; nothing to push."
+              break
+            fi
+            git -C "$WT" commit -m "Update appcast for ${TAG_NAME}"
+            if git -C "$WT" push origin HEAD:main; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "::error::appcast push to main failed after 3 attempts"; exit 1
+            fi
+            echo "Push rejected (main moved during the build); retrying…"
+          done
+          git worktree remove --force "$WT" 2>/dev/null || true
+
+      - name: Generate latest.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          # Minimal manifest the shared homebrew-tap generator reads — it pulls
+          # version + per-arch DMG URLs from this file, downloads the DMG, and
+          # computes sha256 itself. This app ships one universal DMG so arm/intel
+          # point at the same URL. Uploaded as a release asset below so the
+          # canonical .../releases/latest/download/latest.json URL resolves.
+          VERSION=$(grep -E '^[[:space:]]*MARKETING_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          DMG_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/${APP_NAME}.dmg"
+          PUB_DATE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+          cat > latest.json <<JSON
+          {
+            "version": "${VERSION}",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "darwin-aarch64": { "url": "${DMG_URL}" },
+              "darwin-x86_64":  { "url": "${DMG_URL}" }
+            }
+          }
+          JSON
+          echo "--- latest.json ---"; cat latest.json
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-macOS
+          path: build/Release/${{ env.APP_NAME }}.dmg
+
+      - name: Prepare GitHub Release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          BODY_FILE="$RUNNER_TEMP/github_release_body.md"
+          : > "$BODY_FILE"
+          if [[ -f RELEASE_NOTES.html ]]; then
+            VERSION=$(grep -E '^[[:space:]]*MARKETING_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+            awk -v ver="$VERSION" '
+              /<h3>What.s New in / {
+                if (index($0, "New in " ver "</h3>") > 0) { cap = 1 }
+                else if (cap == 1) { cap = 0 }
+              }
+              cap { print }
+            ' RELEASE_NOTES.html > "$BODY_FILE"
+          fi
+          if [[ -s "$BODY_FILE" ]]; then
+            echo "RELEASE_BODY_READY=true" >> "$GITHUB_ENV"
+            echo "--- GitHub Release body ---"
+            cat "$BODY_FILE"
+          else
+            echo "RELEASE_BODY_READY=false" >> "$GITHUB_ENV"
+            echo "No per-version section found in RELEASE_NOTES.html; using auto-generated notes."
+          fi
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: |
+            build/Release/${{ env.APP_NAME }}.dmg
+            latest.json
+            appcast.xml
+          body_path: ${{ env.RELEASE_BODY_READY == 'true' && format('{0}/github_release_body.md', runner.temp) || '' }}
+          generate_release_notes: ${{ env.RELEASE_BODY_READY != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for this release's manifest to go live
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.HAS_HOMEBREW_PAT == 'true' && success() }}
+        run: |
+          # The tap generator fetches .../releases/latest/download/latest.json and
+          # trusts whatever comes back. Checking only that the URL returns 200 is
+          # not enough: right after publishing, that URL can still resolve to the
+          # PREVIOUS release's manifest — also a 200, but an older version. We
+          # would dispatch, the tap would regenerate the same old cask, and both
+          # workflows would go green while the cask silently stayed behind. So
+          # poll until the manifest actually reports THIS tag's version.
+          VERSION=$(grep -E '^[[:space:]]*MARKETING_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::could not read MARKETING_VERSION out of project.yml"; exit 1
+          fi
+          URL="https://github.com/${{ github.repository }}/releases/latest/download/latest.json"
+          # Bound the whole poll by wall-clock, not by iteration count: curl gets
+          # its own connect/transfer timeouts so one stalled request cannot eat
+          # the budget and skip the warning below.
+          DEADLINE=$(( $(date +%s) + 180 ))
+          ATTEMPT=0
+          while [[ $(date +%s) -lt $DEADLINE ]]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            # -f makes an HTTP error a curl failure, and the body has to parse as
+            # JSON with an exactly-equal version — a truncated or half-written
+            # response retries instead of counting as success.
+            if BODY=$(curl -fsSL --connect-timeout 10 --max-time 20 "$URL") &&
+               printf '%s' "$BODY" | VERSION="$VERSION" python3 -c \
+                 'import json,os,sys; sys.exit(0 if json.load(sys.stdin).get("version") == os.environ["VERSION"] else 1)' 2>/dev/null; then
+              echo "latest.json reports ${VERSION} (attempt ${ATTEMPT})"
+              exit 0
+            fi
+            sleep 3
+          done
+          # Dispatch anyway — the tap job is cheap and may find a fresh manifest —
+          # but say loudly that the cask may need a manual re-run.
+          echo "::warning::latest.json still does not report ${VERSION} after 180s. Dispatching anyway; if the cask does not move, run: gh workflow run update-casks.yml --repo XueshiQiao/homebrew_tap -f app_token=${APP_TOKEN}"
+
+      - name: Trigger Homebrew Tap Update
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.HAS_HOMEBREW_PAT == 'true' && success() }}
+        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 # v3.0.0
+        with:
+          # Cross-repo dispatch needs a PAT (the default GITHUB_TOKEN can only
+          # dispatch inside this repo). The receiving workflow lives at
+          # XueshiQiao/homebrew_tap/.github/workflows/update-casks.yml; it reads
+          # client_payload.app_token and regenerates Casks/<token>.rb from this
+          # release's latest.json.
+          token: ${{ secrets.HOMEBREW_TAP_PAT }}
+          repository: XueshiQiao/homebrew_tap
+          event-type: update_cask
+          client-payload: '{"app_token": "${{ env.APP_TOKEN }}"}'
+
+      - name: Warn if HOMEBREW_TAP_PAT missing
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.HAS_HOMEBREW_PAT != 'true' }}
+        run: |
+          echo "::warning::HOMEBREW_TAP_PAT secret is not set on this repo — the Homebrew cask was NOT auto-updated for this release. Add the secret (PAT with 'repo' scope on XueshiQiao/homebrew_tap) to enable automatic cask updates, or run the tap workflow manually: gh workflow run update-casks.yml --repo XueshiQiao/homebrew_tap -f app_token=${APP_TOKEN}"

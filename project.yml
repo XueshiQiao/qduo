@@ -1,0 +1,116 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  THE NAME LIVES HERE AND NOWHERE ELSE.
+#
+#  Renaming the app is: edit the five values in this block, rename the GitHub
+#  repo, swap the icon in Assets.xcassets, and fix the README. That is all —
+#  no Swift file contains the product name, no directory is named after it,
+#  and no localized string spells it out. Everything downstream reads it back
+#  from the built bundle (see Sources/Core/Brand.swift).
+#
+#  Keep the five in sync by hand; YAML cannot concatenate strings, so the
+#  bundle id is spelled out rather than derived from the name.
+# ═══════════════════════════════════════════════════════════════════════════
+name: &APP_NAME QDuo
+
+.brand:
+  # The reverse-DNS id WITHOUT a configuration suffix. Keychain items and the
+  # support directory hang off this, so Debug and Release share them — one
+  # build's API keys are the other's, which is what you want while developing.
+  baseID: &BASE_ID me.xueshi.qduo
+  # What the Release build ships as. Debug appends ".debug" below so both can
+  # be installed at once.
+  bundleID: &BUNDLE_ID me.xueshi.qduo
+  repoURL: &REPO_URL https://github.com/XueshiQiao/qduo
+  feedURL: &FEED_URL https://github.com/XueshiQiao/qduo/releases/latest/download/appcast.xml
+
+options:
+  bundleIdPrefix: me.xueshi
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+  minimumXcodeGenVersion: "2.35"
+
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
+  Aptabase:
+    url: https://github.com/aptabase/aptabase-swift
+    from: "0.3.4"
+  MarkdownUI:
+    url: https://github.com/gonzalezreal/swift-markdown-ui
+    from: "2.4.0"
+
+schemes:
+  QDuo:
+    build:
+      targets:
+        QDuo: all
+    test:
+      targets:
+        - QDuoTests
+
+targets:
+  QDuo:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+      - Assets.xcassets
+      - Resources
+    settings:
+      base:
+        PRODUCT_NAME: *APP_NAME
+        PRODUCT_BUNDLE_IDENTIFIER: *BUNDLE_ID
+        # Read back at runtime through Info.plist so Swift never spells any of
+        # this out. See Sources/Core/Brand.swift.
+        BRAND_BASE_ID: *BASE_ID
+        BRAND_REPO_URL: *REPO_URL
+        SU_FEED_URL: *FEED_URL
+        # Restricted entitlement: must match the Developer ID provisioning
+        # profile's allowlist, or AMFI kills the notarized app at launch.
+        BRAND_KEYCHAIN_GROUP: me.xueshi.qduo.keychain
+
+        INFOPLIST_FILE: Supporting/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Supporting/App.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        # CalVer (YY.MM.<build>), matching the sibling apps. Both fields are
+        # written by scripts/bump-version.sh at release time — don't hand-edit.
+        MARKETING_VERSION: "26.09.1"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 584KQTRF3B
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.debug
+          PRODUCT_NAME: QDuo-Debug
+    dependencies:
+      - package: Sparkle
+      - package: Aptabase
+        product: Aptabase
+      - package: MarkdownUI
+        product: MarkdownUI
+
+  # Unit tests for the parts that are pure calculation. Deliberately NOT hosted
+  # in the app: QDuo installs global input monitors at launch, so a test host
+  # would wake all of that (and its Accessibility prompts) on every run. The
+  # files under test compile straight into the bundle instead — which they can,
+  # being geometry and arithmetic. Adding a file here is the price of that.
+  QDuoTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+      - path: Sources/PopBar/Window/WheelSubmenu.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests
+        GENERATE_INFOPLIST_FILE: YES
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGNING_ALLOWED: NO
