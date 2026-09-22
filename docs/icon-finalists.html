@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-Hans" data-theme="dark">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QDuo 图标 · V 降饱和</title>
+<style>
+  :root{--bg:#0e0e11;--panel:#17171c;--line:#2a2a33;--ink:#f2f2f5;--ink-2:#a1a1ad;--ink-3:#6e6e7a;
+        --accent:#8b7cff;--lt:#e8e8ec;--dk:#141418}
+  :root[data-theme="light"]{--bg:#f6f6f8;--panel:#fff;--line:#e3e3e8;--ink:#16161a;--ink-2:#5c5c68;
+        --ink-3:#8e8e99;--accent:#6247ea}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1290px;margin:0 auto;padding:54px 24px 110px}
+  header{margin-bottom:32px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
+  h1{font-size:27px;letter-spacing:-.02em;margin:0 0 10px;font-weight:650}
+  .sub{color:var(--ink-2);margin:0;max-width:760px}
+  .sub b{color:var(--ink);font-weight:600}
+  button.theme{flex:none;background:var(--panel);color:var(--ink-2);border:1px solid var(--line);
+    border-radius:999px;padding:8px 16px;font:inherit;font-size:13px;cursor:pointer}
+  .row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  @media(max-width:900px){.row{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;text-align:center}
+  .card.keep{border-color:var(--accent)}
+  .id{font:700 13px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--accent)}
+  .tag{font-size:12px;color:var(--ink-3);margin:5px 0 18px}
+  .sw{display:flex;height:20px;border-radius:5px;overflow:hidden;margin-top:16px}
+  .sw div{flex:1}
+  .ladders{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .strip{display:flex;gap:13px;align-items:flex-end;justify-content:center;padding:10px;border-radius:9px}
+  .strip.a{background:var(--lt)} .strip.b{background:var(--dk)}
+  .c{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .c span{font:500 8.5px/1 ui-monospace,Menlo,monospace;color:#8a8a95}
+  .spec{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);
+    font:500 10.5px/1.9 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3);text-align:left}
+  .spec em{color:var(--accent);font-style:normal}
+  .note{margin-top:32px;padding:20px 22px;background:var(--panel);border:1px solid var(--line);
+        border-radius:16px;color:var(--ink-2);font-size:13.5px;line-height:1.75}
+  .note b{color:var(--ink);font-weight:600}
+  footer{margin-top:36px;padding-top:24px;border-top:1px solid var(--line);color:var(--ink-2);font-size:14px}
+  footer b{color:var(--ink)}
+  kbd{font:500 12px ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line);
+    border-radius:5px;padding:1px 6px;color:var(--ink)}
+</style></head>
+<body><div class="wrap">
+  <header>
+    <div>
+      <h1>V · 降饱和</h1>
+      <p class="sub">形状 <b>V2</b>、上亮下暗、<b>不加白色高光</b>——这三条都锁死了。最左边是 V 原版原样保留，往右整体饱和度依次降低。
+        <b>色相和明暗完全没动</b>，只有饱和度在变，所以它们不会变灰、只会变柔。</p>
+    </div>
+    <button class="theme" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'">切换亮 / 暗</button>
+  </header>
+  <div class="row" id="out"></div>
+  <div class="note">
+    <b>为什么这次不会发灰：</b>上回那层灰是<b>往颜色里掺白</b>造成的——掺白会同时抬高明度、冲掉饱和度，出来是奶白色。
+    这次是<b>只压饱和度、明度一点不动</b>，颜色只是从「荧光」退到「沉稳」，不会浑。<br>
+    <b>白环的清晰度不受影响：</b>对比度看的是明暗，而明暗四个版本完全一样。
+  </div>
+  <footer><b>挑一个</b>，我就把完整图标套装进 app。<br>
+    <span style="color:var(--ink-3)"><kbd>~/Code/qduo/docs/icon-finalists.html</kbd></span></footer>
+</div>
+<script>
+function squircle(cx,cy,r,n=5,steps=512){let d='';for(let i=0;i<=steps;i++){const t=i/steps*2*Math.PI,
+  ct=Math.cos(t),st=Math.sin(t);
+  d+=(i?'L':'M')+(cx+r*Math.sign(ct)*Math.pow(Math.abs(ct),2/n)).toFixed(1)+' '
+    +(cy+r*Math.sign(st)*Math.pow(Math.abs(st),2/n)).toFixed(1)}return d+'Z'}
+const D=a=>a*Math.PI/180, P=(r,a)=>[512+r*Math.cos(D(a)),512+r*Math.sin(D(a))];
+const R=234,G=44,WR=80,WA=72,ARC_LEN=130.4,MID=48,NUDGE=-10;
+const RA=(R+WR/2)+G+WA/2, HALF=(ARC_LEN/(2*RA))*180/Math.PI;
+const MARK=(()=>{const[x0,y0]=P(RA,MID-HALF),[x1,y1]=P(RA,MID+HALF);
+  return `<g transform="translate(${NUDGE},${NUDGE})">
+    <circle cx="512" cy="512" r="${R}" fill="none" stroke="#fff" stroke-width="${WR}"/>
+    <path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${RA.toFixed(0)} ${RA.toFixed(0)} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}"
+      fill="none" stroke="#fff" stroke-width="${WA}" stroke-linecap="round"/></g>`})();
+let uid=0;
+function icon(top,bot,size){const u='i'+(uid++),RR=412;return `
+  <svg width="${size}" height="${size}" viewBox="0 0 1024 1024" style="display:block">
+   <defs>
+    <linearGradient id="g${u}" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bot}"/></linearGradient>
+    <clipPath id="c${u}"><path d="${squircle(512,512,RR)}"/></clipPath>
+    <filter id="f${u}" x="-20%" y="-20%" width="140%" height="145%">
+      <feDropShadow dx="0" dy="${size>80?16:6}" stdDeviation="${size>80?22:8}"
+        flood-color="#000" flood-opacity=".30"/></filter>
+   </defs>
+   <g filter="url(#f${u})"><path d="${squircle(512,512,RR)}" fill="url(#g${u})"/></g>
+   <g clip-path="url(#c${u})">${MARK}</g>
+   <path d="${squircle(512,512,RR)}" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="3"/>
+  </svg>`}
+const OPTS=[
+ {id:'V',    tag:'原版 · 保持不动', top:'#22D3EE', bot:'#1D4ED8', st:86, sb:76, keep:true},
+ {id:'V-85', tag:'饱和度 ×0.85',   top:'#31C8DF', bot:'#2B55CA', st:73, sb:65},
+ {id:'V-70', tag:'饱和度 ×0.70',   top:'#41BCCF', bot:'#395BBC', st:60, sb:53},
+ {id:'V-55', tag:'饱和度 ×0.55',   top:'#50B1C0', bot:'#4762AE', st:47, sb:42}
+];
+const S=[96,48,32,16];
+document.getElementById('out').innerHTML = OPTS.map(o=>`
+  <div class="card${o.keep?' keep':''}">
+    <div class="id">${o.id}</div><div class="tag">${o.tag}</div>
+    ${icon(o.top,o.bot,182)}
+    <div class="sw"><div style="background:${o.top}"></div><div style="background:${o.bot}"></div></div>
+    <div class="ladders">
+      <div class="strip a">${S.map(p=>`<div class="c">${icon(o.top,o.bot,p)}<span>${p}</span></div>`).join('')}</div>
+      <div class="strip b">${S.map(p=>`<div class="c">${icon(o.top,o.bot,p)}<span>${p}</span></div>`).join('')}</div>
+    </div>
+    <div class="spec">上 ${o.top} · 饱和 <em>${o.st}%</em><br>下 ${o.bot} · 饱和 <em>${o.sb}%</em><br>
+      白色高光 <em>无</em></div></div>`).join('');
+</script></body></html>

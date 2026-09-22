@@ -66,13 +66,30 @@ No Swift file contains it, no directory is named after it, and no localized stri
 spells it out — everything reads it back from the built bundle through
 `Sources/Core/Brand.swift`, and strings take it as `%@`.
 
-To rename: edit those five values, rename the GitHub repo, swap the icon in
-`Assets.xcassets`, and fix this README.
+To rename: edit those five values, rename the GitHub repo, redraw the icon, and
+fix this README.
+
+## The icon
+
+`scripts/make-icon.py` draws it and writes every file that needs it — the seven
+sizes in the asset catalogue, the copy the sidebar and About page draw
+themselves, and two 1024 masters under `design/icon/`. Nothing else in the
+project draws it, so a change means editing the constants at the top of that
+script and re-running it.
+
+The two masters are for different jobs. `icon-1024-square.png` is full bleed
+with no corners and no shadow: hand it to anything that applies its own mask.
+`icon-1024-rounded.png` is the macOS tile — an 824-point body centred in a 1024
+canvas, which is Apple's own template, cut with the system's continuous-curvature
+corner rather than a rounded rectangle or a superellipse. Measured against a real
+system icon's alpha, that outline tracks it to 1.3px on a 1024 canvas; the best
+superellipse of any exponent managed 4.0.
 
 ## Layout
 
 ```
 project.yml            ← the name, and only here
+design/icon/           the two 1024 masters
 Sources/
 ├─ App/                main · AppDelegate · MenuBarController · UpdateController
 ├─ Core/               Brand · FileLog · Preferences · Analytics · LocalizationOverride · LLM/
