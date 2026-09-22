@@ -11,28 +11,47 @@ enum Preferences {
     private static let log = FileLog("Preferences")
 
     enum Key {
+        /// Still a UserDefaults key: it is bookkeeping about the INSTALL (did this
+        /// build already report itself?), not a setting anyone would want to edit
+        /// or carry to another machine, so it does not belong in the config file.
+        static let lastSeenVersion  = "lastSeenVersion"
+
+        /// Read once by the config seeder, to carry an existing choice over.
         static let languageOverride = "languageOverride"
         static let analyticsEnabled = "analyticsEnabled"
-        static let lastSeenVersion  = "lastSeenVersion"
     }
+
+    /// Paths into the config file.
+    private enum P {
+        static let language  = "general.language"
+        static let analytics = "general.analytics"
+    }
+
+    private static var config: ConfigStore { .shared }
 
     // MARK: - Language
 
     /// Read the saved override and install it. Call before any localized string
     /// is read (first thing in `applicationDidFinishLaunching`).
     static func applyLanguageOverride() {
-        let saved = UserDefaults.standard.string(forKey: Key.languageOverride) ?? ""
-        LocalizationOverride.apply(code: saved.isEmpty ? nil : saved)
+        LocalizationOverride.apply(code: languageOverride)
+    }
+
+    /// The chosen language, or nil for "follow the system".
+    static var languageOverride: String? {
+        let saved = config.optionalString(P.language) ?? ""
+        return saved.isEmpty ? nil : saved
     }
 
     /// Persist + apply a new language override (nil = follow system), then post
     /// `.appLanguageChanged` so live surfaces rebuild without a relaunch.
     static func setLanguageOverride(_ code: String?) {
-        let d = UserDefaults.standard
         if let code, !code.isEmpty {
-            d.set(code, forKey: Key.languageOverride)
+            config.set(P.language, code)
         } else {
-            d.removeObject(forKey: Key.languageOverride)
+            // Explicitly null rather than absent: "follow the system" is a choice,
+            // and the file should show that it was made.
+            config.setNull(P.language)
         }
         LocalizationOverride.apply(code: code)
         Analytics.trackPreferenceChanged(key: "language", value: code ?? "system")
@@ -43,9 +62,7 @@ enum Preferences {
 
     /// Default true when the key is absent (fresh installs opt in).
     static var analyticsEnabled: Bool {
-        let d = UserDefaults.standard
-        if d.object(forKey: Key.analyticsEnabled) == nil { return true }
-        return d.bool(forKey: Key.analyticsEnabled)
+        config.bool(P.analytics, default: true)
     }
 
     /// Persist the analytics opt-out. Fires the meta-event BEFORE persisting
@@ -57,7 +74,7 @@ enum Preferences {
         if previous != on {
             Analytics.trackPreferenceChanged(key: "analytics_enabled", value: String(on))
         }
-        UserDefaults.standard.set(on, forKey: Key.analyticsEnabled)
+        config.set(P.analytics, on)
         if !on { Analytics.flush() }
     }
 }

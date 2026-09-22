@@ -17,22 +17,28 @@ enum PopBarStyle: String, CaseIterable, Hashable {
 /// The popup's own persistence. App-wide prefs live in `Preferences`.
 enum PopBarPreferences {
 
-    private static let enabledKey = "popbar.enabled"
-    private static let autoExpandHeightKey = "popbar.autoExpandHeight"
-    private static let resultFontSizeKey = "popbar.resultFontSize"
-    private static let styleKey = "popbar.style"
-    private static let wheelOuterRadiusKey = "popbar.wheel.outerRadius"
-    private static let wheelInnerRadiusKey = "popbar.wheel.innerRadius"
-    private static let wheelShowIconsKey = "popbar.wheel.showIcons"
-    private static let wheelShowLabelsKey = "popbar.wheel.showLabels"
-    private static let wheelAutoHideOnExitKey = "popbar.wheel.autoHideOnExit"
-    private static let wheelSubSeamKey = "popbar.wheel.subSeam"
-    private static let wheelSubThicknessKey = "popbar.wheel.subThickness"
-    private static let previewFallbackToSearchKey = "popbar.preview.fallbackToSearch"
-    private static let previewSearchEngineKey = "popbar.preview.searchEngine"
-    private static let screenOCREnabledKey = "popbar.ocr.enabled"
-    private static let screenOCRAutoCopyKey = "popbar.ocr.autoCopy"
-    private static let screenOCRHotKeyKey = "popbar.ocr.hotKey"
+    // Paths into the config file. These ARE the setting names the user sees when
+    // they open it, so they are grouped and spelled for reading, not for storage.
+    private enum P {
+        static let enabled            = "popup.enabled"
+        static let autoExpandHeight   = "popup.autoExpandHeight"
+        static let resultFontSize     = "popup.resultFontSize"
+        static let style              = "popup.style"
+        static let wheelOuterRadius   = "wheel.outerRadius"
+        static let wheelInnerRadius   = "wheel.innerRadius"
+        static let wheelShowIcons     = "wheel.showIcons"
+        static let wheelShowLabels    = "wheel.showLabels"
+        static let wheelAutoHideOnExit = "wheel.autoHideOnExit"
+        static let wheelSubSeam       = "wheel.subSeam"
+        static let wheelSubThickness  = "wheel.subThickness"
+        static let previewFallback    = "webPreview.fallbackToSearch"
+        static let previewEngine      = "webPreview.searchEngine"
+        static let ocrEnabled         = "ocr.enabled"
+        static let ocrAutoCopy        = "ocr.autoCopy"
+        static let ocrHotKey          = "ocr.hotKey"
+    }
+
+    private static var config: ConfigStore { .shared }
 
     /// Allowed range + default for the result Markdown's base font size (issue #14).
     /// The user found the old ~12pt body too small, so the default is a touch larger.
@@ -53,109 +59,97 @@ enum PopBarPreferences {
     static let wheelSubSeamDefault: Double = 6
     static let wheelSubThicknessDefault: Double = 52
 
-    /// Whether the popup is active. Opt-in: defaults to off (absent key → false),
-    /// so the tool never starts monitoring global input until the user turns it on.
+
+    /// Whether the popup is active. Opt-in: defaults to off, so the app never
+    /// starts monitoring global input until the user turns it on.
     static var isEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: enabledKey) }
-        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+        get { config.bool(P.enabled, default: false) }
+        set { config.set(P.enabled, newValue) }
     }
 
     /// Whether the result panel auto-grows its HEIGHT to fit the content (up to a
-    /// max, then scrolls). Opt-out: defaults to ON (absent key → true), so the
-    /// result fits its content out of the box; a user who explicitly turned it off
-    /// (stored `false`) is respected. Width is always fixed.
+    /// max, then scrolls). Opt-out: defaults to ON, so the result fits its content
+    /// out of the box. Width is always fixed.
     static var autoExpandHeight: Bool {
-        get { bool(autoExpandHeightKey, default: true) }
-        set { UserDefaults.standard.set(newValue, forKey: autoExpandHeightKey) }
+        get { config.bool(P.autoExpandHeight, default: true) }
+        set { config.set(P.autoExpandHeight, newValue) }
     }
 
-    /// Which presentation the popup uses. Absent/unknown key → `.capsule` (the
-    /// original, so existing users are unaffected). Stored as the enum's raw string.
+    /// Which presentation the popup uses. An unrecognized value falls back to the
+    /// capsule rather than refusing to start — this is a hand-editable file, and a
+    /// typo in one setting must not take the popup down with it.
     static var style: PopBarStyle {
-        get { PopBarStyle(rawValue: UserDefaults.standard.string(forKey: styleKey) ?? "") ?? .capsule }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: styleKey) }
+        get { PopBarStyle(rawValue: config.string(P.style, default: "")) ?? .capsule }
+        set { config.set(P.style, newValue.rawValue) }
     }
 
-    /// The base font size for the result Markdown (issue #14). Absent key → the
-    /// default (13). Stored as a Double; clamped to the allowed range on read so a
-    /// stale/out-of-range value can never blow up the layout.
+    /// Base font size for the result Markdown. Clamped to the allowed range on
+    /// BOTH read and write: the write clamps what the UI produces, the read clamps
+    /// what a person typed into the file.
     static var resultFontSize: Double {
-        get {
-            guard UserDefaults.standard.object(forKey: resultFontSizeKey) != nil else {
-                return resultFontSizeDefault
-            }
-            let raw = UserDefaults.standard.double(forKey: resultFontSizeKey)
-            return min(max(raw, resultFontSizeRange.lowerBound), resultFontSizeRange.upperBound)
-        }
-        set {
-            let clamped = min(max(newValue, resultFontSizeRange.lowerBound), resultFontSizeRange.upperBound)
-            UserDefaults.standard.set(clamped, forKey: resultFontSizeKey)
-        }
+        get { clamped(config.double(P.resultFontSize, default: resultFontSizeDefault), resultFontSizeRange) }
+        set { config.set(P.resultFontSize, clamped(newValue, resultFontSizeRange)) }
     }
 
     // MARK: - Wheel geometry / content (wheel + liquid-glass styles)
 
-    private static func double(_ key: String, default def: Double, in range: ClosedRange<Double>) -> Double {
-        guard UserDefaults.standard.object(forKey: key) != nil else { return def }
-        return min(max(UserDefaults.standard.double(forKey: key), range.lowerBound), range.upperBound)
-    }
-    private static func bool(_ key: String, default def: Bool) -> Bool {
-        UserDefaults.standard.object(forKey: key) == nil ? def : UserDefaults.standard.bool(forKey: key)
+    private static func clamped(_ value: Double, _ range: ClosedRange<Double>) -> Double {
+        min(max(value, range.lowerBound), range.upperBound)
     }
 
     static var wheelOuterRadius: Double {
-        get { double(wheelOuterRadiusKey, default: wheelOuterRadiusDefault, in: wheelOuterRadiusRange) }
-        set { UserDefaults.standard.set(min(max(newValue, wheelOuterRadiusRange.lowerBound), wheelOuterRadiusRange.upperBound), forKey: wheelOuterRadiusKey) }
+        get { clamped(config.double(P.wheelOuterRadius, default: wheelOuterRadiusDefault), wheelOuterRadiusRange) }
+        set { config.set(P.wheelOuterRadius, clamped(newValue, wheelOuterRadiusRange)) }
     }
     static var wheelInnerRadius: Double {
-        get { double(wheelInnerRadiusKey, default: wheelInnerRadiusDefault, in: wheelInnerRadiusRange) }
-        set { UserDefaults.standard.set(min(max(newValue, wheelInnerRadiusRange.lowerBound), wheelInnerRadiusRange.upperBound), forKey: wheelInnerRadiusKey) }
+        get { clamped(config.double(P.wheelInnerRadius, default: wheelInnerRadiusDefault), wheelInnerRadiusRange) }
+        set { config.set(P.wheelInnerRadius, clamped(newValue, wheelInnerRadiusRange)) }
     }
     static var wheelShowIcons: Bool {
-        get { bool(wheelShowIconsKey, default: true) }
-        set { UserDefaults.standard.set(newValue, forKey: wheelShowIconsKey) }
+        get { config.bool(P.wheelShowIcons, default: true) }
+        set { config.set(P.wheelShowIcons, newValue) }
     }
     static var wheelShowLabels: Bool {
-        get { bool(wheelShowLabelsKey, default: true) }
-        set { UserDefaults.standard.set(newValue, forKey: wheelShowLabelsKey) }
+        get { config.bool(P.wheelShowLabels, default: true) }
+        set { config.set(P.wheelShowLabels, newValue) }
     }
-    /// Auto-hide the ring (wheel + liquid-glass only) when the pointer moves outside
-    /// it. Opt-out; default ON. The capsule style ignores this.
+    /// Auto-hide the ring when the pointer moves outside it. Opt-out; default ON.
+    /// The capsule style ignores this.
     static var wheelAutoHideOnExit: Bool {
-        get { bool(wheelAutoHideOnExitKey, default: true) }
-        set { UserDefaults.standard.set(newValue, forKey: wheelAutoHideOnExitKey) }
+        get { config.bool(P.wheelAutoHideOnExit, default: true) }
+        set { config.set(P.wheelAutoHideOnExit, newValue) }
     }
 
     /// Gap between the main ring and the submenu ring.
     static var wheelSubSeam: Double {
-        get { double(wheelSubSeamKey, default: wheelSubSeamDefault, in: wheelSubSeamRange) }
-        set { UserDefaults.standard.set(min(max(newValue, wheelSubSeamRange.lowerBound), wheelSubSeamRange.upperBound), forKey: wheelSubSeamKey) }
+        get { clamped(config.double(P.wheelSubSeam, default: wheelSubSeamDefault), wheelSubSeamRange) }
+        set { config.set(P.wheelSubSeam, clamped(newValue, wheelSubSeamRange)) }
     }
     /// Band width of the submenu ring.
     static var wheelSubThickness: Double {
-        get { double(wheelSubThicknessKey, default: wheelSubThicknessDefault, in: wheelSubThicknessRange) }
-        set { UserDefaults.standard.set(min(max(newValue, wheelSubThicknessRange.lowerBound), wheelSubThicknessRange.upperBound), forKey: wheelSubThicknessKey) }
+        get { clamped(config.double(P.wheelSubThickness, default: wheelSubThicknessDefault), wheelSubThicknessRange) }
+        set { config.set(P.wheelSubThickness, clamped(newValue, wheelSubThicknessRange)) }
     }
 
     // MARK: - Web preview (link fallback)
 
-    /// When the tapped "web preview" action finds no link in the selection, search the
-    /// web for the selected text instead (in the same preview window). Opt-out; default ON.
+    /// When the "web preview" action finds no link in the selection, search the web
+    /// for the selected text instead. Opt-out; default ON.
     static var previewFallbackToSearch: Bool {
-        get { bool(previewFallbackToSearchKey, default: true) }
-        set { UserDefaults.standard.set(newValue, forKey: previewFallbackToSearchKey) }
+        get { config.bool(P.previewFallback, default: true) }
+        set { config.set(P.previewFallback, newValue) }
     }
 
-    /// Which engine the no-link fallback search uses. Absent/unknown → Bing (works
-    /// both inside and outside mainland China).
+    /// Which engine the no-link fallback search uses. Anything unrecognized → Bing
+    /// (which works both inside and outside mainland China).
     static var previewSearchEngine: PreviewSearchEngine {
-        get { PreviewSearchEngine(rawValue: UserDefaults.standard.string(forKey: previewSearchEngineKey) ?? "") ?? .bing }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: previewSearchEngineKey) }
+        get { PreviewSearchEngine(rawValue: config.string(P.previewEngine, default: "")) ?? .bing }
+        set { config.set(P.previewEngine, newValue.rawValue) }
     }
 
-    /// A `WheelLayout` built from the current prefs. Inner is clamped to stay at least
-    /// `wheelMinThickness` below outer so the ring is always valid regardless of the
-    /// stored values (e.g. if the user shrinks outer below a large inner).
+    /// A `WheelLayout` built from the current settings. Inner is clamped to stay at
+    /// least `wheelMinThickness` below outer, so the ring is always valid no matter
+    /// what the file says.
     static var wheelLayout: WheelLayout {
         let outer = wheelOuterRadius
         let inner = min(wheelInnerRadius, outer - wheelMinThickness)
@@ -169,33 +163,22 @@ enum PopBarPreferences {
 
     /// Whether the screenshot-OCR hotkey is registered. Opt-in; default OFF.
     static var screenOCREnabled: Bool {
-        get { bool(screenOCREnabledKey, default: false) }
-        set { UserDefaults.standard.set(newValue, forKey: screenOCREnabledKey) }
+        get { config.bool(P.ocrEnabled, default: false) }
+        set { config.set(P.ocrEnabled, newValue) }
     }
 
-    /// Also copy the recognized text to the clipboard (on top of showing the capsule).
-    /// Opt-out; default ON.
+    /// Also copy the recognized text to the clipboard. Opt-out; default ON.
     static var screenOCRAutoCopy: Bool {
-        get { bool(screenOCRAutoCopyKey, default: true) }
-        set { UserDefaults.standard.set(newValue, forKey: screenOCRAutoCopyKey) }
+        get { config.bool(P.ocrAutoCopy, default: true) }
+        set { config.set(P.ocrAutoCopy, newValue) }
     }
 
-    /// The global hotkey that starts a screenshot-OCR capture. Stored as JSON; a
-    /// missing/corrupt value falls back to ⌘⇧S (`KeyCombo.defaultScreenOCR`).
+    /// The hotkey that starts a screenshot-OCR capture, written the way it is
+    /// spoken: `"shift+cmd+s"`. Anything unparseable falls back to ⌘⇧S rather than
+    /// leaving the feature silently unbound.
     static var screenOCRHotKey: KeyCombo {
-        get {
-            guard let raw = UserDefaults.standard.string(forKey: screenOCRHotKeyKey),
-                  let data = raw.data(using: .utf8),
-                  let combo = try? JSONDecoder().decode(KeyCombo.self, from: data)
-            else { return .defaultScreenOCR }
-            return combo
-        }
-        set {
-            if let data = try? JSONEncoder().encode(newValue),
-               let raw = String(data: data, encoding: .utf8) {
-                UserDefaults.standard.set(raw, forKey: screenOCRHotKeyKey)
-            }
-        }
+        get { KeyCombo(configString: config.string(P.ocrHotKey, default: "")) ?? .defaultScreenOCR }
+        set { config.set(P.ocrHotKey, newValue.configString) }
     }
 }
 

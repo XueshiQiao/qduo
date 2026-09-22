@@ -13,12 +13,17 @@ final class LLMSettingsStore: ObservableObject {
     private static let log = FileLog("LLM.Settings")
     private let keys = LLMKeyStore()
 
-    private enum Key {
-        static let provider = "llm.provider"
-        static let model    = "llm.model"
-        static let apiURL   = "llm.apiURL"
-        static let effort   = "llm.reasoningEffort"
+    /// Paths into the config file. The API KEY is deliberately not among them —
+    /// it lives in the Keychain, so the config file stays safe to commit.
+    private enum P {
+        static let provider = "models.provider"
+        static let model    = "models.model"
+        static let apiURL   = "models.apiURL"
+        static let thinking = "models.thinking"
     }
+
+    private var config: ConfigStore { .shared }
+    private var reloadObserver: NSObjectProtocol?
 
     @Published private(set) var provider: String
     @Published private(set) var model: String
@@ -31,19 +36,35 @@ final class LLMSettingsStore: ObservableObject {
         // Bring forward any keys saved under PopBar's old service BEFORE reading
         // state, so the settings page reflects them on first launch.
 
-        let d = UserDefaults.standard
-        // Fall back to PopBar's old default keys so the previously-chosen default
-        // provider/model carry over on first launch of the app-level store.
-        let provider = d.string(forKey: Key.provider)
-            ?? d.string(forKey: "popbar.llm.provider")
-            ?? "deepseek"
+        let config = ConfigStore.shared
+        let provider = config.string(P.provider, default: "deepseek")
         let defaults = LLMConfig.providerDefaults(provider)
         self.provider = provider
-        self.model = d.string(forKey: Key.model) ?? d.string(forKey: "popbar.llm.model") ?? defaults.model
-        self.apiURL = d.string(forKey: Key.apiURL) ?? d.string(forKey: "popbar.llm.apiURL") ?? defaults.apiURL
-        self.reasoningEffort = LLMConfig.clampThinking(
-            d.string(forKey: Key.effort) ?? d.string(forKey: "popbar.llm.reasoningEffort") ?? "none",
-            for: provider)
+        self.model = config.string(P.model, default: defaults.model)
+        self.apiURL = config.string(P.apiURL, default: defaults.apiURL)
+        // Clamped because the file is hand-editable: a thinking level a provider
+        // does not support would otherwise be sent straight to its API.
+        self.reasoningEffort = LLMConfig.clampThinking(config.string(P.thinking, default: "none"),
+                                                       for: provider)
+        refreshKeyedProviders()
+
+        // Editing the config file by hand is a supported way to switch model.
+        reloadObserver = NotificationCenter.default.addObserver(
+            forName: .configReloadedFromDisk, object: nil, queue: .main
+        ) { [weak self] _ in self?.reloadFromConfig() }
+    }
+
+    deinit {
+        if let reloadObserver { NotificationCenter.default.removeObserver(reloadObserver) }
+    }
+
+    private func reloadFromConfig() {
+        let p = config.string(P.provider, default: provider)
+        let defaults = LLMConfig.providerDefaults(p)
+        provider = p
+        model = config.string(P.model, default: defaults.model)
+        apiURL = config.string(P.apiURL, default: defaults.apiURL)
+        reasoningEffort = LLMConfig.clampThinking(config.string(P.thinking, default: "none"), for: p)
         refreshKeyedProviders()
     }
 
@@ -116,10 +137,9 @@ final class LLMSettingsStore: ObservableObject {
     }
 
     private func persist() {
-        let d = UserDefaults.standard
-        d.set(provider, forKey: Key.provider)
-        d.set(model, forKey: Key.model)
-        d.set(apiURL, forKey: Key.apiURL)
-        d.set(reasoningEffort, forKey: Key.effort)
+        config.set(P.provider, provider)
+        config.set(P.model, model)
+        config.set(P.apiURL, apiURL)
+        config.set(P.thinking, reasoningEffort)
     }
 }

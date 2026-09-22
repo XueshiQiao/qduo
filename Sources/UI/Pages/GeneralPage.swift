@@ -14,10 +14,7 @@ struct GeneralPage: View {
     @ObservedObject private var store: PopBarStore
 
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
-    @State private var languageCode: String? = {
-        let saved = UserDefaults.standard.string(forKey: Preferences.Key.languageOverride) ?? ""
-        return saved.isEmpty ? nil : saved
-    }()
+    @State private var languageCode: String? = Preferences.languageOverride
 
     /// The Accessibility grant happens in System Settings, in another process — the
     /// app is never told. Polling is the only way to notice, and two seconds is
@@ -45,6 +42,11 @@ struct GeneralPage: View {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
         }
         .onReceive(trustPoll) { _ in store.refreshTrust() }
+        // Editing the config file by hand is a supported way to change these, so
+        // the controls have to follow it rather than showing a stale reading.
+        .onReceive(NotificationCenter.default.publisher(for: .configReloadedFromDisk)) { _ in
+            languageCode = Preferences.languageOverride
+        }
     }
 
     // MARK: - Status

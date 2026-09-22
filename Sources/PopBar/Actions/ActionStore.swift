@@ -2,95 +2,60 @@ import Foundation
 import Combine
 import SwiftUI   // for Array.move(fromOffsets:toOffset:) used by reorder
 
-/// Owns the user's configurable capsule actions, persisted as a JSON array under
-/// Application Support. Seeds the defaults on first run. Shared by the settings
-/// editor (CRUD) and the controller (reads the list when showing the capsule).
+/// Owns the user's configurable actions, stored in the config file under
+/// `actions`. Shared by the settings editor (CRUD) and the controller (which
+/// reads the list when showing the popup).
+///
+/// The list lives in the SAME file as everything else on purpose: it is the part
+/// of the configuration a person most wants to read, diff and copy between
+/// machines, and splitting it out would mean two files to keep in step.
 final class ActionStore: ObservableObject {
 
     private static let log = FileLog("PopBar.Actions")
 
+    private static let path = "actions"
+
     @Published private(set) var actions: [PopBarActionConfig]
 
-    private static var storeDirectory: URL {
-        let dir = Brand.supportDirectory
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }
+    private var reloadObserver: NSObjectProtocol?
 
-    /// Where the list lives NOW. Groups made this file's shape different from the
-    /// one below, so it has a different name.
-    ///
-    /// This is a data-safety measure, not bookkeeping. Both this build and an older
-    /// one read the same Application Support folder, and an older build's decoder
-    /// has never heard of `children`: it drops them on read and then writes the whole
-    /// file back without them the next time anything is edited or reordered there.
-    /// Every action filed into a group would be gone for good, silently. Since the
-    /// older build only ever touches the OLD name, moving to a new one puts the
-    /// groups somewhere it cannot reach.
-    private let fileURL = storeDirectory.appendingPathComponent("popbar-actions-v2.json")
-
-    /// The pre-groups file. Read once, to carry the user's list forward, and then
-    /// left alone forever — never written, never deleted. An older build (or a
-    /// rollback) still finds its own list exactly where it left it.
-    private let legacyURL = storeDirectory.appendingPathComponent("popbar-actions.json")
-
-    private static let webPreviewMigrationKey = "popbar.migratedWebPreview"
-    private static let pathActionsMigrationKey = "popbar.migratedPathActions"
-
-    init() {
-        if let data = try? Data(contentsOf: fileURL),
-           let decoded = try? JSONDecoder().decode([PopBarActionConfig].self, from: data),
-           !decoded.isEmpty {
+    init(config: ConfigStore = .shared) {
+        self.config = config
+        if let decoded = ConfigSeed.decodeActions(config.value(Self.path)), !decoded.isEmpty {
             actions = decoded
-        } else if let data = try? Data(contentsOf: legacyURL),
-                  let decoded = try? JSONDecoder().decode([PopBarActionConfig].self, from: data),
-                  !decoded.isEmpty {
-            // First run of a build that knows about groups: carry the existing list
-            // forward by COPYING it. The old file stays exactly as it is.
-            actions = decoded
-            save()
-            Self.log.info("migrated \(decoded.count) action(s) from the pre-groups file (the old file is left untouched)")
         } else {
-            actions = DefaultActions.seed()
-            save()
+            // A local, not `actions`: FileLog takes its message as an autoclosure
+            // and evaluates it later, so a property read inside one reports
+            // whatever it holds by then rather than now.
+            let seeded = DefaultActions.seed()
+            actions = seeded
+            Self.log.info("no actions in the config — seeded \(seeded.count) default(s)")
+            config.set(Self.path, ConfigSeed.encode(seeded))
         }
-        migrateWebPreviewIfNeeded()
-        migratePathActionsIfNeeded()
+
+        // Hand-editing the config file is a supported way to change the actions, so
+        // the in-memory list has to follow it. Anything that fails to decode is
+        // IGNORED rather than applied: a half-typed action must not wipe the list
+        // the user can still see in the settings window.
+        reloadObserver = NotificationCenter.default.addObserver(
+            forName: .configReloadedFromDisk, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            guard let decoded = ConfigSeed.decodeActions(self.config.value(Self.path)) else {
+                Self.log.warn("config reloaded but its actions do not decode — keeping the current list")
+                return
+            }
+            guard decoded != self.actions else { return }
+            self.actions = decoded
+            Self.log.info("actions reloaded from the config file (\(decoded.count))")
+        }
     }
 
-    /// One-time, non-destructive append of the "Web Preview" action for existing
-    /// users whose saved list predates it. Runs once (guarded by a flag), never
-    /// removes or reorders anything, and is a no-op when the action is already present
-    /// (fresh installs seed it). Respects the data-safety rule: only grows the list.
-    private func migrateWebPreviewIfNeeded() {
-        guard !UserDefaults.standard.bool(forKey: Self.webPreviewMigrationKey) else { return }
-        UserDefaults.standard.set(true, forKey: Self.webPreviewMigrationKey)
-        guard !actions.contains(where: { $0.kind == .webPreview }) else { return }
-        actions.append(DefaultActions.webPreviewAction())
-        save()
-        Self.log.info("migrated: appended Web Preview action to existing list")
+    deinit {
+        if let reloadObserver { NotificationCenter.default.removeObserver(reloadObserver) }
     }
 
-    /// Same one-time, append-only treatment for the two path actions (Preview /
-    /// Show in Finder). Guarded by its own flag so a user who deletes them doesn't
-    /// get them back on the next launch, and each is skipped independently if the
-    /// user already made one by hand.
-    private func migratePathActionsIfNeeded() {
-        guard !UserDefaults.standard.bool(forKey: Self.pathActionsMigrationKey) else { return }
-        UserDefaults.standard.set(true, forKey: Self.pathActionsMigrationKey)
-        var added: [String] = []
-        if !actions.contains(where: { $0.kind == .quickLook }) {
-            actions.append(DefaultActions.quickLookAction())
-            added.append("Preview")
-        }
-        if !actions.contains(where: { $0.kind == .revealInFinder }) {
-            actions.append(DefaultActions.revealInFinderAction())
-            added.append("Show in Finder")
-        }
-        guard !added.isEmpty else { return }
-        save()
-        Self.log.info("migrated: appended \(added.joined(separator: " + ")) to existing list")
-    }
+    private let config: ConfigStore
 
     // MARK: - Two-level list
 
@@ -142,14 +107,12 @@ final class ActionStore: ObservableObject {
 
     func resetToDefaults() { actions = DefaultActions.seed(); save() }
 
-    // MARK: - Persistence (atomic)
+    // MARK: - Persistence
 
+    /// Writes through to the config file. `ConfigStore` debounces and writes
+    /// atomically, so a drag that reorders the list does not rewrite the file once
+    /// per frame.
     private func save() {
-        do {
-            let data = try JSONEncoder().encode(actions)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            Self.log.error("save failed: \(error)")
-        }
+        config.set(Self.path, ConfigSeed.encode(actions))
     }
 }

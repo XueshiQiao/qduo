@@ -18,7 +18,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // LSUIElement; this makes it explicit and covers a direct-binary launch.
         NSApp.setActivationPolicy(.accessory)
 
-        // Install the language override before anything reads a localized string.
+        // Load the config file FIRST: every setting below is read out of it,
+        // including the language override, which has to be installed before any
+        // localized string is read.
+        _ = ConfigStore.shared
         Preferences.applyLanguageOverride()
 
         // Inert until a real Aptabase key is configured.
@@ -47,6 +50,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         appState?.shutdown()
+        // Saves are debounced, so a change made in the last fraction of a second
+        // would otherwise be lost on quit.
+        ConfigStore.shared.flush()
         Analytics.flush()
     }
 
