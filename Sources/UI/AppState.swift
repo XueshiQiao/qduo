@@ -85,6 +85,12 @@ final class AppState: ObservableObject {
                 controller.showPreview()
             }
         }
+
+        // The store was built before any of the above ran, so its snapshot of
+        // "is the hotkey registered / is the popup monitoring" is from before the
+        // answer existed. Without this the OCR page opens claiming the shortcut is
+        // taken by another app, having just registered it successfully.
+        store.refreshTrust()
     }
 
     /// Stop background work cleanly (from `applicationWillTerminate`).

@@ -12,6 +12,11 @@ struct OCRPage: View {
     /// by another app, so the field can say so instead of silently not working.
     @State private var hotKeyError = false
 
+    /// Screen Recording is granted in System Settings, in another process, and the
+    /// app is never told. Polling is the only way to notice the permission block
+    /// should disappear — and it re-reads the hotkey registration at the same time.
+    private let poll = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
     init(store: PopBarStore) {
         _store = ObservedObject(wrappedValue: store)
     }
@@ -55,6 +60,8 @@ struct OCRPage: View {
         }
         .formStyle(.grouped)
         .navigationTitle(L("page.ocr"))
+        .onAppear { store.refreshTrust() }
+        .onReceive(poll) { _ in store.refreshTrust() }
     }
 
     private var permissionBlock: some View {
