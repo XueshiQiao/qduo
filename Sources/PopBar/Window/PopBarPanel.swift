@@ -94,9 +94,13 @@ final class PopBarPanel {
     /// selection popup that the window you just selected text in can hide is
     /// useless, so this goes one step above that band.
     ///
-    /// It deliberately stops below `.popUpMenu + 3`, where app-modal alerts live:
-    /// something that blocks its app should still win over a popup that is only
-    /// offering actions.
+    /// The cost, stated plainly because it is real: `.popUpMenu` is 101, and that
+    /// is where AppKit puts contextual menus. Anything high enough to clear the
+    /// overlay above is also above those, so while the popup is on screen a
+    /// right-click menu opens BEHIND it. There is no level that beats one and not
+    /// the other. (App-modal alerts are fine — `.modalPanel` is 8, far below
+    /// everything here. An earlier version of this comment claimed alerts lived
+    /// just above us, which was simply wrong.)
     ///
     /// Leaving the normal compositing band is documented to cost translucent
     /// material its stable cached backdrop — a hairline along an edge, flicker
@@ -155,7 +159,9 @@ final class PopBarPanel {
             styleMask: [.fullSizeContentView, .nonactivatingPanel],
             backing: .buffered, defer: false
         )
-        panel.isFloatingPanel = true
+        // No `isFloatingPanel`: its only documented effect is to put the panel at
+        // `.floating`, which the next line overrides anyway — so it read as a
+        // second, contradictory answer to "how high does this float".
         panel.level = Self.level
         panel.collectionBehavior = [.canJoinAllSpaces, .ignoresCycle]
         panel.isOpaque = false

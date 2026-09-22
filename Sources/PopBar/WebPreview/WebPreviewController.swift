@@ -345,6 +345,14 @@ final class WebPreviewController: NSObject, WKNavigationDelegate, WKUIDelegate, 
 
     // MARK: - NSWindowDelegate
 
+    /// The popup that opens this window floats above ordinary windows, so at the
+    /// default level this one could never come in front of it — a pinned popup
+    /// would sit on top of the preview it had just launched.
+    ///
+    /// Matched to the popup's level only WHILE this window is the one being used.
+    /// A window you have switched away from has no business floating above other
+    /// apps, and this is one you might well leave open.
+
     /// The standard red close button only orders the (retained) window out; make sure
     /// the web view is quieted too so nothing keeps running after a manual close.
     func windowWillClose(_ notification: Notification) {
@@ -353,7 +361,15 @@ final class WebPreviewController: NSObject, WKNavigationDelegate, WKUIDelegate, 
 
     /// AppKit re-lays the traffic-lights on resize/key changes — re-center them each time.
     func windowDidResize(_ notification: Notification) { centerTrafficLights() }
-    func windowDidBecomeKey(_ notification: Notification) { centerTrafficLights() }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        centerTrafficLights()
+        window?.level = PopBarPanel.level
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        window?.level = .normal
+    }
 
     // MARK: - WKUIDelegate
 

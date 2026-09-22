@@ -229,8 +229,14 @@ final class PopBarController {
     /// a window that is minimised or off screen — hence the fall back to the main
     /// display, which also covers the preview being fired with no window at all.
     private func previewAnchor() -> CGPoint {
+        // `NSScreen.main` is the screen with the key window, and this app can
+        // easily have no window at all — it is a menu-bar app, and the preview can
+        // be fired from a launch flag before anything is on screen. Falling
+        // through to `.zero` put the popup in the bottom-left corner of the
+        // primary display instead of the middle of anything.
         let window = NSApp.mainWindow ?? NSApp.keyWindow
-        let f = (window?.screen ?? NSScreen.main)?.frame ?? .zero
+        let screen = window?.screen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let f = screen?.frame else { return .zero }
         return CGPoint(x: f.midX, y: f.midY)
     }
 
