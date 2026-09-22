@@ -284,7 +284,7 @@ jobs:
             echo '<?xml version="1.0" encoding="utf-8"?>'
             echo '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">'
             echo '  <channel>'
-            echo '    <title>${APP_NAME} Updates</title>'
+            echo "    <title>${APP_NAME} Updates</title>"
             echo '    <link>https://github.com/${{ github.repository }}</link>'
             echo '    <language>en</language>'
             echo '    <item>'

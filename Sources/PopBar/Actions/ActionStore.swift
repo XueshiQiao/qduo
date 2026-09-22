@@ -21,7 +21,10 @@ final class ActionStore: ObservableObject {
 
     init(config: ConfigStore = .shared) {
         self.config = config
-        if let decoded = ConfigSeed.decodeActions(config.value(Self.path)), !decoded.isEmpty {
+        // Deliberately not `!decoded.isEmpty`: emptying the list is something a
+        // person can mean, and seeding the defaults back over it would make that
+        // impossible to do — the seven defaults would return on every launch.
+        if let decoded = ConfigSeed.decodeActions(config.value(Self.path)) {
             actions = decoded
         } else {
             // A local, not `actions`: FileLog takes its message as an autoclosure

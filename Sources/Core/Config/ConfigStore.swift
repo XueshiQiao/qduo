@@ -17,14 +17,19 @@ extension Notification.Name {
 /// things people are not supposed to touch; this is the opposite of that.
 ///
 /// **Secrets never go in here.** API keys stay in the Keychain (`LLMKeyStore`)
-/// precisely so this file is safe to commit to a public repo.
+/// precisely so this file is safe to commit.
 ///
 /// The document is held as a `JSONValue` tree rather than a typed struct, so a
 /// key this build does not recognise is preserved rather than deleted on the next
 /// save — see `JSONValue` for why that matters.
 ///
-/// Main-thread only, like the rest of the UI layer. Disk work happens on a
-/// private queue; the tree itself is only ever touched on main.
+/// **Main thread only, including the disk work.** An earlier version wrote on a
+/// background queue and grew a race at every step: the bytes it had promised were
+/// on disk were not there yet, a reload could read the old file and undo a change,
+/// quitting could kill the process before the write ran, and two file watches were
+/// mutated from two threads at once. The file is a few kilobytes and a write is
+/// debounced to at most one every 0.4s, so doing it in line costs nothing
+/// measurable and removes all of that.
 final class ConfigStore: ObservableObject {
 
     static let shared = ConfigStore()
@@ -34,47 +39,50 @@ final class ConfigStore: ObservableObject {
     /// The whole file. Read through the typed accessors below.
     @Published private(set) var document: JSONValue = .object([:])
 
+    /// The path as configured — which may be a symlink into a dotfiles repo.
     var fileURL: URL { Brand.configDirectory.appendingPathComponent("config.json") }
-    private var schemaURL: URL { Brand.configDirectory.appendingPathComponent("config.schema.json") }
 
-    /// Exactly the bytes we last wrote or read. A filesystem event whose contents
-    /// match this is our OWN write coming back, and reloading on it would start a
-    /// write → notify → reload → write loop.
+    /// Where the bytes actually live. Everything that touches the file resolves
+    /// this FIRST, because an atomic write to a symlink REPLACES THE SYMLINK with
+    /// a regular file: the dotfiles copy would keep the old contents and the two
+    /// would silently drift apart. Re-resolved every time, since the link can be
+    /// re-pointed while the app is running.
+    private var resolvedFileURL: URL { fileURL.resolvingSymlinksInPath() }
+
+    /// Exactly the bytes we last wrote or last successfully read. Content identity
+    /// is the loop breaker: a file whose bytes are these is one we already know
+    /// about, whoever wrote it.
     private var lastKnownBytes: Data?
 
+    /// Cheap change detector, so the common case costs one `stat` and no read.
+    private var lastStamp: FileStamp?
+
     private var saveWorkItem: DispatchWorkItem?
-    private var reloadWorkItem: DispatchWorkItem?
-    /// How many writes have been handed to the disk queue but not finished.
-    ///
-    /// `lastKnownBytes` is set the moment a write is SCHEDULED, because it means
-    /// "what this app intends the file to say". Between that moment and the bytes
-    /// actually landing, the file still holds the previous version — and a reload
-    /// reading it then would find something that does not match, conclude someone
-    /// else edited the file, and replace the just-changed settings with the old
-    /// ones. So a reload stands down while a write is in flight; the watch fires
-    /// again afterwards if the file really did change underneath us.
-    ///
-    /// Only ever touched on main.
-    private var writesInFlight = 0
-    /// Watches the folder: catches the file being created, replaced or removed.
-    private var directorySource: DispatchSourceFileSystemObject?
-    /// Watches the file itself: catches an in-place write. Re-armed whenever the
-    /// file is replaced, because the descriptor then points at the old inode.
-    private var fileSource: DispatchSourceFileSystemObject?
-    private let io = DispatchQueue(label: "\(Brand.baseID).config", qos: .userInitiated)
+    private var pollTimer: Timer?
 
     /// How long to sit on a change before writing. Dragging a slider produces a
     /// change per frame; without this the file would be rewritten sixty times a
-    /// second and a file-watching editor would flicker.
+    /// second and an editor watching it would flicker.
     private static let saveDebounce: TimeInterval = 0.4
-    /// An editor's save is often several syscalls. Waiting a moment means we read
-    /// the finished file rather than a half-written one.
-    private static let reloadDebounce: TimeInterval = 0.2
+
+    /// How often to look for a hand edit.
+    ///
+    /// A poll, not a `DispatchSource`, and that is a deliberate downgrade. Watches
+    /// look precise and are full of holes here: a directory source never sees an
+    /// in-place write (which is what vim does when the file is a symlink), a file
+    /// source is killed by an atomic replace and goes deaf afterwards, and when the
+    /// config is a symlink into a dotfiles repo BOTH fire on the wrong directory —
+    /// the real file's, not the one holding the link. Covering all of that needs
+    /// two sources, re-resolving, re-opening on delete, and handling a file that
+    /// does not exist yet. One `stat` a second is a few microseconds against the
+    /// vnode cache, is immune to every one of those cases, and is well under the
+    /// time it takes to switch from the editor back to what you were doing.
+    private static let pollInterval: TimeInterval = 1.0
 
     private init() {
         load()
         writeSchema()
-        startWatching()
+        startPolling()
     }
 
     // MARK: - Reading
@@ -117,7 +125,8 @@ final class ConfigStore: ObservableObject {
     func setNull(_ path: String) { set(path, .null) }
 
     /// Write now rather than on the debounce. Called at termination, where there
-    /// may be no later.
+    /// is no later — which is why the write is synchronous: an asynchronous one
+    /// would still be sitting in a queue when the process goes away.
     func flush() {
         saveWorkItem?.cancel()
         saveWorkItem = nil
@@ -126,7 +135,10 @@ final class ConfigStore: ObservableObject {
 
     private func scheduleSave() {
         saveWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in self?.writeNow() }
+        let item = DispatchWorkItem { [weak self] in
+            self?.saveWorkItem = nil
+            self?.writeNow()
+        }
         saveWorkItem = item
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.saveDebounce, execute: item)
     }
@@ -134,20 +146,31 @@ final class ConfigStore: ObservableObject {
     private func writeNow() {
         guard let data = encoded() else { return }
         guard data != lastKnownBytes else { return }          // nothing actually changed
-        lastKnownBytes = data
-        let url = fileURL
-        writesInFlight += 1
-        io.async { [weak self] in
-            do {
-                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                        withIntermediateDirectories: true)
-                // Atomic: a crash mid-write must not leave a truncated config, and
-                // an editor watching the file must never see a partial document.
-                try data.write(to: url, options: .atomic)
-            } catch {
-                Self.log.error("could not write \(url.path): \(error)")
+
+        let url = resolvedFileURL
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+
+            // Somebody edited the file since we last read it and we are about to
+            // overwrite them. Their version is kept, always — losing an edit
+            // someone typed is not a thing to trade for tidiness.
+            if let onDisk = try? Data(contentsOf: url), onDisk != lastKnownBytes {
+                let backup = url.appendingPathExtension("bak-" + Self.timestamp())
+                try? onDisk.write(to: backup, options: .atomic)
+                Self.log.warn("the config changed underneath us — kept that version as \(backup.lastPathComponent) before writing")
             }
-            DispatchQueue.main.async { self?.writesInFlight -= 1 }
+
+            // Atomic: a crash mid-write must not leave a truncated config, and an
+            // editor watching the file must never see a partial document.
+            try data.write(to: url, options: .atomic)
+            // Only NOW is this true. Recording it before the write meant a failed
+            // write left the app believing the file said something it did not, and
+            // every later save was skipped as "unchanged".
+            lastKnownBytes = data
+            lastStamp = FileStamp(url)
+        } catch {
+            Self.log.error("could not write \(url.path): \(error)")
         }
     }
 
@@ -157,7 +180,9 @@ final class ConfigStore: ObservableObject {
         // the whole file; pretty-printed because a person reads it.
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         do {
-            return try encoder.encode(document)
+            var data = try encoder.encode(document)
+            data.append(0x0A)   // POSIX trailing newline, so the last line diffs like any other
+            return data
         } catch {
             Self.log.error("could not encode the config: \(error)")
             return nil
@@ -167,7 +192,7 @@ final class ConfigStore: ObservableObject {
     // MARK: - Loading
 
     private func load() {
-        let url = fileURL
+        let url = resolvedFileURL
         guard let data = try? Data(contentsOf: url) else {
             // No file yet: build one from the defaults plus whatever the app has
             // already stored in UserDefaults, so nothing is lost on the way over.
@@ -176,111 +201,95 @@ final class ConfigStore: ObservableObject {
             writeNow()
             return
         }
-        guard let decoded = try? JSONDecoder().decode(JSONValue.self, from: data),
-              decoded.objectValue != nil else {
-            // NEVER overwrite an unreadable file with defaults: it is the user's
-            // work, and the mistake in it is probably one typo. Keep a copy, say so
-            // loudly, and run from defaults until it is fixed.
-            let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
-            let backup = url.appendingPathExtension("bad-\(stamp)")
-            try? data.write(to: backup, options: .atomic)
-            Self.log.error("\(url.path) is not valid JSON — kept a copy at \(backup.lastPathComponent), running from defaults")
+        guard let decoded = decode(data) else {
             document = ConfigSeed.initialDocument()
             lastKnownBytes = nil
             return
         }
         document = decoded
         lastKnownBytes = data
+        lastStamp = FileStamp(url)
         Self.log.info("loaded \(url.path)")
     }
 
-    /// Re-read after an external edit, then tell the app so live surfaces catch up.
-    private func reloadFromDisk() {
-        guard writesInFlight == 0 else { return }
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        guard data != lastKnownBytes else { return }          // our own write echoing back
+    /// Decode, or keep a copy of what could not be read and return nil.
+    ///
+    /// NEVER overwrite an unreadable file with defaults: it is the user's work,
+    /// and the mistake in it is probably one comma.
+    private func decode(_ data: Data) -> JSONValue? {
         guard let decoded = try? JSONDecoder().decode(JSONValue.self, from: data),
               decoded.objectValue != nil else {
-            // A half-typed file is the normal state of a file being edited. Say it
-            // once and keep the last good document — do not clobber, do not crash.
-            Self.log.warn("config.json does not parse right now — keeping the last good one")
-            return
+            let url = resolvedFileURL
+            let backup = url.appendingPathExtension("bad-" + Self.timestamp())
+            try? data.write(to: backup, options: .atomic)
+            Self.log.error("\(url.lastPathComponent) is not valid JSON — kept a copy as \(backup.lastPathComponent), running from the last good settings")
+            return nil
         }
+        return decoded
+    }
+
+    // MARK: - Noticing a hand edit
+
+    private func startPolling() {
+        let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
+            self?.checkForExternalChange()
+        }
+        // .common so the check keeps running while a menu is open or a window is
+        // being dragged — which is exactly when a background editor's save lands.
+        RunLoop.main.add(timer, forMode: .common)
+        pollTimer = timer
+        // A local, not `fileURL`: FileLog evaluates its message later, and a
+        // property read inside that closure would need to capture self.
+        let path = fileURL.path
+        Self.log.info("watching \(path) for hand edits, every \(Int(Self.pollInterval))s")
+    }
+
+    private func checkForExternalChange() {
+        // A change of our own is still on its way to disk. What is on disk is by
+        // definition older than what the user just clicked, so reading it now
+        // would undo their change. The pending write handles the other side of
+        // this: it backs up whatever is on disk before overwriting it.
+        guard saveWorkItem == nil else { return }
+
+        let url = resolvedFileURL
+        let stamp = FileStamp(url)
+        guard stamp != lastStamp else { return }              // the cheap path, once a second
+        lastStamp = stamp
+
+        guard let data = try? Data(contentsOf: url) else { return }
+        guard data != lastKnownBytes else { return }          // our own write, echoing back
+        guard let decoded = decode(data) else { return }      // mid-edit and unparseable: keep what we have
         guard decoded != document else { lastKnownBytes = data; return }
+
         document = decoded
         lastKnownBytes = data
         Self.log.info("config.json changed on disk — reloaded")
         NotificationCenter.default.post(name: .configReloadedFromDisk, object: nil)
     }
 
-    // MARK: - Watching
+    /// What `stat` says, reduced to the three things that change when a file is
+    /// edited. Comparing these is what avoids reading the file every second.
+    private struct FileStamp: Equatable {
+        let modified: Date
+        let size: Int
+        let inode: UInt64
 
-    /// Noticing a hand edit takes TWO watches, because there are two different
-    /// ways a file gets saved and each is invisible to the other's watch:
-    ///
-    ///  - Writing in place (`>`, `json.dump`, many editors) changes the file's
-    ///    contents. The DIRECTORY sees nothing — a directory event means an entry
-    ///    was added, removed or renamed, not that one of them was written to.
-    ///  - Saving atomically (write a temp file, rename it over the target — what
-    ///    this app does, and what a careful editor does) replaces the inode. The
-    ///    old file descriptor keeps pointing at the file that was replaced, so a
-    ///    watch on it goes deaf from that moment on.
-    ///
-    /// So: watch the directory to learn that the file was replaced, and re-arm the
-    /// file watch onto the new inode when it is; watch the file to catch the
-    /// in-place writes the directory never reports.
-    private func startWatching() {
-        let dir = Brand.configDirectory
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-
-        directorySource = makeSource(path: dir.path,
-                                     mask: [.write, .rename, .delete]) { [weak self] in
-            // The file may have just been replaced, so the old descriptor is stale.
-            self?.rearmFileWatch()
-            self?.scheduleReload()
-        }
-        if directorySource == nil {
-            Self.log.warn("could not watch \(dir.path) — hand edits will need a relaunch")
-        }
-        rearmFileWatch()
-    }
-
-    /// Point the file watch at whatever `config.json` is right now. Safe to call
-    /// when there is no file yet: the directory watch will call it again once one
-    /// appears.
-    private func rearmFileWatch() {
-        fileSource?.cancel()
-        fileSource = nil
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-        fileSource = makeSource(path: fileURL.path,
-                                mask: [.write, .extend, .rename, .delete]) { [weak self] in
-            self?.scheduleReload()
+        init?(_ url: URL) {
+            guard let a = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let modified = a[.modificationDate] as? Date,
+                  let size = a[.size] as? Int,
+                  let inode = a[.systemFileNumber] as? UInt64 else { return nil }
+            self.modified = modified
+            self.size = size
+            self.inode = inode
         }
     }
 
-    private func makeSource(path: String,
-                            mask: DispatchSource.FileSystemEvent,
-                            handler: @escaping () -> Void) -> DispatchSourceFileSystemObject? {
-        let fd = open(path, O_EVTONLY)
-        guard fd >= 0 else { return nil }
-        let source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fd, eventMask: mask, queue: io)
-        source.setEventHandler(handler: handler)
-        source.setCancelHandler { close(fd) }
-        source.resume()
-        return source
-    }
-
-    /// Both watches can fire for one save, and an editor's save is often several
-    /// syscalls, so coalesce: one reload a beat after things stop moving, reading
-    /// a finished file rather than a half-written one.
-    private func scheduleReload() {
-        reloadWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            DispatchQueue.main.async { self?.reloadFromDisk() }
-        }
-        reloadWorkItem = item
-        io.asyncAfter(deadline: .now() + Self.reloadDebounce, execute: item)
+    private static func timestamp() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMdd-HHmmss"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f.string(from: Date())
     }
 
     // MARK: - Schema
@@ -291,16 +300,23 @@ final class ConfigStore: ObservableObject {
     /// buys back more than comments would: an editor gives completion for every
     /// key, the allowed values of an enum, and the documentation on hover — and
     /// unlike comments it survives the app rewriting the file.
+    ///
+    /// Written beside the RESOLVED file, so a config symlinked into a dotfiles
+    /// repo gets its schema in that repo too, and the relative `$schema` reference
+    /// resolves from either path.
     private func writeSchema() {
-        let url = schemaURL
-        io.async {
-            do {
-                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                        withIntermediateDirectories: true)
-                try ConfigSchema.json.data(using: .utf8)?.write(to: url, options: .atomic)
-            } catch {
-                Self.log.error("could not write the schema: \(error)")
-            }
+        let url = resolvedFileURL.deletingLastPathComponent()
+            .appendingPathComponent("config.schema.json")
+        guard let data = ConfigSchema.json.data(using: .utf8) else { return }
+        // Only when it differs, so an unchanged schema does not touch the mtime of
+        // a file sitting in a git repo.
+        if let existing = try? Data(contentsOf: url), existing == data { return }
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+        } catch {
+            Self.log.error("could not write the schema: \(error)")
         }
     }
 }

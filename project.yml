@@ -108,6 +108,7 @@ targets:
       - Tests
       - path: Sources/PopBar/Window/WheelSubmenu.swift
       - path: Sources/Core/Config/JSONValue.swift
+      - path: Sources/PopBar/Actions/PopBarActionConfig.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

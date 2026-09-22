@@ -86,6 +86,16 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// Written by a newer build than this one, so it cannot be run here.
     var isUnsupported: Bool { unsupportedKindRaw != nil }
 
+    /// Every key found on this action that this build does not know about.
+    ///
+    /// Same purpose as `unsupportedKindRaw`, generalized from one field to all of
+    /// them. The actions live in a config file people edit by hand, and the rest
+    /// of that file preserves unknown keys by being held as a JSON tree — but an
+    /// action is decoded into THIS struct, so without somewhere to keep them, a
+    /// key a newer build (or the user) put on an action would be dropped the next
+    /// time anything in the list was edited, reordered or deleted.
+    private var extra: [String: JSONValue] = [:]
+
     init(id: String = UUID().uuidString, title: String, iconSymbol: String,
          kind: Kind, prompt: String = "", modelOverride: ModelOverride? = nil) {
         self.schemaVersion = 1
@@ -109,7 +119,10 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     var isPathAction: Bool { kind == .quickLook || kind == .revealInFinder }
 
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
-    enum CodingKeys: String, CodingKey { case schemaVersion, id, title, iconSymbol, kind, prompt, modelOverride, children }
+    enum CodingKeys: String, CodingKey, CaseIterable {
+        case schemaVersion, id, title, iconSymbol, kind, prompt, modelOverride, children
+    }
+    private static let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = (try? c.decode(Int.self, forKey: .schemaVersion)) ?? 1
@@ -134,23 +147,47 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
             flat.children = []
             return flat
         }
+
+        // Anything else the object carried. Read through a container keyed by a
+        // key type that accepts any string, minus the fields above.
+        if let any = try? decoder.container(keyedBy: AnyCodingKey.self) {
+            var found: [String: JSONValue] = [:]
+            for key in any.allKeys where !Self.knownKeys.contains(key.stringValue) {
+                if let value = try? any.decode(JSONValue.self, forKey: key) {
+                    found[key.stringValue] = value
+                }
+            }
+            extra = found
+        }
     }
 
     /// Hand-written ONLY so `kind` can round-trip a value this build does not
     /// recognise (see `unsupportedKindRaw`). Every other field is encoded exactly
     /// as the synthesised version would.
     func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(schemaVersion, forKey: .schemaVersion)
-        try c.encode(id, forKey: .id)
-        try c.encode(title, forKey: .title)
-        try c.encode(iconSymbol, forKey: .iconSymbol)
-        try c.encode(unsupportedKindRaw ?? kind.rawValue, forKey: .kind)
-        try c.encode(prompt, forKey: .prompt)
-        try c.encodeIfPresent(modelOverride, forKey: .modelOverride)
-        // Only written when there is something to write, so every existing
-        // `popbar-actions.json` round-trips byte-for-byte through this build.
-        if !children.isEmpty { try c.encode(children, forKey: .children) }
+        // One container for both the known fields and `extra`, keyed by a type
+        // that accepts any string — asking the same encoder for a second keyed
+        // container of a different key type is a trick that works until it does
+        // not, and there is nothing to gain from it here.
+        var c = encoder.container(keyedBy: AnyCodingKey.self)
+        func key(_ k: CodingKeys) -> AnyCodingKey { AnyCodingKey(k.stringValue) }
+
+        try c.encode(schemaVersion, forKey: key(.schemaVersion))
+        try c.encode(id, forKey: key(.id))
+        try c.encode(title, forKey: key(.title))
+        try c.encode(iconSymbol, forKey: key(.iconSymbol))
+        try c.encode(unsupportedKindRaw ?? kind.rawValue, forKey: key(.kind))
+        try c.encode(prompt, forKey: key(.prompt))
+        try c.encodeIfPresent(modelOverride, forKey: key(.modelOverride))
+        // Only written when there is something to write, so an action that never
+        // had children does not grow an empty array.
+        if !children.isEmpty { try c.encode(children, forKey: key(.children)) }
+
+        // Written last, and never allowed to shadow a field this build owns.
+        for (name, value) in extra.sorted(by: { $0.key < $1.key })
+        where !Self.knownKeys.contains(name) {
+            try c.encode(value, forKey: AnyCodingKey(name))
+        }
     }
 
     /// The capsule presentation has a single row and no second level, so a group

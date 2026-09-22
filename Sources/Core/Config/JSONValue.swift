@@ -45,7 +45,10 @@ extension JSONValue {
     var stringValue: String? {
         switch self {
         case .string(let s): return s
-        case .number(let n): return n == n.rounded() ? String(Int(n)) : String(n)
+        // The same guard `encode` uses. `Int(n)` TRAPS on a value past Int.max or
+        // on infinity, and both are one keystroke away in a file someone types.
+        case .number(let n): return (n.isFinite && n == n.rounded() && abs(n) < 1e15)
+                                    ? String(Int(n)) : String(n)
         case .bool(let b):   return b ? "true" : "false"
         default:             return nil
         }
@@ -137,4 +140,21 @@ extension JSONValue: ExpressibleByIntegerLiteral {
 }
 extension JSONValue: ExpressibleByStringLiteral {
     init(stringLiteral value: String) { self = .string(value) }
+}
+
+// MARK: - Any key
+
+/// A `CodingKey` that accepts whatever string it is given.
+///
+/// This is how a type reads the keys it has never heard of: ask for a container
+/// keyed by this, subtract the keys the type knows, and keep the rest. Without it
+/// a `Codable` type can only ever see its own fields, and everything else in the
+/// object is gone the moment it is re-encoded.
+struct AnyCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init(_ string: String) { stringValue = string; intValue = nil }
+    init?(stringValue: String) { self.init(stringValue) }
+    init?(intValue: Int) { stringValue = String(intValue); self.intValue = intValue }
 }
