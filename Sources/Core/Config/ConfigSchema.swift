@@ -15,7 +15,7 @@ enum ConfigSchema {
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Selection popup configuration",
-      "description": "Everything in the app's Settings window. API keys are NOT here — they live in the macOS Keychain, so this file is safe to commit.",
+      "description": "Everything in the app's Settings window. Edit it by hand if you like — the app reads this file at launch, so changes take effect the next time it starts. API keys are NOT here; they live in the macOS Keychain, so this file is safe to commit.",
       "type": "object",
       "properties": {
         "$schema": { "type": "string" },

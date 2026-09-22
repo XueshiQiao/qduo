@@ -266,15 +266,6 @@ final class PopBarController {
     /// geometry sliders / toggles in settings, so the change is visible in real time.
     /// If the preview is already up, push the new geometry in place (smooth); otherwise
     /// bring the centered preview up (which reads the current geometry at show time).
-    /// Push the current geometry onto a ring that is ALREADY on screen, and do
-    /// nothing otherwise. `previewWheelLive` opens one when there isn't one,
-    /// which is right when you are dragging a slider and wrong when the change
-    /// came from the config file being edited in another app.
-    func refreshWheelLayoutIfShowing() {
-        guard windows.transientIsVisibleUnpinned, windows.transientIsShowingActions else { return }
-        windows.setWheelLayout(PopBarPreferences.wheelLayout)
-    }
-
     func previewWheelLive() {
         if windows.transientIsVisibleUnpinned && windows.transientIsShowingActions {
             windows.setWheelLayout(PopBarPreferences.wheelLayout)

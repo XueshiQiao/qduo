@@ -46,11 +46,6 @@ struct GeneralPage: View {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
         }
         .onReceive(trustPoll) { _ in store.refreshTrust() }
-        // Editing the config file by hand is a supported way to change these, so
-        // the controls have to follow it rather than showing a stale reading.
-        .onReceive(NotificationCenter.default.publisher(for: .configReloadedFromDisk)) { _ in
-            languageCode = Preferences.languageOverride
-        }
     }
 
     // MARK: - What this is, and how to stop it
@@ -119,6 +114,19 @@ struct GeneralPage: View {
 
     private var diagnosticsSection: some View {
         Section {
+            // Nothing else in the app mentions that this file exists, and it is
+            // the one place every setting actually lives — so it needs a door.
+            LabeledContent {
+                Button(L("diagnostics.revealConfig")) {
+                    NSWorkspace.shared.activateFileViewerSelecting([ConfigStore.shared.fileURL])
+                }
+            } label: {
+                iconLabel("doc.badge.gearshape", .indigo, L("diagnostics.config.title"))
+            }
+            Text(String(format: L("diagnostics.config.subtitle"), ConfigStore.shared.fileURL.path))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
             LabeledContent {
                 Button(L("diagnostics.revealLog")) {
                     NSWorkspace.shared.activateFileViewerSelecting([FileLog.url])

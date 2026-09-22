@@ -173,3 +173,6 @@
 "popbar.ocr.overlay.hint" = "拖拽框选要识别的区域 · Esc 取消";
 "popbar.always.title" = "App 开着时一直生效";
 "popbar.always.body" = "在任何 app 里选中文字，光标旁就会弹出来。没有开关——想停掉就从菜单栏图标退出 %@。";
+"diagnostics.config.title" = "设置文件";
+"diagnostics.revealConfig" = "在访达中显示";
+"diagnostics.config.subtitle" = "这几页里的每一项设置都存在 %@。你可以直接改它——改完下次启动 App 时生效。API Key 不在里面，那个存在钥匙串里。";

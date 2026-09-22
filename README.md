@@ -17,7 +17,15 @@ one tool among many.
   stream back as live Markdown.
 - **Screenshot text** — hotkey, drag a rectangle, OCR, same popup.
 - **Menu bar only** — no Dock icon. The status item is the whole interface when
-  the settings window is closed.
+  the settings window is closed. There is no on/off switch: the popup runs
+  whenever the app does, and quitting is how you stop it.
+- **One settings file** — `~/.config/qduo/config.json`, with a generated JSON
+  Schema beside it. Edit it by hand if you like; it is read at launch, so a hand
+  edit takes effect on the next start. API keys are not in it — those stay in the
+  Keychain, which is what makes the file safe to commit. Keys the app does not
+  recognise are preserved rather than dropped, and a version of the file that
+  differs from what the app last read is copied aside before being overwritten.
+  See `docs/config-file.html` for the whole design.
 
 ## Requirements
 

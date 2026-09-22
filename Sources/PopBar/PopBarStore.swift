@@ -28,7 +28,6 @@ final class PopBarStore: ObservableObject {
     @Published private(set) var screenOCRRegistered: Bool
 
     private let controller: PopBarController
-    private var configObserver: NSObjectProtocol?
 
     init(controller: PopBarController) {
         self.controller = controller
@@ -49,15 +48,6 @@ final class PopBarStore: ObservableObject {
         self.isScreenRecordingAuthorized = ScreenRecordingAuthorizer.isAuthorized
         self.screenOCRRegistered = controller.screenOCRIsRegistered
 
-        // The config file is a supported way to change any of the above, so a hand
-        // edit has to reach the RUNNING popup — not only the settings window.
-        configObserver = NotificationCenter.default.addObserver(
-            forName: .configReloadedFromDisk, object: nil, queue: .main
-        ) { [weak self] _ in self?.reloadFromConfig() }
-    }
-
-    deinit {
-        if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
     }
 
     /// Toggle whether the result panel auto-grows its height to fit content.
@@ -76,48 +66,6 @@ final class PopBarStore: ObservableObject {
         resultFontSize = size
         PopBarPreferences.resultFontSize = size
         controller.setResultFontSize(size)
-    }
-
-    /// Re-read every setting from the config file and apply what changed. Called
-    /// when the file is edited by hand.
-    ///
-    /// Deliberately NOT routed through the `set…` methods. Those exist for the
-    /// settings window and do two extra things that are wrong here: they write
-    /// the value straight back to the config (harmless but pointless), and the
-    /// geometry ones open the live preview so you can see what you are dragging.
-    /// Editing a file in another app must not make a popup appear on screen, so
-    /// this assigns the published values and then pushes only what a currently
-    /// VISIBLE popup needs.
-    func reloadFromConfig() {
-        style                = PopBarPreferences.style
-        autoExpandHeight     = PopBarPreferences.autoExpandHeight
-        resultFontSize       = PopBarPreferences.resultFontSize
-        wheelOuterRadius     = PopBarPreferences.wheelOuterRadius
-        wheelInnerRadius     = PopBarPreferences.wheelInnerRadius
-        wheelSubSeam         = PopBarPreferences.wheelSubSeam
-        wheelSubThickness    = PopBarPreferences.wheelSubThickness
-        wheelShowIcons       = PopBarPreferences.wheelShowIcons
-        wheelShowLabels      = PopBarPreferences.wheelShowLabels
-        wheelAutoHideOnExit  = PopBarPreferences.wheelAutoHideOnExit
-        screenOCRAutoCopy    = PopBarPreferences.screenOCRAutoCopy
-
-        // An already-open result panel re-renders; nothing is opened.
-        controller.setAutoExpandHeight(autoExpandHeight)
-        controller.setResultFontSize(resultFontSize)
-        controller.refreshWheelLayoutIfShowing()
-
-        // The hotkey is a system-wide registration, so a changed combo has to be
-        // re-registered rather than merely remembered.
-        let combo = PopBarPreferences.screenOCRHotKey
-        if combo != screenOCRHotKey {
-            if controller.setScreenOCRHotKey(combo) { screenOCRHotKey = combo }
-        }
-        let ocrOn = PopBarPreferences.screenOCREnabled
-        if ocrOn != screenOCREnabled {
-            screenOCREnabled = ocrOn
-            if ocrOn { _ = controller.startScreenOCR() } else { controller.stopScreenOCR() }
-        }
-        screenOCRRegistered = controller.screenOCRIsRegistered
     }
 
     /// Re-check the Accessibility grant (the user may toggle it in System

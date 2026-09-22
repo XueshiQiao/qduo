@@ -174,3 +174,6 @@
 "popbar.ocr.overlay.hint" = "Drag to select an area to recognize · Esc to cancel";
 "popbar.always.title" = "Always on while the app is running";
 "popbar.always.body" = "Select text in any app and the popup appears at the cursor. There is no switch — to stop it, quit %@ from the menu bar icon.";
+"diagnostics.config.title" = "Settings file";
+"diagnostics.revealConfig" = "Reveal in Finder";
+"diagnostics.config.subtitle" = "Every setting on these pages lives in %@. You can edit it by hand — changes take effect the next time the app starts. API keys are not in it; those stay in the Keychain.";

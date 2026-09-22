@@ -23,7 +23,6 @@ final class LLMSettingsStore: ObservableObject {
     }
 
     private var config: ConfigStore { .shared }
-    private var reloadObserver: NSObjectProtocol?
 
     @Published private(set) var provider: String
     @Published private(set) var model: String
@@ -48,24 +47,6 @@ final class LLMSettingsStore: ObservableObject {
                                                        for: provider)
         refreshKeyedProviders()
 
-        // Editing the config file by hand is a supported way to switch model.
-        reloadObserver = NotificationCenter.default.addObserver(
-            forName: .configReloadedFromDisk, object: nil, queue: .main
-        ) { [weak self] _ in self?.reloadFromConfig() }
-    }
-
-    deinit {
-        if let reloadObserver { NotificationCenter.default.removeObserver(reloadObserver) }
-    }
-
-    private func reloadFromConfig() {
-        let p = config.string(P.provider, default: provider)
-        let defaults = LLMConfig.providerDefaults(p)
-        provider = p
-        model = config.string(P.model, default: defaults.model)
-        apiURL = config.string(P.apiURL, default: defaults.apiURL)
-        reasoningEffort = LLMConfig.clampThinking(config.string(P.thinking, default: "none"), for: p)
-        refreshKeyedProviders()
     }
 
     // MARK: - Key state

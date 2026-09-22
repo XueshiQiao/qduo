@@ -17,8 +17,6 @@ final class ActionStore: ObservableObject {
 
     @Published private(set) var actions: [PopBarActionConfig]
 
-    private var reloadObserver: NSObjectProtocol?
-
     init(config: ConfigStore = .shared) {
         self.config = config
         // Deliberately not `!decoded.isEmpty`: emptying the list is something a
@@ -36,26 +34,6 @@ final class ActionStore: ObservableObject {
             config.set(Self.path, ConfigSeed.encode(seeded))
         }
 
-        // Hand-editing the config file is a supported way to change the actions, so
-        // the in-memory list has to follow it. Anything that fails to decode is
-        // IGNORED rather than applied: a half-typed action must not wipe the list
-        // the user can still see in the settings window.
-        reloadObserver = NotificationCenter.default.addObserver(
-            forName: .configReloadedFromDisk, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            guard let decoded = ConfigSeed.decodeActions(self.config.value(Self.path)) else {
-                Self.log.warn("config reloaded but its actions do not decode — keeping the current list")
-                return
-            }
-            guard decoded != self.actions else { return }
-            self.actions = decoded
-            Self.log.info("actions reloaded from the config file (\(decoded.count))")
-        }
-    }
-
-    deinit {
-        if let reloadObserver { NotificationCenter.default.removeObserver(reloadObserver) }
     }
 
     private let config: ConfigStore

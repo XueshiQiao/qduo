@@ -1,12 +1,5 @@
 import Foundation
 
-extension Notification.Name {
-    /// Posted after the config file changed ON DISK and was reloaded — i.e. the
-    /// user edited it in a text editor. NOT posted for changes the app itself
-    /// made, because whoever made those already knows.
-    static let configReloadedFromDisk = Notification.Name("ConfigReloadedFromDisk")
-}
-
 /// The app's settings, as one file the user is meant to open and edit.
 ///
 ///     ~/.config/<slug>/config.json
@@ -18,6 +11,13 @@ extension Notification.Name {
 ///
 /// **Secrets never go in here.** API keys stay in the Keychain (`LLMKeyStore`)
 /// precisely so this file is safe to commit.
+///
+/// The file is read ONCE, at launch. Editing it by hand takes effect the next
+/// time the app starts — which is the deal, and it is worth what it saves. An app
+/// that follows the file live has two ways for a setting to change, and every
+/// setting with a side effect then needs its effect wired up twice: once for the
+/// settings window, once for the reload. Miss one and a hand edit quietly does
+/// nothing. Reading once means there is only ever one way in.
 ///
 /// The document is held as a `JSONValue` tree rather than a typed struct, so a
 /// key this build does not recognise is preserved rather than deleted on the next
@@ -54,35 +54,16 @@ final class ConfigStore: ObservableObject {
     /// about, whoever wrote it.
     private var lastKnownBytes: Data?
 
-    /// Cheap change detector, so the common case costs one `stat` and no read.
-    private var lastStamp: FileStamp?
-
     private var saveWorkItem: DispatchWorkItem?
-    private var pollTimer: Timer?
 
     /// How long to sit on a change before writing. Dragging a slider produces a
     /// change per frame; without this the file would be rewritten sixty times a
     /// second and an editor watching it would flicker.
     private static let saveDebounce: TimeInterval = 0.4
 
-    /// How often to look for a hand edit.
-    ///
-    /// A poll, not a `DispatchSource`, and that is a deliberate downgrade. Watches
-    /// look precise and are full of holes here: a directory source never sees an
-    /// in-place write (which is what vim does when the file is a symlink), a file
-    /// source is killed by an atomic replace and goes deaf afterwards, and when the
-    /// config is a symlink into a dotfiles repo BOTH fire on the wrong directory —
-    /// the real file's, not the one holding the link. Covering all of that needs
-    /// two sources, re-resolving, re-opening on delete, and handling a file that
-    /// does not exist yet. One `stat` a second is a few microseconds against the
-    /// vnode cache, is immune to every one of those cases, and is well under the
-    /// time it takes to switch from the editor back to what you were doing.
-    private static let pollInterval: TimeInterval = 1.0
-
     private init() {
         load()
         writeSchema()
-        startPolling()
     }
 
     // MARK: - Reading
@@ -168,7 +149,6 @@ final class ConfigStore: ObservableObject {
             // write left the app believing the file said something it did not, and
             // every later save was skipped as "unchanged".
             lastKnownBytes = data
-            lastStamp = FileStamp(url)
         } catch {
             Self.log.error("could not write \(url.path): \(error)")
         }
@@ -208,7 +188,6 @@ final class ConfigStore: ObservableObject {
         }
         document = decoded
         lastKnownBytes = data
-        lastStamp = FileStamp(url)
         Self.log.info("loaded \(url.path)")
         retireDeadKeys()
     }
@@ -241,63 +220,6 @@ final class ConfigStore: ObservableObject {
             return nil
         }
         return decoded
-    }
-
-    // MARK: - Noticing a hand edit
-
-    private func startPolling() {
-        let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
-            self?.checkForExternalChange()
-        }
-        // .common so the check keeps running while a menu is open or a window is
-        // being dragged — which is exactly when a background editor's save lands.
-        RunLoop.main.add(timer, forMode: .common)
-        pollTimer = timer
-        // A local, not `fileURL`: FileLog evaluates its message later, and a
-        // property read inside that closure would need to capture self.
-        let path = fileURL.path
-        Self.log.info("watching \(path) for hand edits, every \(Int(Self.pollInterval))s")
-    }
-
-    private func checkForExternalChange() {
-        // A change of our own is still on its way to disk. What is on disk is by
-        // definition older than what the user just clicked, so reading it now
-        // would undo their change. The pending write handles the other side of
-        // this: it backs up whatever is on disk before overwriting it.
-        guard saveWorkItem == nil else { return }
-
-        let url = resolvedFileURL
-        let stamp = FileStamp(url)
-        guard stamp != lastStamp else { return }              // the cheap path, once a second
-        lastStamp = stamp
-
-        guard let data = try? Data(contentsOf: url) else { return }
-        guard data != lastKnownBytes else { return }          // our own write, echoing back
-        guard let decoded = decode(data) else { return }      // mid-edit and unparseable: keep what we have
-        guard decoded != document else { lastKnownBytes = data; return }
-
-        document = decoded
-        lastKnownBytes = data
-        Self.log.info("config.json changed on disk — reloaded")
-        NotificationCenter.default.post(name: .configReloadedFromDisk, object: nil)
-    }
-
-    /// What `stat` says, reduced to the three things that change when a file is
-    /// edited. Comparing these is what avoids reading the file every second.
-    private struct FileStamp: Equatable {
-        let modified: Date
-        let size: Int
-        let inode: UInt64
-
-        init?(_ url: URL) {
-            guard let a = try? FileManager.default.attributesOfItem(atPath: url.path),
-                  let modified = a[.modificationDate] as? Date,
-                  let size = a[.size] as? Int,
-                  let inode = a[.systemFileNumber] as? UInt64 else { return nil }
-            self.modified = modified
-            self.size = size
-            self.inode = inode
-        }
     }
 
     private static func timestamp() -> String {

@@ -63,11 +63,6 @@ struct AboutPage: View {
         }
         .formStyle(.grouped)
         .navigationTitle(L("About"))
-        // The setting lives in the config file, which can be edited by hand, so a
-        // one-shot copy taken when the page opened would go stale.
-        .onReceive(NotificationCenter.default.publisher(for: .configReloadedFromDisk)) { _ in
-            analyticsEnabled = Preferences.analyticsEnabled
-        }
         .toolbar {
             ToolbarItem {
                 Button {
