@@ -44,6 +44,18 @@ final class ConfigStore: ObservableObject {
 
     private var saveWorkItem: DispatchWorkItem?
     private var reloadWorkItem: DispatchWorkItem?
+    /// How many writes have been handed to the disk queue but not finished.
+    ///
+    /// `lastKnownBytes` is set the moment a write is SCHEDULED, because it means
+    /// "what this app intends the file to say". Between that moment and the bytes
+    /// actually landing, the file still holds the previous version — and a reload
+    /// reading it then would find something that does not match, conclude someone
+    /// else edited the file, and replace the just-changed settings with the old
+    /// ones. So a reload stands down while a write is in flight; the watch fires
+    /// again afterwards if the file really did change underneath us.
+    ///
+    /// Only ever touched on main.
+    private var writesInFlight = 0
     /// Watches the folder: catches the file being created, replaced or removed.
     private var directorySource: DispatchSourceFileSystemObject?
     /// Watches the file itself: catches an in-place write. Re-armed whenever the
@@ -124,7 +136,8 @@ final class ConfigStore: ObservableObject {
         guard data != lastKnownBytes else { return }          // nothing actually changed
         lastKnownBytes = data
         let url = fileURL
-        io.async {
+        writesInFlight += 1
+        io.async { [weak self] in
             do {
                 try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                         withIntermediateDirectories: true)
@@ -134,6 +147,7 @@ final class ConfigStore: ObservableObject {
             } catch {
                 Self.log.error("could not write \(url.path): \(error)")
             }
+            DispatchQueue.main.async { self?.writesInFlight -= 1 }
         }
     }
 
@@ -182,6 +196,7 @@ final class ConfigStore: ObservableObject {
 
     /// Re-read after an external edit, then tell the app so live surfaces catch up.
     private func reloadFromDisk() {
+        guard writesInFlight == 0 else { return }
         guard let data = try? Data(contentsOf: fileURL) else { return }
         guard data != lastKnownBytes else { return }          // our own write echoing back
         guard let decoded = try? JSONDecoder().decode(JSONValue.self, from: data),
