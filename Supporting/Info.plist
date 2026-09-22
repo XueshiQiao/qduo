@@ -39,11 +39,14 @@
     <string>$(BRAND_REPO_URL)</string>
 
     <!-- Sparkle auto-update. The feed URL is a build setting for the same reason.
-         SUPublicEDKey is filled in by scripts/sparkle-keys.sh once the app's own
-         EdDSA key pair exists; until then updates are inert, which is correct for
-         a private repo that publishes no releases. -->
+         This app has its OWN EdDSA key pair (keychain account "qduo", made with
+         Sparkle's generate_keys) rather than sharing a sibling's, so a key can be
+         rotated for one app without invalidating the others. The private half is
+         the repository secret SPARKLE_EDDSA_KEY. -->
     <key>SUFeedURL</key>
     <string>$(SU_FEED_URL)</string>
+    <key>SUPublicEDKey</key>
+    <string>7AB7NTLWxbw7/9v7IMP4IUpI3kIzYfYqn8xiQnyUHiA=</string>
     <key>SUEnableAutomaticChecks</key>
     <true/>
 </dict>

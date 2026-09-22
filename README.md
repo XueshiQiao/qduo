@@ -85,11 +85,15 @@ Release. Cut one with `scripts/bump-version.sh`, then push the tag. Steps degrad
 gracefully when secrets are absent, so a tag build without them still produces an
 unsigned DMG.
 
-Required repository secrets for a signed release: `MAC_CERTS_P12_BASE64`,
-`MAC_CERTS_P12_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APP_SPECIFIC_PASSWORD`,
-`SPARKLE_EDDSA_KEY`, and `MAC_PROVISION_PROFILE_BASE64` — the last one authorizes
-the `keychain-access-groups` entitlement, without which a notarized build is
-killed at launch.
+Repository secrets for a signed release:
+
+| Secret | State | What it is |
+|---|---|---|
+| `SPARKLE_EDDSA_KEY` | **set** | This app's own EdDSA private key (keychain account `qduo`). The public half is in `Supporting/Info.plist`. |
+| `MAC_CERTS_P12_BASE64` + `MAC_CERTS_P12_PASSWORD` | missing | Developer ID Application certificate, `.p12` base64-encoded. |
+| `APPLE_ID`, `APPLE_TEAM_ID`, `APP_SPECIFIC_PASSWORD` | missing | For `notarytool`. Team is `584KQTRF3B`. |
+| `MAC_PROVISION_PROFILE_BASE64` | missing | A **Developer ID** provisioning profile for `me.xueshi.qduo`, created in the developer portal. It authorizes the `keychain-access-groups` entitlement; without it a notarized build is SIGKILLed at launch while every static check still passes. A development profile will not do — the profile has to contain the Developer ID certificate that signs the build. |
+| `HOMEBREW_TAP_PAT` | missing | Optional: auto-updates the Homebrew cask. |
 
 **While the repository is private, auto-update cannot work**: Sparkle downloads
 the release asset anonymously, and a private repo refuses that. Make the repo
