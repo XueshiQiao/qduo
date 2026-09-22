@@ -6,7 +6,6 @@ import AppKit
 /// long-lived `PopBarController`.
 final class PopBarStore: ObservableObject {
 
-    @Published var isEnabled: Bool
     @Published var autoExpandHeight: Bool
     @Published var resultFontSize: Double
     @Published var style: PopBarStyle
@@ -33,7 +32,6 @@ final class PopBarStore: ObservableObject {
 
     init(controller: PopBarController) {
         self.controller = controller
-        self.isEnabled = PopBarPreferences.isEnabled
         self.autoExpandHeight = PopBarPreferences.autoExpandHeight
         self.resultFontSize = PopBarPreferences.resultFontSize
         self.style = PopBarPreferences.style
@@ -60,23 +58,6 @@ final class PopBarStore: ObservableObject {
 
     deinit {
         if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
-    }
-
-    /// Turn the popup on/off. Turning on without permission persists the choice
-    /// and prompts; monitoring then auto-starts once permission is granted (see
-    /// `refreshTrust`).
-    func setEnabled(_ on: Bool) {
-        isEnabled = on
-        PopBarPreferences.isEnabled = on
-        if on {
-            if isTrusted {
-                controller.start()
-            } else {
-                AccessibilityAuthorizer.prompt()
-            }
-        } else {
-            controller.stop()
-        }
     }
 
     /// Toggle whether the result panel auto-grows its height to fit content.
@@ -108,7 +89,6 @@ final class PopBarStore: ObservableObject {
     /// this assigns the published values and then pushes only what a currently
     /// VISIBLE popup needs.
     func reloadFromConfig() {
-        isEnabled            = PopBarPreferences.isEnabled
         style                = PopBarPreferences.style
         autoExpandHeight     = PopBarPreferences.autoExpandHeight
         resultFontSize       = PopBarPreferences.resultFontSize
@@ -125,16 +105,6 @@ final class PopBarStore: ObservableObject {
         controller.setAutoExpandHeight(autoExpandHeight)
         controller.setResultFontSize(resultFontSize)
         controller.refreshWheelLayoutIfShowing()
-
-        // The master switch has to actually start or stop the monitor. No
-        // permission PROMPT from here: a file edit is not the moment to put a
-        // system dialog in front of someone. If the grant is missing, the regular
-        // trust poll starts the monitor as soon as it appears.
-        if isEnabled, isTrusted, !controller.isRunning {
-            controller.start()
-        } else if !isEnabled, controller.isRunning {
-            controller.stop()
-        }
 
         // The hotkey is a system-wide registration, so a changed combo has to be
         // re-registered rather than merely remembered.
@@ -155,7 +125,11 @@ final class PopBarStore: ObservableObject {
     func refreshTrust() {
         let trusted = AccessibilityAuthorizer.isTrusted
         if trusted != isTrusted { isTrusted = trusted }
-        if trusted && isEnabled && !controller.isRunning {
+        // Granted while we were running: start straight away, so the app works
+        // the moment the switch is flipped in System Settings rather than after a
+        // relaunch. There is nothing else to consult — being permitted is the
+        // only condition.
+        if trusted && !controller.isRunning {
             controller.start()
         }
         // The Screen Recording grant can also change in System Settings while we run;

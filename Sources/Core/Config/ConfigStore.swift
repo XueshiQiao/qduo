@@ -210,6 +210,21 @@ final class ConfigStore: ObservableObject {
         lastKnownBytes = data
         lastStamp = FileStamp(url)
         Self.log.info("loaded \(url.path)")
+        retireDeadKeys()
+    }
+
+    /// Drop settings that no longer mean anything.
+    ///
+    /// Unknown keys are preserved on purpose, so this list has to be explicit: a
+    /// key is removed only because the app KNOWS it retired it, never because it
+    /// failed to recognise it. Leaving this one behind would be worse than
+    /// deleting it — `"enabled": false` sitting in the file reads like a switch
+    /// that is off, and there is no switch any more.
+    private func retireDeadKeys() {
+        if document.remove(path: "popup.enabled") {
+            Self.log.info("removed popup.enabled — the popup no longer has an on/off setting")
+            scheduleSave()
+        }
     }
 
     /// Decode, or keep a copy of what could not be read and return nil.

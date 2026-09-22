@@ -61,9 +61,19 @@ final class PopBarController {
 
     // MARK: - Lifecycle (call on main)
 
-    /// Start only if the user has opted in (used at app launch).
-    func startIfEnabled() {
-        guard PopBarPreferences.isEnabled else { Self.log.info("disabled — not starting"); return }
+    /// Start monitoring, unless the Accessibility permission is missing — without
+    /// it there is nothing to monitor with.
+    ///
+    /// There is no "enabled" setting to consult. Reading the selection IS what
+    /// this app is; a switch to turn it off would only be a slower way to quit,
+    /// and it would mean the app could sit in the menu bar doing nothing while
+    /// looking exactly like the app doing something.
+    func startIfPermitted() {
+        guard AccessibilityAuthorizer.isTrusted else {
+            Self.log.info("not trusted for Accessibility yet — asking, and starting once granted")
+            AccessibilityAuthorizer.prompt()
+            return
+        }
         start()
     }
 

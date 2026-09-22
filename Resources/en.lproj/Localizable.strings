@@ -5,7 +5,6 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* Menu bar */
-"menu.enablePopup" = "Enable selection popup";
 "menu.captureText" = "Capture text from screen";
 "menu.settings" = "Settings…";
 "menu.quit.format" = "Quit %@";
@@ -43,11 +42,6 @@
 "about.analytics.subtitle" = "Helps improve the app. No selected text, process names, paths, or personal data ever leave your device.";
 "about.copyright" = "© 2026 Xueshi Qiao. All rights reserved.";
 "about.version.format" = "Version %1$@ (%2$@)";
-"popbar.enable.title" = "Selection pop bar";
-"popbar.enable.subtitle" = "Select text in any app to pop up a capsule of quick actions at the cursor.";
-"popbar.status.title" = "Status";
-"popbar.status.on" = "Active";
-"popbar.status.off" = "Off";
 "popbar.status.needsPermission" = "Needs permission";
 "popbar.perm.header" = "Permission";
 "popbar.perm.title" = "Accessibility access required";
@@ -178,3 +172,5 @@
 "popbar.ocr.noText" = "No text found";
 "popbar.ocr.captureFailed" = "Couldn't capture the screen";
 "popbar.ocr.overlay.hint" = "Drag to select an area to recognize · Esc to cancel";
+"popbar.always.title" = "Always on while the app is running";
+"popbar.always.body" = "Select text in any app and the popup appears at the cursor. There is no switch — to stop it, quit %@ from the menu bar icon.";

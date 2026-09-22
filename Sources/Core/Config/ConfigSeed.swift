@@ -43,7 +43,7 @@ enum ConfigSeed {
         bool("general.analytics", Preferences.Key.analyticsEnabled, default: true)
 
         // ── Popup ─────────────────────────────────────────────────────────────
-        bool("popup.enabled", "popbar.enabled", default: false)
+        // No `enabled`: the popup IS the app, and it runs whenever the app does.
         string("popup.style", "popbar.style", default: PopBarStyle.capsule.rawValue)
         bool("popup.autoExpandHeight", "popbar.autoExpandHeight", default: true)
         number("popup.resultFontSize", "popbar.resultFontSize",

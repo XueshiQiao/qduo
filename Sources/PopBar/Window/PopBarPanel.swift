@@ -86,29 +86,22 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
 /// Main-thread only by convention (callers always invoke it on main).
 final class PopBarPanel {
 
-    /// How high the popup floats.
+    /// How high the popup floats: `.floating`, the ordinary level for a utility
+    /// panel that belongs above document windows and below the system's own
+    /// transient UI.
     ///
-    /// `.floating` (3) is only above ordinary windows. It is not above the
-    /// transient overlays other apps put up — a sibling clipboard app's preview
-    /// panel sits at `.popUpMenu + 1`, and it covered the ring completely. A
-    /// selection popup that the window you just selected text in can hide is
-    /// useless, so this goes one step above that band.
+    /// It was briefly two steps above `.popUpMenu` (101 -> 103), to clear a
+    /// sibling clipboard app whose preview panel sat at `.popUpMenu + 1`. That
+    /// worked and cost too much: `.popUpMenu` is also where AppKit puts
+    /// contextual menus, so a right-click while the popup was up opened its menu
+    /// BEHIND the popup — and no level beats the one without beating the other.
+    /// The other app is the one out of place, and gets lowered there instead.
     ///
-    /// The cost, stated plainly because it is real: `.popUpMenu` is 101, and that
-    /// is where AppKit puts contextual menus. Anything high enough to clear the
-    /// overlay above is also above those, so while the popup is on screen a
-    /// right-click menu opens BEHIND it. There is no level that beats one and not
-    /// the other. (App-modal alerts are fine — `.modalPanel` is 8, far below
-    /// everything here. An earlier version of this comment claimed alerts lived
-    /// just above us, which was simply wrong.)
-    ///
-    /// Leaving the normal compositing band is documented to cost translucent
-    /// material its stable cached backdrop — a hairline along an edge, flicker
-    /// while moving. Checked before committing to it: the liquid-glass ring
-    /// renders byte-for-byte identically at this level and at `.floating`, so
-    /// there is nothing to trade away here. Worth re-checking if the skin ever
-    /// switches to a different material.
-    static let level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 2)
+    /// Measured while deciding, because these values are not guessable:
+    /// `.normal` 0, `.floating` 3, `.modalPanel` 8, `.mainMenu` 24,
+    /// `.statusBar` 25, `.popUpMenu` 101. App-modal alerts sit far BELOW a
+    /// floating panel, not above it.
+    static let level = NSWindow.Level.floating
 
     let model = PopBarPanelModel()
 

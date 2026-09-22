@@ -43,12 +43,8 @@ enum ConfigSchema {
 
         "popup": {
           "type": "object",
-          "description": "The popup that appears when you select text.",
+          "description": "The popup that appears when you select text. It runs whenever the app does — there is no on/off setting; quit the app to stop it.",
           "properties": {
-            "enabled": {
-              "type": "boolean",
-              "description": "Master switch. Needs the Accessibility permission to actually run."
-            },
             "style": {
               "type": "string",
               "enum": ["capsule", "wheel", "liquidGlass"],

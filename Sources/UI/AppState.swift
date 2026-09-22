@@ -70,7 +70,7 @@ final class AppState: ObservableObject {
 
     /// Start the app-lifetime background work. Called from `applicationDidFinishLaunching`.
     func activate() {
-        controller.startIfEnabled()
+        controller.startIfPermitted()
         // The screenshot-OCR hotkey has its own lifecycle: it is registered even
         // when the selection popup is switched off, because they are separate
         // features that happen to live in one app.

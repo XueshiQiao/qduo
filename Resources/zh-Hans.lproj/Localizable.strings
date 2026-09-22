@@ -4,7 +4,6 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* 菜单栏 */
-"menu.enablePopup" = "启用划词弹窗";
 "menu.captureText" = "截取屏幕文字";
 "menu.settings" = "设置…";
 "menu.quit.format" = "退出 %@";
@@ -42,11 +41,6 @@
 "about.analytics.subtitle" = "帮助改进这个 App。你选中的文字、进程名、路径和任何个人数据都不会离开你的设备。";
 "about.copyright" = "© 2026 乔学诗。保留所有权利。";
 "about.version.format" = "版本 %1$@ (%2$@)";
-"popbar.enable.title" = "划词工具条";
-"popbar.enable.subtitle" = "在任意 App 选中文本，即在光标处弹出一条快捷动作胶囊。";
-"popbar.status.title" = "状态";
-"popbar.status.on" = "已开启";
-"popbar.status.off" = "已关闭";
 "popbar.status.needsPermission" = "需要授权";
 "popbar.perm.header" = "权限";
 "popbar.perm.title" = "需要辅助功能权限";
@@ -177,3 +171,5 @@
 "popbar.ocr.noText" = "未识别到文本";
 "popbar.ocr.captureFailed" = "截屏失败";
 "popbar.ocr.overlay.hint" = "拖拽框选要识别的区域 · Esc 取消";
+"popbar.always.title" = "App 开着时一直生效";
+"popbar.always.body" = "在任何 app 里选中文字，光标旁就会弹出来。没有开关——想停掉就从菜单栏图标退出 %@。";

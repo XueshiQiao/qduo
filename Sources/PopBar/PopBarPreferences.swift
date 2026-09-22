@@ -20,7 +20,6 @@ enum PopBarPreferences {
     // Paths into the config file. These ARE the setting names the user sees when
     // they open it, so they are grouped and spelled for reading, not for storage.
     private enum P {
-        static let enabled            = "popup.enabled"
         static let autoExpandHeight   = "popup.autoExpandHeight"
         static let resultFontSize     = "popup.resultFontSize"
         static let style              = "popup.style"
@@ -59,13 +58,6 @@ enum PopBarPreferences {
     static let wheelSubSeamDefault: Double = 6
     static let wheelSubThicknessDefault: Double = 52
 
-
-    /// Whether the popup is active. Opt-in: defaults to off, so the app never
-    /// starts monitoring global input until the user turns it on.
-    static var isEnabled: Bool {
-        get { config.bool(P.enabled, default: false) }
-        set { config.set(P.enabled, newValue) }
-    }
 
     /// Whether the result panel auto-grows its HEIGHT to fit the content (up to a
     /// max, then scrolls). Opt-out: defaults to ON, so the result fits its content

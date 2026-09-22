@@ -88,6 +88,22 @@ extension JSONValue {
         self = Self.setting(self, keys: keys[...], to: value)
     }
 
+    /// Delete a dotted path. Used ONLY for a key the app knows it has retired:
+    /// an unrecognized key is preserved on purpose, so removing one has to be a
+    /// decision someone wrote down, never a side effect.
+    @discardableResult
+    mutating func remove(path: String) -> Bool {
+        let keys = path.split(separator: ".").map(String.init)
+        guard let last = keys.last else { return false }
+        let parentPath = keys.dropLast().joined(separator: ".")
+        let parent = parentPath.isEmpty ? self : self[path: parentPath]
+        guard var object = parent?.objectValue, object[last] != nil else { return false }
+        object[last] = nil
+        if parentPath.isEmpty { self = .object(object) }
+        else { set(path: parentPath, to: .object(object)) }
+        return true
+    }
+
     private static func setting(_ node: JSONValue, keys: ArraySlice<String>, to value: JSONValue) -> JSONValue {
         guard let key = keys.first else { return value }
         var object = node.objectValue ?? [:]

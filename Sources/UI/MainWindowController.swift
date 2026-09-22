@@ -140,27 +140,28 @@ struct MainView: View {
     }
 }
 
-/// Live "is the popup actually working right now" line, shown under the sidebar
-/// on every page — it can be off for two different reasons (switched off, or not
-/// granted Accessibility) and the difference is the whole story.
+/// Shown under the sidebar ONLY while the app cannot do its job — that is, while
+/// the Accessibility permission is missing.
+///
+/// There is deliberately no "running" or "active" line. The app has one job and
+/// does it whenever it is open; a green light saying so would be decoration, and
+/// a light that is sometimes green and sometimes not implies a switch that does
+/// not exist. A warning, on the other hand, is worth seeing from every page.
 ///
 /// Its own view because it observes the popup's store, which the root view does
-/// not: without that, the line would keep whatever it said when the window opened.
+/// not: without that, it would keep whatever it said when the window opened.
 private struct StatusFooter: View {
     @ObservedObject var store: PopBarStore
 
     var body: some View {
-        HStack(spacing: 7) {
-            StatusDot(active: store.isEnabled && store.isTrusted)
-            Text(text)
-                .font(.system(size: 11)).foregroundColor(.secondary)
-            Spacer()
+        if !store.isTrusted {
+            HStack(spacing: 7) {
+                StatusDot(active: false)
+                Text(L("popbar.status.needsPermission"))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 16).padding(.vertical, 9)
         }
-        .padding(.horizontal, 16).padding(.vertical, 9)
-    }
-
-    private var text: String {
-        if !store.isTrusted { return L("popbar.status.needsPermission") }
-        return store.isEnabled ? L("popbar.status.on") : L("popbar.status.off")
     }
 }

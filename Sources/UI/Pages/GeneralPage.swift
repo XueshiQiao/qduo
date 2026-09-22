@@ -2,9 +2,13 @@ import SwiftUI
 import AppKit
 import ServiceManagement
 
-/// The General page: the master switch and its two failure modes, plus the
-/// app-level settings that have nowhere better to live (launch at login,
-/// language, the log file).
+/// The General page: the Accessibility permission, and the app-level settings
+/// that have nowhere better to live (launch at login, language, the log file).
+///
+/// There is no on/off switch, by design. Reading the selection IS the app; a
+/// switch for it would only be a slower way to quit, and it would let the app sit
+/// in the menu bar doing nothing while looking exactly like the app doing
+/// something. To stop it, quit it.
 ///
 /// The Accessibility block appears only while the permission is missing — it is
 /// the one thing standing between a fresh install and a working popup, so it goes
@@ -30,8 +34,8 @@ struct GeneralPage: View {
 
     var body: some View {
         Form {
-            statusSection
             if !store.isTrusted { permissionSection }
+            howItStopsSection
             appSection
             diagnosticsSection
         }
@@ -49,33 +53,22 @@ struct GeneralPage: View {
         }
     }
 
-    // MARK: - Status
+    // MARK: - What this is, and how to stop it
 
-    private var statusSection: some View {
+    /// Says out loud what the absence of a switch means. Without this the page
+    /// reads as if a control is missing.
+    private var howItStopsSection: some View {
         Section {
-            Toggle(isOn: Binding(get: { store.isEnabled }, set: { store.setEnabled($0) })) {
-                featureLabel("text.bubble.fill", .indigo,
-                             L("popbar.enable.title"), L("popbar.enable.subtitle"))
-            }
-            LabeledContent {
-                HStack(spacing: 6) {
-                    StatusDot(active: running)
-                    Text(statusText)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(running ? .green : .orange)
+            HStack(spacing: 10) {
+                IconTile(symbol: "text.bubble.fill", color: .indigo)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("popbar.always.title")).fontWeight(.medium)
+                    Text(String(format: L("popbar.always.body"), Brand.name))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            } label: {
-                iconLabel("dot.radiowaves.left.and.right", running ? .green : .gray,
-                          L("popbar.status.title"))
             }
         }
-    }
-
-    private var running: Bool { store.isEnabled && store.isTrusted }
-
-    private var statusText: String {
-        if !store.isTrusted { return L("popbar.status.needsPermission") }
-        return store.isEnabled ? L("popbar.status.on") : L("popbar.status.off")
     }
 
     // MARK: - Accessibility permission

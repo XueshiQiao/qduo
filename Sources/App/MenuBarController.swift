@@ -19,7 +19,7 @@ final class MenuBarController: NSObject {
 
     private var storeObserver: AnyCancellable?
 
-    private enum Tag: Int { case enabled = 100, ocr = 200, update = 600 }
+    private enum Tag: Int { case ocr = 200, update = 600 }
 
     init(appState: AppState, updateController: UpdateController) {
         self.appState = appState
@@ -40,8 +40,8 @@ final class MenuBarController: NSObject {
         // reserve, so every click should show the menu.
         statusItem.menu = buildMenu()
 
-        // The icon dims when the popup is off, so the menu bar answers "is this
-        // thing on" without opening anything.
+        // The icon dims when the app cannot work — i.e. Accessibility has not been
+        // granted. It is a warning, not a switch: there is nothing to turn on.
         storeObserver = appState.store.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refreshIcon() }
@@ -49,8 +49,7 @@ final class MenuBarController: NSObject {
     }
 
     private func refreshIcon() {
-        let live = appState.store.isEnabled && appState.store.isTrusted
-        statusItem.button?.appearsDisabled = !live
+        statusItem.button?.appearsDisabled = !appState.store.isTrusted
     }
 
     private func buildMenu() -> NSMenu {
@@ -61,12 +60,6 @@ final class MenuBarController: NSObject {
         menu.addItem(titleItem)
 
         menu.addItem(.separator())
-
-        let enabledItem = NSMenuItem(title: L("menu.enablePopup"),
-                                     action: #selector(toggleEnabled(_:)), keyEquivalent: "")
-        enabledItem.target = self
-        enabledItem.tag = Tag.enabled.rawValue
-        menu.addItem(enabledItem)
 
         let ocrItem = NSMenuItem(title: L("menu.captureText"),
                                  action: #selector(captureText(_:)), keyEquivalent: "")
@@ -117,11 +110,6 @@ final class MenuBarController: NSObject {
 
     // MARK: - Actions
 
-    @objc private func toggleEnabled(_ sender: NSMenuItem) {
-        appState.store.setEnabled(!appState.store.isEnabled)
-        refreshIcon()
-    }
-
     @objc private func captureText(_ sender: NSMenuItem) {
         appState.controller.triggerScreenOCR()
     }
@@ -153,9 +141,6 @@ extension MenuBarController: NSMenuDelegate {
     /// State is read when the menu opens, not when it was built — otherwise the
     /// checkmark shows whatever was true the last time something rebuilt the menu.
     func menuWillOpen(_ menu: NSMenu) {
-        if let item = menu.item(withTag: Tag.enabled.rawValue) {
-            item.state = appState.store.isEnabled ? .on : .off
-        }
         if let item = menu.item(withTag: Tag.ocr.rawValue) {
             // Greyed out rather than hidden: an absent row reads as a missing
             // feature, a greyed one as a switch you have not turned on yet.
