@@ -98,6 +98,11 @@ overwrites the catalogue with the vector version; run `cut-icon.py` again to go
 back. It also writes `design/icon/icon-1024-square.png`, the vector master, in
 the same full-bleed form.
 
+The menu bar icon is the same ring and arc with no tile, as a template SVG the
+system tints for light and dark bars. `scripts/make-menubar-icon.py` writes it to
+`Assets.xcassets/MenuBarIcon.imageset/`, reading every proportion from the
+constants in `make-icon.py` — change the mark there, then re-run both.
+
 One known limit of the painted master, accepted deliberately: at 16px the arc
 beside the ring blurs into it. The vector version keeps the two apart at that
 size. 16px only shows up in Finder's list view.

@@ -10,7 +10,10 @@ final class MenuBarController: NSObject {
 
     private static let log = FileLog("MenuBar")
 
-    private static let iconSymbol = "text.bubble"
+    /// The app icon's ring and arc without the tile, drawn by
+    /// scripts/make-menubar-icon.py. The catalogue marks it as a template, so the
+    /// system tints it for light, dark and highlighted menu bars.
+    private static let iconName = "MenuBarIcon"
 
     private var statusItem: NSStatusItem!
     private let appState: AppState
@@ -33,8 +36,15 @@ final class MenuBarController: NSObject {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: Self.iconSymbol, accessibilityDescription: Brand.name)
-            button.image?.isTemplate = true
+            // A missing image would leave an invisible slot — and the status item is
+            // the app's only entry point — so fall back to a system symbol.
+            let image = NSImage(named: Self.iconName) ?? {
+                Self.log.error("\(Self.iconName) missing from the asset catalogue")
+                return NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
+            }()
+            image?.isTemplate = true
+            image?.accessibilityDescription = Brand.name
+            button.image = image
         }
         // Attached permanently: with no Dock icon there is no second gesture to
         // reserve, so every click should show the menu.
