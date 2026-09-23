@@ -27,6 +27,17 @@ one tool among many.
   differs from what the app last read is copied aside before being overwritten.
   See `docs/config-file.html` for the whole design.
 
+## Install
+
+```bash
+brew install --cask XueshiQiao/tap/qduo
+```
+
+Or download `QDuo.dmg` from [GitHub Releases](https://github.com/XueshiQiao/qduo/releases)
+and drag QDuo into Applications. The app is signed with a Developer ID certificate
+and notarized by Apple, so it opens without a security warning, and it updates
+itself from then on.
+
 ## Requirements
 
 - macOS 13 or later
@@ -145,3 +156,13 @@ Repository secrets for a signed release:
 **While the repository is private, auto-update cannot work**: Sparkle downloads
 the release asset anonymously, and a private repo refuses that. Make the repo
 public before relying on updates.
+
+## Releasing
+
+`scripts/bump-version.sh` bumps the version, commits and tags; pushing the tag
+builds, signs, notarizes and publishes. The whole routine — release notes, the
+checks, and what to verify afterwards — is `.claude/skills/release/SKILL.md`.
+
+## License
+
+[GPL-3.0](LICENSE)

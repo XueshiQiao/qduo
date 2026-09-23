@@ -30,11 +30,10 @@ if [ -n "$other_dirty" ]; then
   exit 1
 fi
 
-# Sync with origin/main BEFORE committing and tagging. CI pushes an
-# "Update appcast" commit to main after every release, so local main is
-# usually behind when cutting the next one. Tagging first and rebasing
-# afterwards strands the tag on a pre-rebase commit that isn't on main,
-# and the release pipeline's appcast push then fails (non-fast-forward).
+# Sync with origin/main BEFORE committing and tagging, so the tag always lands
+# on a commit that is on main. Tagging first and rebasing afterwards strands
+# the tag on a pre-rebase commit that isn't on main, and the release is then
+# built from code main does not contain.
 if git fetch origin main 2>/dev/null; then
   if ! git merge-base --is-ancestor origin/main HEAD; then
     echo "Local branch is behind origin/main — rebasing before tagging…"

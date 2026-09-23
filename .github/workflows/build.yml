@@ -38,13 +38,16 @@ jobs:
         run: |
           APP_NAME=$(awk '/^name:/ {print $NF; exit}' project.yml)
           KEYCHAIN_GROUP=$(awk '/BRAND_KEYCHAIN_GROUP:/ {print $2; exit}' project.yml)
+          BUNDLE_ID=$(awk '/^  bundleID:/ {print $NF; exit}' project.yml)
           [ -n "$APP_NAME" ] || { echo "::error::could not read the app name from project.yml"; exit 1; }
+          [ -n "$BUNDLE_ID" ] || { echo "::error::could not read the bundle id from project.yml"; exit 1; }
+          echo "BUNDLE_ID=$BUNDLE_ID" >> "$GITHUB_ENV"
           echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
           # The Homebrew tap keys every app by a lowercase token; it is the app
           # name lowercased, so it follows a rename like everything else here.
           echo "APP_TOKEN=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
           echo "KEYCHAIN_GROUP=$KEYCHAIN_GROUP" >> "$GITHUB_ENV"
-          echo "app: $APP_NAME   keychain group: $KEYCHAIN_GROUP"
+          echo "app: $APP_NAME   bundle id: $BUNDLE_ID   keychain group: $KEYCHAIN_GROUP"
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -150,6 +153,27 @@ jobs:
           echo -n "$MAC_PROVISION_PROFILE_BASE64" | base64 --decode -o "$APP_PATH/Contents/embedded.provisionprofile"
           echo "Embedded provisioning profile ($(stat -f%z "$APP_PATH/Contents/embedded.provisionprofile") bytes)"
 
+          # A profile being present is not enough: a sibling app's profile (the
+          # signing secrets are shared across the family, the profile is not) or an
+          # expired one is SIGKILLed by AMFI exactly like a missing one, and every
+          # static check still passes. So read it and check what AMFI will check.
+          PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
+          security cms -D -i "$APP_PATH/Contents/embedded.provisionprofile" > "$PROFILE_PLIST"
+          P_APPID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.application-identifier' "$PROFILE_PLIST")
+          P_GROUPS=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:keychain-access-groups' "$PROFILE_PLIST")
+          P_EXPIRY=$(plutil -extract ExpirationDate raw -o - "$PROFILE_PLIST")   # ISO 8601, UTC
+          P_ALL=$(/usr/libexec/PlistBuddy -c 'Print :ProvisionsAllDevices' "$PROFILE_PLIST" 2>/dev/null || echo false)
+          echo "Profile: app id $P_APPID · expires $P_EXPIRY · all devices $P_ALL"
+          echo "Profile keychain groups: $P_GROUPS"
+          [ "$P_APPID" = "${TEAM_ID}.${BUNDLE_ID}" ] \
+            || { echo "::error::provisioning profile is for $P_APPID, not ${TEAM_ID}.${BUNDLE_ID} — wrong app's profile"; exit 1; }
+          [ "$P_ALL" = "true" ] \
+            || { echo "::error::provisioning profile is not a Developer ID profile (ProvisionsAllDevices is not true)"; exit 1; }
+          echo "$P_GROUPS" | grep -qE "${TEAM_ID}\.(\*|${KEYCHAIN_GROUP})" \
+            || { echo "::error::provisioning profile does not allow keychain group ${TEAM_ID}.${KEYCHAIN_GROUP}"; exit 1; }
+          [ "$(TZ=UTC date -j -f '%Y-%m-%dT%H:%M:%SZ' "$P_EXPIRY" +%s)" -gt "$(date +%s)" ] \
+            || { echo "::error::provisioning profile has expired ($P_EXPIRY) — make a new one"; exit 1; }
+
           # Sign the main app bundle with entitlements.
           # codesign signs the entitlements plist VERBATIM — unlike Xcode it does NOT
           # expand $(AppIdentifierPrefix). The signed keychain group must be team-prefixed
@@ -167,6 +191,20 @@ jobs:
           # Verify: signature valid, keychain group team-prefixed, AND the authorizing
           # profile is embedded — guards against ever re-shipping the AMFI-kill bug.
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+          # The profile names the certificates it authorises. If the .p12 in the
+          # secrets is a different Developer ID certificate than the one the profile
+          # was generated against, AMFI rejects the app at launch — check it here.
+          CERT_DIR="$RUNNER_TEMP/certs"; mkdir -p "$CERT_DIR"
+          ( cd "$CERT_DIR" && codesign -d --extract-certificates "$OLDPWD/$APP_PATH" 2>/dev/null )
+          LEAF_SHA1=$(openssl x509 -inform der -in "$CERT_DIR/codesign0" -noout -fingerprint -sha1 | sed 's/.*=//; s/://g')
+          python3 - "$PROFILE_PLIST" "$LEAF_SHA1" <<'PY' || { echo "::error::the signing certificate is not one the provisioning profile authorises — regenerate the profile against this certificate"; exit 1; }
+          import hashlib, plistlib, sys
+          certs = plistlib.load(open(sys.argv[1], "rb"))["DeveloperCertificates"]
+          allowed = {hashlib.sha1(c).hexdigest().upper() for c in certs}
+          print("signing cert", sys.argv[2], "· profile allows", sorted(allowed))
+          sys.exit(0 if sys.argv[2].upper() in allowed else 1)
+          PY
           codesign -d --entitlements - "$APP_PATH" 2>/dev/null | grep -q "${TEAM_ID}.${KEYCHAIN_GROUP}" \
             || { echo "::error::signed keychain-access-group is not team-prefixed — AMFI would kill the app"; exit 1; }
           test -f "$APP_PATH/Contents/embedded.provisionprofile" \
@@ -204,6 +242,13 @@ jobs:
           fi
 
           xcrun stapler staple "build/Release/${APP_NAME}.app"
+
+          # What a user's Mac will ask: is this a notarized Developer ID app, and
+          # does the ticket travel with it (so it opens offline on first launch)?
+          xcrun stapler validate "build/Release/${APP_NAME}.app"
+          spctl -a -t exec -vv "build/Release/${APP_NAME}.app" 2>&1 | tee "$RUNNER_TEMP/spctl.txt"
+          grep -q "source=Notarized Developer ID" "$RUNNER_TEMP/spctl.txt" \
+            || { echo "::error::Gatekeeper does not accept the app as a notarized Developer ID app"; exit 1; }
 
       - name: Create DMG
         run: |
@@ -303,37 +348,11 @@ jobs:
           echo "--- Appcast ---"
           cat appcast.xml
 
-          # Commit the appcast on top of CURRENT origin/main, never on the tag's
-          # detached HEAD: the tag can legally sit off main (e.g. tagged before a
-          # pull --rebase rewrote the release commit), and main gains an appcast
-          # commit per release — committing on the tag commit then makes
-          # `push HEAD:main` a non-fast-forward rejection. A temp worktree keeps
-          # the build tree (tag contents + appcast.xml for the Release step) intact.
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          WT="$RUNNER_TEMP/appcast-wt"
-          for attempt in 1 2 3; do
-            # Explicit refspec: the CI checkout is a shallow/single-ref clone, so a
-            # plain `git fetch origin main` would not create refs/remotes/origin/main.
-            git fetch origin +refs/heads/main:refs/remotes/origin/main
-            git worktree remove --force "$WT" 2>/dev/null || true
-            git worktree add --detach "$WT" origin/main
-            cp appcast.xml "$WT/appcast.xml"
-            git -C "$WT" add appcast.xml
-            if git -C "$WT" diff --cached --quiet; then
-              echo "appcast.xml already up to date on main; nothing to push."
-              break
-            fi
-            git -C "$WT" commit -m "Update appcast for ${TAG_NAME}"
-            if git -C "$WT" push origin HEAD:main; then
-              break
-            fi
-            if [ "$attempt" = 3 ]; then
-              echo "::error::appcast push to main failed after 3 attempts"; exit 1
-            fi
-            echo "Push rejected (main moved during the build); retrying…"
-          done
-          git worktree remove --force "$WT" 2>/dev/null || true
+          # The appcast is published as a release asset only, which is where
+          # SUFeedURL points (.../releases/latest/download/appcast.xml). AnyDrag
+          # also commits it back to main for users on an older raw.github URL;
+          # this app never shipped that URL, so there is nothing to keep alive —
+          # and appcast.xml is in .gitignore, so `git add` would refuse it anyway.
 
       - name: Generate latest.json
         if: startsWith(github.ref, 'refs/tags/v')
