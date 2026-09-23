@@ -71,19 +71,36 @@ fix this README.
 
 ## The icon
 
-`scripts/make-icon.py` draws it and writes every file that needs it — the seven
-sizes in the asset catalogue, the copy the sidebar and About page draw
-themselves, and two 1024 masters under `design/icon/`. Nothing else in the
-project draws it, so a change means editing the constants at the top of that
-script and re-running it.
+What ships is painted, and lives at `design/icon/painted-master-1024.png` — one
+square image, edge to edge, no corners. To rebuild every file the app needs
+from it:
 
-The two masters are for different jobs. `icon-1024-square.png` is full bleed
-with no corners and no shadow: hand it to anything that applies its own mask.
-`icon-1024-rounded.png` is the macOS tile — an 824-point body centred in a 1024
-canvas, which is Apple's own template, cut with the system's continuous-curvature
-corner rather than a rounded rectangle or a superellipse. Measured against a real
-system icon's alpha, that outline tracks it to 1.3px on a 1024 canvas; the best
-superellipse of any exponent managed 4.0.
+```bash
+scripts/cut-icon.py design/icon/painted-master-1024.png
+```
+
+That writes the seven catalogue sizes, the copy the sidebar and About page draw
+themselves, and `design/icon/icon-1024-rounded.png` for looking at. The master
+is never scaled to fit: the tile is an 824-point body inside a 1024 canvas, so
+clipping throws away 100 points on each side and the artwork keeps its size.
+That is what full bleed is for.
+
+The tile's outline is the system's own continuous-curvature corner, taken from
+`RoundedRectangle(cornerRadius: 185.4, style: .continuous)` over the body
+Apple's template centres in a 1024 canvas — not a rounded rectangle and not a
+superellipse, neither of which can draw that curve. Against a real system icon's
+alpha it tracks to 1.3px; the best superellipse of any exponent managed 4.0.
+
+`scripts/make-icon.py` draws the same design in vector and is kept as the
+fallback and as the written record of it: every proportion, both colours and the
+reason behind each sit in the constants at the top of that file. Run it and it
+overwrites the catalogue with the vector version; run `cut-icon.py` again to go
+back. It also writes `design/icon/icon-1024-square.png`, the vector master, in
+the same full-bleed form.
+
+One known limit of the painted master, accepted deliberately: at 16px the arc
+beside the ring blurs into it. The vector version keeps the two apart at that
+size. 16px only shows up in Finder's list view.
 
 ## Layout
 
