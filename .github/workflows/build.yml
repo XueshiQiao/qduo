@@ -184,9 +184,9 @@ jobs:
           sed -e "s/\$(AppIdentifierPrefix)/${TEAM_ID}./g" \
               -e "s/\$(BRAND_KEYCHAIN_GROUP)/${KEYCHAIN_GROUP}/g" "$ENTITLEMENTS" > "$SIGN_ENT"
           echo "Signing entitlements (expanded):"; cat "$SIGN_ENT"
-          if grep -q '\$(' "$SIGN_ENT"; then
+          if grep -Fq '$(' "$SIGN_ENT"; then
             echo "::error::an entitlements macro was not expanded — codesign would sign it literally:"
-            grep '\$(' "$SIGN_ENT"; exit 1
+            grep -F '$(' "$SIGN_ENT"; exit 1
           fi
           codesign --force --options runtime --timestamp \
             --entitlements "$SIGN_ENT" \

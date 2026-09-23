@@ -99,15 +99,15 @@ Also check the update feed resolves:
 
 ## Phase 6 — Homebrew cask
 
-The release run dispatches to `XueshiQiao/homebrew_tap`, which regenerates `Casks/qduo.rb`
+The release run dispatches to `XueshiQiao/homebrew-tap`, which regenerates `Casks/qduo.rb`
 from `latest.json`:
 
 ```bash
-gh run list --repo XueshiQiao/homebrew_tap --workflow update-casks.yml --limit 1
-gh api repos/XueshiQiao/homebrew_tap/contents/Casks/qduo.rb --jq .content | base64 -d | head -5
+gh run list --repo XueshiQiao/homebrew-tap --workflow update-casks.yml --limit 1
+gh api repos/XueshiQiao/homebrew-tap/contents/Casks/qduo.rb --jq .content | base64 -d | head -5
 ```
 
-Re-fire by hand if needed: `gh workflow run update-casks.yml --repo XueshiQiao/homebrew_tap -f app_token=qduo`.
+Re-fire by hand if needed: `gh workflow run update-casks.yml --repo XueshiQiao/homebrew-tap -f app_token=qduo`.
 
 ## Phase 7 — Close issues, report
 
