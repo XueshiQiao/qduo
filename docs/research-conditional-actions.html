@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>按选中内容决定动作是否出现</title>
+<style>
+  :root {
+    --bg: #faf9f5; --surface: #ffffff; --ink: #1f1e1c; --ink-soft: #5a5751;
+    --ink-faint: #8a857c; --rule: #e6e2d4; --rule-soft: #efece1; --code-bg: #f3f0e6;
+    --accent: #d97757; --accent-soft: #f4e2d6;
+    --good: #4f8a5c; --good-bg: #e3f0e2; --warn: #b6711c; --warn-bg: #f5e7d0;
+    --bad: #b14338; --bad-bg: #f5dad6; --blue: #3f6f9f; --blue-bg: #dde8f3;
+    --pre-bg: #1f1e1c; --pre-ink: #f6f3eb;
+    --serif: "Tiempos", "Source Serif Pro", "Iowan Old Style", Georgia, "Songti SC", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1a18; --surface: #242320; --ink: #ece8df; --ink-soft: #b9b3a7;
+      --ink-faint: #8a857c; --rule: #3a3833; --rule-soft: #2c2b27; --code-bg: #2f2d29;
+      --accent: #e48a6a; --accent-soft: #3a2a22;
+      --good: #86c08f; --good-bg: #22362a; --warn: #e0a656; --warn-bg: #3a2f1c;
+      --bad: #e5857a; --bad-bg: #3d2320; --blue: #8fb6de; --blue-bg: #1f2e3d;
+      --pre-bg: #121110; --pre-ink: #efeae0;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans);
+         font-size: 16px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 900px; margin: 0 auto; padding: 72px 40px 120px; }
+  @media (max-width: 640px) { .container { padding: 40px 16px 80px; } h1 { font-size: 34px !important; } }
+  header.hero { margin-bottom: 40px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; text-transform: uppercase;
+             letter-spacing: 0.08em; color: var(--accent); margin-bottom: 18px; }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: 44px; line-height: 1.18;
+       margin: 0 0 20px; letter-spacing: -0.015em; }
+  .lede { font-family: var(--serif); font-size: 21px; line-height: 1.55; color: var(--ink-soft); margin: 0; }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 29px; line-height: 1.25;
+       margin: 64px 0 16px; letter-spacing: -0.01em; }
+  h3 { font-weight: 600; font-size: 17px; margin: 34px 0 10px; }
+  p { margin: 0 0 16px; }
+  ul, ol { padding-left: 24px; margin: 0 0 16px; }
+  li { margin-bottom: 7px; }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); background: var(--code-bg); padding: 1px 6px;
+         border-radius: 4px; font-size: 0.86em; }
+  pre { background: var(--pre-bg); color: var(--pre-ink); padding: 18px 22px; border-radius: 8px;
+        overflow-x: auto; line-height: 1.6; font-size: 13px; margin: 18px 0 26px; }
+  pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
+  .c { color: #9b9081; font-style: italic; }
+  .k { color: #e89b6f; }
+  .s { color: #b8d49d; }
+  .n { color: #d8b9e3; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 14px 30px; margin: 28px 0 40px;
+              padding: 16px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+              font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); }
+  .meta-row b { color: var(--ink); font-weight: 500; margin-right: 8px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft);
+             padding: 16px 20px; margin: 26px 0; border-radius: 0 6px 6px 0; }
+  .callout.blue { border-color: var(--blue); background: var(--blue-bg); }
+  .callout.blue .label { color: var(--blue); }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+  .callout .label { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+                    letter-spacing: 0.08em; color: var(--accent); font-weight: 600;
+                    margin-bottom: 6px; display: block; }
+  .figure { margin: 32px 0; background: var(--surface); border: 1px solid var(--rule);
+            border-radius: 10px; padding: 24px 20px 16px; }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .figure .caption { font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+                     margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--rule); line-height: 1.6; }
+  .tablewrap { overflow-x: auto; margin: 20px 0 30px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); background: var(--rule-soft); font-size: 12.5px; white-space: nowrap; }
+  td code { font-size: 0.84em; }
+  td.num { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-family: var(--mono);
+          font-size: 11px; font-weight: 600; letter-spacing: 0.03em; white-space: nowrap; }
+  .pill.good { background: var(--good-bg); color: var(--good); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill.bad  { background: var(--bad-bg); color: var(--bad); }
+  .pill.blue { background: var(--blue-bg); color: var(--blue); }
+  .pill.neutral { background: var(--rule-soft); color: var(--ink-soft); }
+  .tldr { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 24px; }
+  .tldr ol { margin: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; font-size: 14.5px; }
+  .card h4 { margin: 0 0 6px; font-size: 14.5px; }
+  .card p:last-child { margin-bottom: 0; }
+  .footer { margin-top: 90px; padding-top: 22px; border-top: 1px solid var(--rule);
+            font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  svg text { font-family: var(--sans); font-size: 12.5px; fill: var(--ink); }
+  svg .mono { font-family: var(--mono); font-size: 11px; fill: var(--ink-soft); }
+  svg .soft { fill: var(--ink-soft); }
+  svg .box { fill: var(--surface); stroke: var(--rule); stroke-width: 1.2; }
+  svg .box-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+  svg .box-blue { fill: var(--blue-bg); stroke: var(--blue); stroke-width: 1.2; }
+  svg .box-good { fill: var(--good-bg); stroke: var(--good); stroke-width: 1.2; }
+  svg .box-bad { fill: var(--bad-bg); stroke: var(--bad); stroke-width: 1.2; }
+  svg .line { stroke: var(--ink-faint); stroke-width: 1.4; fill: none; }
+  svg .dash { stroke: var(--blue); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+  svg .arrow { fill: var(--ink-faint); }
+  svg .arrow-blue { fill: var(--blue); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="hero">
+  <div class="eyebrow">调研报告 · QDuo · issue #1 · 2026-09-23</div>
+  <h1>按选中内容，决定一个动作出不出现</h1>
+  <p class="lede">比如「选中的是日文才显示『日译中』」「选中的是网址才显示『预览』」。这篇回答四件事：你说的 Jev 是什么、别的工具怎么做、有哪些判断可以现成提供、以及建议 QDuo 怎么设计。</p>
+</header>
+
+<div class="meta-row">
+  <span><b>状态</b><span class="pill warn">仅调研，未写代码</span></span>
+  <span><b>涉及</b><code>PopBarActionConfig.swift</code> · <code>config.json</code></span>
+  <span><b>测量机器</b>Apple M5 Pro · macOS 27.0 · Swift 6.4</span>
+</div>
+
+<div class="tldr">
+  <p style="margin-bottom:8px"><b>结论先说</b></p>
+  <ol>
+    <li><b>Jev</b> 大概率（约八成五把握）是 TypeSafe AI 在 2026-09-15 发布的 <b>Jev 模型</b>：一个只做「判断题 / 选择题」、不生成文字的云端模型，号称 70–500 ms 出答案。它<b>不是</b>一个划词工具。</li>
+    <li>语言判断（是不是日文 / 英文）<b>不需要</b> Jev：苹果自带的 <code>NLLanguageRecognizer</code> 在本机实测每次 0.02–0.2 ms、免费、不联网。Jev 适合的是本地规则写不出来的判断，比如「这段是不是代码」「这是不是一个问题」。</li>
+    <li>建议给每个动作加一个可选字段 <code>when</code>：内置语言、文字种类、正则、网址 / 邮箱 / 电话 / 日期 / 地址、文件路径、长度、来源 App 等判断，用 <code>all</code> / <code>any</code> / <code>not</code> 组合。不满足就<b>不显示</b>；判断超时或出错时<b>照常显示</b>（宁可多一个按钮，也不让动作莫名其妙消失）。</li>
+    <li>你说的「用 Java 定义判断」应该是 <b>JavaScript</b>。技术上可行：苹果自带 JavaScriptCore，本机实测调用一次不到 1 微秒；难点只在「死循环怎么停」，有办法但要用一个苹果未公开的接口。<b>建议先不做</b>——你举的例子内置判断全都能覆盖，等真有内置写不出来的需求再加。</li>
+    <li><b>Jev 不建议用来决定「显示不显示」</b>：它要 70–500 ms，等它回来再往弹出条里加按钮，按钮会在你鼠标移过去的途中跳位置。更合适的用法是<b>点下去之后</b>再问它，比如「翻译」分组里由它挑用哪个子动作。</li>
+    <li>分期：第一期内置判断 + 组合 + 编辑界面（约 3–4 天）；Jev 和 JavaScript 各自按需再做（各约 2–3 天）。</li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<h2>1 · 「JJE V / Jev」到底是什么</h2>
+
+<p>你口述的是「JJE V」，issue #1 的标题是「Support Jev」，正文为空。我搜了几个方向：</p>
+
+<div class="tablewrap"><table>
+<tr><th>候选</th><th>查到了什么</th><th>像不像</th></tr>
+<tr><td><b>TypeSafe AI 的 Jev 模型</b></td><td>2026-09-15 发布的「System One」模型。你给它一段内容和几个带类型的问题（是非题 / 选择题 / 打分题），它返回带概率的答案，不生成任何文字。官方说 70–500 ms，输入 $0.042 / 百万 token，输出免费。已经上了 Vercel AI Gateway、OpenRouter、LiteLLM。</td><td><span class="pill good">最像</span></td></tr>
+<tr><td>基于 Jev 的 macOS 项目（jev-cua、jev-voice 等）</td><td>GitHub 上这几天冒出一批「对 Mac 说话 → Jev 选一个动作 → 用辅助功能去点」的项目，都是拿 Jev 模型做决策。不是划词工具。</td><td>证明 Jev 是这周的热点</td></tr>
+<tr><td>PopClip / SnipDo / Easydict / Bob</td><td>发音上都和「Jev」对不上。</td><td><span class="pill bad">不像</span></td></tr>
+<tr><td>叫 Jev 的划词 / 语言检测库</td><td>没有找到。</td><td><span class="pill bad">不存在</span></td></tr>
+</table></div>
+
+<p><b>结论：你说的是 TypeSafe 的 Jev 模型，把握大约八成五。</b>理由：issue 的拼写就是「Jev」；时间对得上（发布一周，正是热点）；它的卖点——「对一段内容问一个是非题，快速拿到带把握度的答案」——正好就是你描述的「检测选中的内容是不是日文，是的话才用某个动作」。剩下那一成五的不确定是：你也可能只是在说「一个会做这种判断的东西」，而不特指这家模型。</p>
+
+<p><b>「用 Java 定义一些判断」应该是 JavaScript，把握九成。</b>在 Mac 上嵌一门脚本语言，JavaScript 是唯一系统自带的（JavaScriptCore），PopClip 的扩展也用它；真正的 Java 需要装 JVM，不会有人为一个判断这么做。</p>
+
+<h3>Jev 长什么样（官方文档，未实测）</h3>
+<p>我没有 Jev 的 API key，所以下面的格式和延迟都来自官方文档，<b>没有在本机调用过</b>。</p>
+<pre><code><span class="c">// POST https://api.typesafe.ai/v1/systemone   Authorization: Bearer &lt;key&gt;</span>
+{
+  <span class="s">"model"</span>: <span class="s">"jev-latest"</span>,
+  <span class="s">"state"</span>: <span class="s">"let x = foo(bar)"</span>,              <span class="c">// 选中的文字</span>
+  <span class="s">"questions"</span>: {
+    <span class="s">"is_code"</span>: { <span class="s">"type"</span>: <span class="s">"noul"</span>, <span class="s">"instructions"</span>: <span class="s">"Is this text source code?"</span> }
+  }
+}
+<span class="c">// 返回</span>
+{ <span class="s">"answers"</span>: { <span class="s">"is_code"</span>: { <span class="s">"type"</span>: <span class="s">"noul"</span>, <span class="s">"noul"</span>: <span class="n">0.97</span> } } }</code></pre>
+<p><code>noul</code> 是「是」的概率，0 到 1。官方建议 0.8 以上当「是」、0.2 以下当「否」。另有 <code>choice</code>（从最多 255 个选项里挑一个，附每个选项的概率）和 <code>score</code>（按 2–10 档打分）。</p>
+
+<div class="callout blue">
+  <span class="label">Jev 在 QDuo 里该放在哪</span>
+  <p><b>不要拿它判断语言。</b>判断日文 / 英文，本地 0.02 ms、免费、不出机器；Jev 要走网络、最少 70 ms、每次选中都把文字发给第三方。</p>
+  <p><b>拿它做本地规则写不出来的判断：</b>「这段是不是代码」「这是不是一个问句」「是不是一段需要润色的正式文字」「是不是商品名」。这类判断用正则写不准，用大模型又太慢太贵，正好是 Jev 的位置。</p>
+  <p><b>但别让它决定「按钮出不出现」。</b>弹出条必须在约 50 ms 内出来，Jev 最快也要 70 ms，还得加网络。如果先弹出、等 Jev 答案回来再把按钮加进去，胶囊会变长、轮盘会重新分扇区——而这时你的鼠标正朝某个按钮移动。</p>
+  <p><b>更合适的位置是「点下去之后」：</b>你已经点了按钮，等个两三百毫秒完全可以接受。例如一个「智能处理」分组，点它时用 Jev 的 <code>choice</code> 题从「翻译 / 解释代码 / 润色」里挑一个最合适的去执行。见 5.2 的流程图。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>2 · 别的工具怎么做</h2>
+
+<p>先看同类产品给用户的「条件」长什么样。共同点很明显：<b>几乎都有「正则 + 内容类型 + 限定 App」这三样</b>，只有 PopClip 允许写代码，而且它对代码限制得很死。</p>
+
+<h3>PopClip（macOS，最接近 QDuo 的产品）</h3>
+<pre><code><span class="c"># PopClip 扩展的配置（YAML）</span>
+<span class="k">name</span>: Example
+<span class="k">requirements</span>: [url]            <span class="c"># 可选值：text copy cut paste formatting url isurl urls email emails path option-xxx=yyy，前面加 ! 表示取反，如 "!url"</span>
+<span class="k">regex</span>: example\.com            <span class="c"># 满足 requirements 之后，还要匹配这个正则才显示</span>
+<span class="k">requiredApps</span>: [com.apple.Safari]   <span class="c"># 只在这些 App 里显示（另有 excludedApps）</span></code></pre>
+<p>PopClip 还支持 JavaScript 扩展（引擎就是 JavaScriptCore，文档写明「一个不能访问文件系统的沙盒」）。其中有个「population function」：每次弹出前都会跑一遍，返回这次要显示哪些动作——这就是「用代码决定显示什么」。但它在这个阶段<b>明确禁止</b>：</p>
+<ul>
+  <li>不能联网（没有 <code>XMLHttpRequest</code>）；</li>
+  <li>不能调 <code>popclip</code> 上的任何函数（只能读 <code>input</code>、<code>context</code>、<code>options</code> 这些属性）；</li>
+  <li>不能 <code>sleep()</code> / <code>setTimeout()</code> / <code>setInterval()</code>；</li>
+  <li>读不到标成 secret 的选项；而且必须在配置里声明 <code>dynamic</code> 权限。</li>
+</ul>
+<p>文档没说有没有超时。这组限制很值得照抄：<b>判断阶段只允许纯计算</b>。</p>
+
+<h3>SnipDo（Windows，PopClip 的同类）</h3>
+<pre><code>{
+  <span class="s">"title"</span>: <span class="s">"My Action"</span>,
+  <span class="s">"regex"</span>: <span class="s">"^https?://"</span>,                          <span class="c">// 文字满足正则才显示</span>
+  <span class="s">"requirements"</span>: [<span class="s">"IS_URL"</span>],                     <span class="c">// 还有 HAS_URL、EMAIL、FILEPATH</span>
+  <span class="s">"showOnlyApps"</span>: [<span class="s">"chrome.exe"</span>, <span class="s">"firefox.exe"</span>],
+  <span class="s">"noShowApps"</span>: [<span class="s">"notepad.exe"</span>]
+}</code></pre>
+<p>注意它把「是网址」和「含网址」分成了 <code>IS_URL</code> / <code>HAS_URL</code> 两个——这个区分很实用，后面的设计会沿用。</p>
+
+<h3>其他</h3>
+<div class="tablewrap"><table>
+<tr><th>产品</th><th>条件怎么写</th><th>能学到什么</th></tr>
+<tr><td>Alfred Universal Actions</td><td>只能勾选输入类型：Text / URLs / Files，以及「单个 / 多个」。没有正则。</td><td>类型过滤是最基本、用户最容易理解的一层</td></tr>
+<tr><td>Automator 快速操作 / 快捷指令</td><td>「工作流程收到当前的 <i>文本</i>，位于 <i>任何应用程序</i>」——一个类型 + 一个 App。</td><td>同上，外加「限定 App」</td></tr>
+<tr><td>Android 选中文字菜单</td><td>第三方 App 用 <code>ACTION_PROCESS_TEXT</code> 注册，只能按 <code>text/plain</code> 过滤，不能按内容。系统自己用 TextClassifier 识别网址 / 邮箱 / 电话 / 地址 / 日期，然后直接给出「拨号」「打开地图」这类智能按钮。</td><td>识别实体类型（电话、地址、日期）这件事，平台做得比正则好；macOS 对应的是 <code>NSDataDetector</code></td></tr>
+<tr><td>Easydict（开源翻译工具）</td><td>不是给用户写条件，而是自动判断语言。源码里用苹果 <code>NLLanguageRecognizer</code>，加上 <code>languageHints</code>、按用户常用语言加权（+0.1 到 +0.4），再做一堆针对短文本的修正，比如把「apple」从土耳其语改判成英语。</td><td>苹果的识别器对短词会错，<b>必须做修正</b>，这正好和本机测量吻合（见第 3 节）</td></tr>
+<tr><td>Raycast</td><td>我没找到按选中内容控制命令是否出现的机制（未深查）。</td><td>—</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2>3 · 哪些判断可以直接内置（附本机实测）</h2>
+
+<p>下面每个数字都标了来源：<span class="pill good">实测</span> 是我在这台 Mac 上用 Swift 小程序（<code>-O</code> 编译）跑出来的；<span class="pill neutral">文档</span> 是别人说的，没验证。</p>
+
+<div class="tablewrap"><table>
+<tr><th>判断</th><th>用什么实现</th><th>每次耗时</th><th>准不准 / 坑</th></tr>
+<tr><td>语言（日 / 英 / 中 …）</td><td><code>NLLanguageRecognizer</code></td><td class="num">0.02 ms（复用）<br>0.22 ms（每次新建）<br>首次 3–9 ms<br><span class="pill good">实测</span></td><td>句子很准；两三个字的短词会错，见下表</td></tr>
+<tr><td>文字种类（汉字 / 平假名 / 片假名 / 韩文 / 拉丁字母）</td><td>逐个字符查 Unicode 范围</td><td class="num">0.0002 ms（短句）<br>0.14 ms（1.2 万字）<br><span class="pill good">实测</span></td><td>100% 确定，但只知道「用了哪种字」，不知道「是哪国话」</td></tr>
+<tr><td>正则</td><td><code>NSRegularExpression</code></td><td class="num">0.0002 ms<br><span class="pill good">实测</span></td><td><b>坑：</b>写得不好的正则会卡死。<code>^(a+)+$</code> 碰上 27 个字符就跑了 <b>1127 ms</b>，而且系统没有给正则设超时的接口 <span class="pill good">实测</span></td></tr>
+<tr><td>网址 / 邮箱</td><td><code>NSDataDetector</code>（link）</td><td class="num">0.02–0.4 ms（短）<br>0.34 ms（2300 字）<br><span class="pill good">实测</span></td><td>准。<code>github.com/xx</code> 这种不带 http 的也认，邮箱会识别成 <code>mailto:</code> 链接</td></tr>
+<tr><td>电话 / 日期 / 地址</td><td><code>NSDataDetector</code>（phone / date / address）</td><td class="num">0.2–4.4 ms（短）<br>3.2 ms（2300 字，四类全开）<br>创建一次 7 ms<br><span class="pill good">实测</span></td><td>中文也认：「明天下午三点」→日期，「北京市海淀区中关村大街1号」和「東京都千代田区丸の内1-9-1」→地址，「13800138000」→电话。<b>比其他判断慢一个数量级</b>，只在有动作用到时才跑</td></tr>
+<tr><td>是一个存在的文件路径</td><td>现有 <code>PathResolver</code> + <code>fileExists</code></td><td class="num">0.0005 ms<br><span class="pill good">实测</span></td><td>网络盘上可能慢（未测）</td></tr>
+<tr><td>长度 / 行数</td><td>数一下</td><td class="num">可忽略</td><td>—</td></tr>
+<tr><td>是数字 / 算式</td><td>正则或 <code>NSExpression</code></td><td class="num">未测</td><td><code>NSExpression</code> 遇到非法算式会直接让程序崩溃（Objective-C 异常），要先用正则把关</td></tr>
+<tr><td>来源 App</td><td>触发时已经拿到的 <code>frontmostApplication</code></td><td class="num">0</td><td>已有，直接用 bundle id</td></tr>
+<tr><td>选区能不能编辑</td><td>对焦点元素问辅助功能「选中文字这个属性能不能写」</td><td class="num">未测</td><td>要跨进程问对方 App，慢的 App 可能要几十毫秒。QDuo 现在没有「替换选中文字」类动作，所以<b>暂时不需要</b></td></tr>
+</table></div>
+
+<h3>语言识别：短词到底有多不准</h3>
+<p>我挑了 30 个带标签的样本（英、日、简中、繁中、韩、法、德、西），用苹果识别器默认设置跑：<b>25 / 30 正确</b>。把候选语言限定为「英日简繁韩」五种后：<b>24 / 27</b>，错的还是那几个。错的全是这类：</p>
+<div class="tablewrap"><table>
+<tr><th>选中</th><th>应该是</th><th>识别器说</th><th>前几名概率</th></tr>
+<tr><td><code>apple</code></td><td>英</td><td>土耳其语</td><td class="num">tr 0.39 · en 0.15</td></tr>
+<tr><td><code>API</code></td><td>英</td><td>印尼语</td><td class="num">id 0.27 · en 0.16</td></tr>
+<tr><td><code>漢字</code></td><td>日</td><td>繁体中文</td><td class="num">zh-Hant 0.71 · ja 0.29</td></tr>
+<tr><td><code>寿司</code></td><td>日</td><td>简体中文</td><td class="num">zh-Hans 0.75 · ja 0.25</td></tr>
+<tr><td><code>你好</code></td><td>简中</td><td>繁体中文</td><td class="num">zh-Hant 0.80 · zh-Hans 0.20</td></tr>
+<tr><td><code>Swift で書く</code></td><td>日（混排）</td><td>英语</td><td class="num">en 0.22 · id 0.12</td></tr>
+</table></div>
+<p>而这些都对了：<code>ありがとう</code>、<code>カタカナ</code>、<code>東京都</code>(ja 0.76)、<code>新幹線</code>(ja 0.66)、<code>取扱説明書</code>、<code>会議室予約</code>、所有中文整句、所有韩文、<code>bonjour</code>、<code>Guten Morgen</code>、<code>gracias</code>。</p>
+
+<div class="callout">
+  <span class="label">所以「是不是日文」应该这样判断</span>
+  <ol style="margin-bottom:0">
+    <li><b>只要出现平假名或片假名 → 是日文。</b>中文里不会出现假名。这一条把「Swift で書く」这种混排也救回来了。</li>
+    <li>没有假名、全是汉字 → 交给识别器，<b>日语概率 ≥ 0.6 才算</b>。</li>
+    <li>剩下的（「漢字」「寿司」这种两字词）<b>本质上分不出来</b>——它们在中文里也是合法的词。这是真实的上限，不是实现问题。要么接受，要么在这种情况下退回到用户的偏好（比如「我主要读日文，拿不准时当日文」）。</li>
+  </ol>
+</div>
+<p>「是不是英文」同理：短词（apple、API）识别器会判成土耳其语、印尼语。实用的规则是<b>「全是拉丁字母」且「识别器前三名里有英语」</b>，比单看第一名稳得多。这两条规则都应该做成内置判断，用户只需要写 <code>"lang": "ja"</code>，不用自己懂这些。</p>
+
+<!-- ============================================================ -->
+<h2>4 · 让用户自己写判断：JavaScript 行不行</h2>
+
+<p>苹果自带 JavaScriptCore（下称 JSC），不用打包任何东西。本机实测：</p>
+<div class="tablewrap"><table>
+<tr><th>操作</th><th>耗时</th></tr>
+<tr><td>创建第一个 JS 环境（冷启动）</td><td class="num">2.0 ms <span class="pill good">实测</span></td></tr>
+<tr><td>同一个虚拟机里再建一个环境</td><td class="num">0.03 ms <span class="pill good">实测</span></td></tr>
+<tr><td>编译一个判断函数</td><td class="num">0.2 ms <span class="pill good">实测</span></td></tr>
+<tr><td>调用已编译好的判断（短文字）</td><td class="num">0.0006 ms <span class="pill good">实测</span></td></tr>
+<tr><td>调用判断，传入 1.2 万字</td><td class="num">0.017 ms <span class="pill good">实测</span></td></tr>
+<tr><td>每次新建环境 + 运行</td><td class="num">0.035 ms <span class="pill good">实测</span></td></tr>
+</table></div>
+<p><b>速度完全不是问题。</b>真正的问题只有一个：用户写了个死循环怎么办。</p>
+
+<h3>死循环怎么停</h3>
+<div class="tablewrap"><table>
+<tr><th>办法</th><th>行不行</th><th>代价</th></tr>
+<tr><td><b>JSC 自带的执行时限</b><br><code>JSContextGroupSetExecutionTimeLimit</code></td><td><span class="pill good">实测可用</span> 设 20 ms，<code>while(true){}</code> 在 29 ms 被掐断；之后同一个环境、之前编译好的函数都还能正常用</td><td>这是苹果<b>未公开</b>的接口（Safari 自己在用，符号一直在系统库里）。QDuo 走 Developer ID + 公证分发、不上 App Store，公证不查这个；风险是某天苹果改了它。用 <code>dlsym</code> 按名字找，找不到就关掉 JS 功能，不会崩</td></tr>
+<tr><td>另开一个线程看表，超时就放弃</td><td><span class="pill bad">不行</span></td><td>公开接口里没有「从外面打断 JSC」的办法。放弃等待可以，但那个线程会一直空转吃 CPU，而且整个 JS 虚拟机被它占着</td></tr>
+<tr><td>每次开一个子进程跑，超时就杀掉</td><td><span class="pill bad">太慢</span></td><td>在这台 Mac 上启动一个最小的子进程平均 <b>70 ms</b> <span class="pill good">实测</span>，已经超过整个弹出预算。常驻的后台辅助进程可以绕开，但工作量大一截</td></tr>
+<tr><td>不用 JS，用 <code>NSPredicate</code> 表达式</td><td><span class="pill warn">能用但难写</span></td><td>实测 0.0016 ms、不会死循环。但语法是苹果那套 <code>SELF MATCHES "…" AND length &lt; 200</code>，普通人不会写，报错也难懂</td></tr>
+<tr><td>CEL / JSON-logic 这类小表达式语言</td><td><span class="pill warn">没必要</span></td><td>本身安全，但 Swift 下没有成熟常用的 CEL 实现（未深查）；而 JSON-logic 其实就是「用 JSON 写 and / or / not」——下面第 5 节的设计本身已经是这个形状，不需要再引一个库</td></tr>
+</table></div>
+
+<h3>安全：别人分享的配置里带了 JS 怎么办</h3>
+<p>README 鼓励把 <code>config.json</code> 提交进公开仓库、拷到别的机器，所以要假设用户会用别人写的配置。好消息是：<b>只要我们不往 JS 里塞任何能力，判断脚本什么坏事都做不了</b>——JSC 本身没有文件、网络、定时器，它能做的只有「算出一个 true / false」。最坏情况是：</p>
+<ul>
+  <li>死循环 → 执行时限掐掉；</li>
+  <li>永远返回 true / false → 动作该出不出，烦人但无害；</li>
+  <li>写得很慢 → 同样被时限掐掉，并在设置里标出来。</li>
+</ul>
+<p>所以<b>不需要</b>弹窗问「是否允许脚本」。只要守住一条规矩：<b>判断阶段只给 JS 一个只读的 <code>sel</code> 对象</b>（文字、语言、来源 App……），永远不给剪贴板、网络、文件、执行动作的能力——和 PopClip 的做法一样。</p>
+
+<div class="callout">
+  <span class="label">建议：JS 先不做</span>
+  <p>你举的例子（日文才显示、英文才显示）都是一个内置判断就能写完的。JS 要额外付出：一个未公开接口、一套只读 <code>sel</code> 的约定、出错提示、文档。这些代价只有在出现「内置判断组合不出来」的真实需求时才值得。<code>when</code> 的格式是可以往上加叶子的，以后加 <code>js</code> 不影响已有配置。</p>
+  <p>另一个细节：那个时限接口的声明不在系统 SDK 的头文件里，只能自己写函数原型。如果直接链接、而某天苹果删了它，App 会在<b>启动时</b>就打不开；所以必须用 <code>dlsym</code> 在运行时按名字找，找不到就只关掉 JS 判断。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>5 · 建议的设计</h2>
+
+<h3>5.1 配置长什么样</h3>
+<p>每个动作多一个可选字段 <code>when</code>。没写 = 一直显示（和现在完全一样）。它是一棵小树：叶子是单个判断，<code>all</code> / <code>any</code> / <code>not</code> 把它们组合起来；直接写一个数组等于 <code>all</code>。</p>
+
+<pre><code><span class="c">// ① 只在选中日文时显示</span>
+{ <span class="s">"title"</span>: <span class="s">"日译中"</span>, <span class="s">"kind"</span>: <span class="s">"ai"</span>, <span class="s">"prompt"</span>: <span class="s">"…"</span>,
+  <span class="s">"when"</span>: { <span class="s">"lang"</span>: <span class="s">"ja"</span> } }
+
+<span class="c">// ② 只在选中英文时显示（多个语言写数组，满足任一即可）</span>
+<span class="s">"when"</span>: { <span class="s">"lang"</span>: [<span class="s">"en"</span>] }
+
+<span class="c">// ③ 整段就是一个网址（"is"），对比 "has"：里面含有网址</span>
+<span class="s">"when"</span>: { <span class="s">"is"</span>: <span class="s">"url"</span> }
+<span class="s">"when"</span>: { <span class="s">"has"</span>: <span class="s">"url"</span> }          <span class="c">// 可选值：url email phone date address path number</span>
+
+<span class="c">// ④ 正则（默认不区分大小写可选）</span>
+<span class="s">"when"</span>: { <span class="s">"regex"</span>: <span class="s">"^[A-Z]{2,}-\\d+$"</span> }       <span class="c">// 比如 JIRA 单号 QDUO-123</span>
+
+<span class="c">// ⑤ 组合：英文、不超过 300 字、不在终端里</span>
+<span class="s">"when"</span>: { <span class="s">"all"</span>: [
+  { <span class="s">"lang"</span>: <span class="s">"en"</span> },
+  { <span class="s">"length"</span>: { <span class="s">"max"</span>: <span class="n">300</span> } },
+  { <span class="s">"not"</span>: { <span class="s">"app"</span>: [<span class="s">"com.apple.Terminal"</span>, <span class="s">"com.mitchellh.ghostty"</span>] } }
+] }
+
+<span class="c">// ⑥ 任一满足：日文或韩文</span>
+<span class="s">"when"</span>: { <span class="s">"any"</span>: [ { <span class="s">"lang"</span>: <span class="s">"ja"</span> }, { <span class="s">"lang"</span>: <span class="s">"ko"</span> } ] }
+
+<span class="c">// ⑦ 选中处带着链接（复用弹出前已经算好的链接结果）/ 选中的是一个存在的路径</span>
+<span class="s">"when"</span>: { <span class="s">"link"</span>: <span class="k">true</span> }
+<span class="s">"when"</span>: { <span class="s">"is"</span>: <span class="s">"path"</span> }
+
+<span class="c">// ⑧ 以后按需：JavaScript 表达式，sel 只读（见第 4 节，建议先不做）</span>
+<span class="s">"when"</span>: { <span class="s">"js"</span>: <span class="s">"sel.lines &gt; 1 &amp;&amp; /^\\s*[-*] /m.test(sel.text)"</span> }</code></pre>
+<p>字段名选 <code>when</code>：VS Code 的菜单和快捷键就用这个名字表达「什么情况下生效」，写过插件的人一看就懂。<code>showIf</code> 太窄（以后若有「变灰」就名不副实），<code>requirements</code> 读起来像「安装依赖」。</p>
+
+<div class="tablewrap"><table>
+<tr><th>叶子</th><th>含义</th><th>实现</th></tr>
+<tr><td><code>lang</code></td><td>语言，BCP-47 代码：<code>en ja zh ko fr …</code>；<code>zh</code> 同时匹配简繁，<code>zh-Hans</code> / <code>zh-Hant</code> 分开匹配</td><td>第 3 节那套「假名优先 + 识别器 + 阈值」修正规则</td></tr>
+<tr><td><code>script</code></td><td>用到的文字：<code>han kana hiragana katakana hangul latin</code>，可加 <code>"only": true</code> 表示「只有这种字」</td><td>Unicode 范围</td></tr>
+<tr><td><code>is</code> / <code>has</code></td><td>整段是 / 含有：<code>url email phone date address path number</code></td><td><code>NSDataDetector</code>、<code>PathResolver</code>、正则</td></tr>
+<tr><td><code>regex</code></td><td>正则；可写成 <code>{"pattern": "...", "flags": "i"}</code></td><td><code>NSRegularExpression</code>，编译结果缓存</td></tr>
+<tr><td><code>length</code> / <code>lines</code></td><td><code>{"min": 1, "max": 300}</code></td><td>计数</td></tr>
+<tr><td><code>app</code></td><td>来源 App 的 bundle id 列表</td><td>已有</td></tr>
+<tr><td><code>all</code> / <code>any</code> / <code>not</code></td><td>组合</td><td>短路求值：<code>all</code> 碰到一个 false 就停</td></tr>
+<tr><td><code>link</code></td><td>选中处关联着一个链接（不一定写在文字里，比如选中了超链接的文字）</td><td>复用 <code>LinkResolver</code> 在弹出前已经算好的结果</td></tr>
+<tr><td><code>js</code></td><td>JS 表达式，返回真假</td><td>以后按需</td></tr>
+</table></div>
+
+<p><b>老版本兼容：</b>现在的代码已经会把不认识的字段原样保留（<code>PopBarActionConfig.extra</code>），所以写了 <code>when</code> 的配置被老版本打开时，字段不会丢，只是老版本会忽略它、照常一直显示。不需要改 <code>schemaVersion</code>。</p>
+
+<h3>5.2 一次选中之后发生什么</h3>
+
+<div class="figure">
+<svg viewBox="0 0 860 330" role="img" aria-label="评估流程图">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrow"/></marker>
+    <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrow-blue"/></marker>
+  </defs>
+  <rect x="10" y="40" width="130" height="64" rx="8" class="box"/>
+  <text x="75" y="66" text-anchor="middle">读到选中文字</text>
+  <text x="75" y="86" text-anchor="middle" class="mono">已有流程</text>
+
+  <rect x="180" y="20" width="200" height="104" rx="8" class="box-acc"/>
+  <text x="280" y="44" text-anchor="middle">「选中内容档案」</text>
+  <text x="280" y="64" text-anchor="middle" class="mono">用到才算、算过就记住</text>
+  <text x="280" y="84" text-anchor="middle" class="mono">语言 · 文字种类 · 网址…</text>
+  <text x="280" y="104" text-anchor="middle" class="mono">每次选中只算一遍</text>
+
+  <rect x="420" y="40" width="160" height="64" rx="8" class="box"/>
+  <text x="500" y="66" text-anchor="middle">逐个动作查 when</text>
+  <text x="500" y="86" text-anchor="middle" class="mono">后台线程 · 限时 30 ms</text>
+
+  <rect x="620" y="40" width="110" height="64" rx="8" class="box"/>
+  <text x="675" y="66" text-anchor="middle">整理分组</text>
+  <text x="675" y="86" text-anchor="middle" class="mono">空组隐藏</text>
+
+  <rect x="760" y="40" width="90" height="64" rx="8" class="box-good"/>
+  <text x="805" y="70" text-anchor="middle">弹出</text>
+  <text x="805" y="88" text-anchor="middle" class="mono">≤ 50 ms</text>
+
+  <path d="M140 72 H176" class="line" marker-end="url(#ar)"/>
+  <path d="M380 72 H416" class="line" marker-end="url(#ar)"/>
+  <path d="M580 72 H616" class="line" marker-end="url(#ar)"/>
+  <path d="M730 72 H756" class="line" marker-end="url(#ar)"/>
+
+  <!-- tap-time jev lane -->
+  <path d="M805 104 V232 H736" class="dash" marker-end="url(#arb)"/>
+  <text x="812" y="170" class="mono">用户点了</text>
+  <text x="812" y="186" class="mono">「智能」分组</text>
+  <rect x="520" y="200" width="212" height="64" rx="8" class="box-blue"/>
+  <text x="626" y="226" text-anchor="middle">问 Jev：该用哪个子动作</text>
+  <text x="626" y="246" text-anchor="middle" class="mono">70–500 ms · 点击之后才发生</text>
+  <path d="M520 232 H440" class="dash" marker-end="url(#arb)"/>
+  <rect x="300" y="200" width="136" height="64" rx="8" class="box"/>
+  <text x="368" y="226" text-anchor="middle">执行选中的动作</text>
+  <text x="368" y="246" text-anchor="middle" class="mono">失败则用第一个</text>
+
+  <text x="10" y="300" class="soft">超时或出错：这个判断记作「不知道」，整条条件里只要有「不知道」就照常显示；设置页该动作旁亮黄点，写明原因。</text>
+</svg>
+<div class="caption"><b>要点</b>：「选中内容档案」是懒的——没有任何动作用到地址识别，就一次都不跑 NSDataDetector；语言只识别一次，十个动作都问语言也只算一次。蓝色虚线是可选的 Jev 用法：它只在点击之后发生，所以弹出条不会因为等它而晚出现或跳动。</div>
+</div>
+
+<h3>5.3 几个规则</h3>
+<ul>
+  <li><b>不满足就隐藏，不是变灰。</b>弹出条的位置很金贵；变灰的按钮还占着位置，得告诉用户「为什么灰」，在轮盘上还要保证灰扇区点不动。第一期不做「变灰」选项，以后需要再加，不影响已有配置。</li>
+  <li><b>出错 / 超时 = 「不知道」，而「不知道」= 照常显示。</b>判断结果有三种：是、否、不知道。不能把「不知道」简单当成「否」：<code>{"not": {"regex": …}}</code> 里的正则一旦超时，「否」取反就成了「是」，行为会悄悄反过来。三态一路传上去，最后只要有「不知道」就显示——动作多一个没关系，动作莫名消失才让人以为坏了。同时设置页亮黄点 + 写日志（日志里不写选中的文字）。</li>
+  <li><b>超时要能真正甩手不管。</b>「是不是路径」要去磁盘上查，碰上掉线的网络盘可能卡好几秒而且中途停不下来。所以求值不能「等它做完」，而是到点就不等了，结果记为「不知道」，那个卡住的查询让它在后台自己结束。</li>
+  <li><b>双击变三击时要重新判断。</b>现在同一处选区从一个词扩成一整行时，QDuo 只更新文字、不重建按钮（<code>refreshTransientSelection</code>）。有了 <code>when</code> 以后，文字变了按钮就可能不同，这里要重新求值。</li>
+  <li><b>提前预热。</b>语言识别器第一次用要 3–9 ms、NSDataDetector 第一次创建要 7 ms（实测），合起来是弹出预算的五分之一。在读完配置、发现有动作用到它们时就在后台先建好。</li>
+  <li><b>分组：</b>分组自己可以有 <code>when</code>，不满足则整组不显示；分组满足但里面的子动作一个都不满足，整组也不显示（不留空环）。胶囊模式的「把分组摊平成一排」放在过滤之后做。</li>
+  <li><b>和已有功能的关系：</b>「预览」「在访达中显示」现在永远出现，选中的不是路径时点下去才报错「不是本地路径」（<code>ActionRegistry.swift</code> 的 <code>pathPresentation</code>）；「网页预览」在没有链接、又关了「改为搜索」时也一样。给它们默认带上 <code>{"is": "path"}</code> / <code>{"link": true}</code>，就能把这个现有的痛点一起解决。但改默认值会改变老用户看到的东西，放到开放问题里让你定。</li>
+  <li><b>正则防卡死：</b>和其他判断一样放在后台线程，30 ms 等不到就记为「不知道」；卡住的那个正则在本次运行期间直接停用并标黄，免得每次选中都再卡一次。输入先截到前 4000 字。</li>
+  <li><b>配置读取时就把 when 全部检查、编译一遍</b>（正则、JS 函数），写错的在设置页立刻标红，而不是等到选中时才发现。</li>
+</ul>
+
+<h3>5.4 编辑界面</h3>
+<div class="figure">
+<svg viewBox="0 0 860 250" role="img" aria-label="动作编辑器里的显示条件区域示意">
+  <rect x="20" y="10" width="820" height="228" rx="10" class="box"/>
+  <text x="44" y="42" style="font-weight:600">显示条件</text>
+  <rect x="140" y="26" width="200" height="26" rx="6" class="box-acc"/>
+  <text x="152" y="44">选中的是 · 日文      ▾</text>
+  <text x="360" y="44" class="soft">（常用预设一键选，覆盖九成场景）</text>
+
+  <text x="44" y="86" class="mono">预设：总是显示 / 日文 / 英文 / 中文 / 网址 / 含网址 / 邮箱 / 文件路径 / 多行 / 自定义…</text>
+
+  <rect x="44" y="104" width="772" height="80" rx="6" style="fill:var(--code-bg);stroke:var(--rule)"/>
+  <text x="58" y="126" class="mono">选「自定义…」后展开：直接编辑 when 的 JSON</text>
+  <text x="58" y="148" class="mono">{ "all": [ { "lang": "en" }, { "length": { "max": 300 } } ] }</text>
+  <text x="58" y="170" class="mono" style="fill:var(--good)">✓ 格式正确</text>
+
+  <rect x="44" y="198" width="360" height="28" rx="6" class="box"/>
+  <text x="58" y="217">试一试：粘贴一段文字 → 显示 / 不显示 · 用时</text>
+  <text x="420" y="217" class="soft">（这个测试框对排查「为什么没出现」最有用）</text>
+</svg>
+<div class="caption">不建议做拖拽式的「条件搭积木」界面：工作量大，而会写组合条件的人更愿意直接写 JSON。预设下拉 + JSON 文本框 + 测试框，是投入产出最好的组合。</div>
+</div>
+
+<h3>5.5 分期和工作量（估计，未实现）</h3>
+<div class="tablewrap"><table>
+<tr><th>期</th><th>内容</th><th>估计</th></tr>
+<tr><td><b>第一期</b></td><td><code>when</code> 解析与校验、「选中内容档案」、<code>lang script is has link regex length lines app all any not</code>、三态结果、后台限时求值、分组过滤、双击变三击时重新求值、预热、设置页预设下拉 + JSON 框 + 测试框 + 黄点、JSON Schema 和 <code>docs/config-file.html</code> 更新、单元测试（尤其是日 / 中 / 英短词样本）</td><td>3–4 天</td></tr>
+<tr><td><b>Jev（按需）</b></td><td>点击时的「智能挑选」分组：钥匙串存 key、点击后发请求、按选项给出 <code>choice</code> 题、超时或失败就执行第一个子动作、首次使用时说明「选中文字会发给 TypeSafe」</td><td>2–3 天，外加需要一个 Jev key 才能实测</td></tr>
+<tr><td><b>JS（按需）</b></td><td><code>js</code> 叶子：一个常驻 JS 环境、配置加载时编译、只读 <code>sel</code>、执行时限（未公开接口，用 <code>dlsym</code> 找，找不到就只关掉 JS 判断）</td><td>约 2 天</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2>6 · 需要你拍板的问题</h2>
+<ol>
+  <li><b>Jev 指的是 TypeSafe 的 Jev 模型吗？</b>A 是 / B 不是，是别的（请告诉我名字）。</li>
+  <li><b>不满足条件时：</b>A 隐藏（推荐）/ B 变灰。</li>
+  <li><b>「预览」「在访达中显示」「网页预览」要不要默认只在能用时出现？</b>A 要（新装和老用户都改）/ B 只改新装的默认 / C 不动。</li>
+  <li><b>JavaScript 判断：</b>A 现在就做，接受用苹果未公开的时限接口 / B 先不做，等内置判断不够用再说（推荐 B）。</li>
+  <li><b>Jev 怎么用：</b>A 点击后由它挑子动作（推荐，不影响弹出速度）/ B 坚持用它决定按钮显示不显示（弹出条会先少几个按钮、几百毫秒后再补上）/ C 暂不接。无论哪种，被判断的文字都会发到 TypeSafe 的服务器。</li>
+  <li><b>短汉字词（漢字、寿司）判不出是中文还是日文时，</b>A 当「不满足」/ B 按你的常用语言猜。</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>附录 · 数字从哪来</h2>
+<ul>
+  <li><span class="pill good">实测</span> 测量程序在本次会话的临时目录里（<code>lang.swift</code>、<code>detect.swift</code>、<code>misc.swift</code>），<code>swiftc -O</code> 编译，Apple M5 Pro、macOS 27.0。每项跑 100–20000 次取平均；「首次 / 冷启动」是单次，波动大（同一项两次运行分别是 9.3 ms 和 3.2 ms）。</li>
+  <li><span class="pill neutral">文档</span> Jev 的接口格式、70–500 ms、价格：TypeSafe 官方博客和 API 文档，<b>未实测</b>（没有 key）。</li>
+  <li><span class="pill neutral">文档</span> PopClip、SnipDo、Alfred 的配置格式：各自官方开发文档。Android 部分凭平台文档常识，未逐条核对。</li>
+  <li><span class="pill good">实测</span>（读源码）Easydict 的语言判断：直接读了它 GitHub 上的 <code>AppleLanguageDetector.swift</code>。</li>
+</ul>
+
+<h3>参考链接</h3>
+<ul>
+  <li><a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">TypeSafe · Introducing System One Models &amp; Jev</a></li>
+  <li><a href="https://docs.typesafe.ai/api">TypeSafe API 参考</a> · <a href="https://docs.typesafe.ai/primitives/noul">Noul 题型</a></li>
+  <li><a href="https://blog.fka.dev/blog/2026-09-19-implementing-computer-use-using-jev-on-macos/">用 Jev 在 macOS 上做 computer use（第三方博客）</a></li>
+  <li><a href="https://www.popclip.app/dev/actions">PopClip · Actions</a> · <a href="https://www.popclip.app/dev/js-modules">Module-based extensions（population function）</a> · <a href="https://www.popclip.app/dev/js-environment">JavaScript environment</a></li>
+  <li><a href="https://snipdo-app.com/advanced-extension-guide">SnipDo · Advanced Extension Guide</a></li>
+  <li><a href="https://www.alfredapp.com/help/workflows/triggers/universal-action/">Alfred · Universal Action trigger</a></li>
+  <li><a href="https://github.com/tisfeng/Easydict">Easydict 源码</a></li>
+</ul>
+
+<div class="footer">QDuo · 调研文档 · 未改动任何代码 · 2026-09-23</div>
+
+</div>
+</body>
+</html>
