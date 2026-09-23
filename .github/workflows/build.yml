@@ -179,10 +179,14 @@ jobs:
           # expand $(AppIdentifierPrefix). The signed keychain group must be team-prefixed
           # so it matches the profile's allowlist, so expand it to the team prefix here.
           SIGN_ENT="${RUNNER_TEMP:-/tmp}/signing.entitlements"
-          sed "s/\$(AppIdentifierPrefix)/${TEAM_ID}./g" "$ENTITLEMENTS" > "$SIGN_ENT"
+          # The group name itself is a build setting too ($(BRAND_KEYCHAIN_GROUP), so
+          # it follows a rename), and codesign leaves that literal just the same.
+          sed -e "s/\$(AppIdentifierPrefix)/${TEAM_ID}./g" \
+              -e "s/\$(BRAND_KEYCHAIN_GROUP)/${KEYCHAIN_GROUP}/g" "$ENTITLEMENTS" > "$SIGN_ENT"
           echo "Signing entitlements (expanded):"; cat "$SIGN_ENT"
-          if grep -q 'AppIdentifierPrefix' "$SIGN_ENT"; then
-            echo "::error::\$(AppIdentifierPrefix) was not expanded — is the APPLE_TEAM_ID secret set?"; exit 1
+          if grep -q '\$(' "$SIGN_ENT"; then
+            echo "::error::an entitlements macro was not expanded — codesign would sign it literally:"
+            grep '\$(' "$SIGN_ENT"; exit 1
           fi
           codesign --force --options runtime --timestamp \
             --entitlements "$SIGN_ENT" \
