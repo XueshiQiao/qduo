@@ -106,6 +106,8 @@ final class PopBarPanel {
     let model = PopBarPanelModel()
 
     private let panel: NSPanel
+    /// The capsule's dropdown for groups.
+    private let submenu = CapsuleSubmenu()
     /// Kept so `show` can switch its AppKit hit-test region per style (wheel → ring
     /// only; capsule → whole view).
     private let hosting: FirstMouseHostingView<PopBarContentView>
@@ -205,6 +207,23 @@ final class PopBarPanel {
         model.onMeasuredContentHeight = { [weak self] measured in
             self?.applyMeasuredContentHeight(measured)
         }
+
+        model.onGroupHover = { [weak self] group, rect in self?.openSubmenu(group, buttonRect: rect) }
+        model.onGroupHoverEnd = { [weak self] groupID in self?.submenu.scheduleClose(leaving: groupID) }
+        model.onPlainHover = { [weak self] in self?.submenu.close() }
+        submenu.onPick = { [weak self] action in self?.model.onAction?(action) }
+    }
+
+    /// Open a group's dropdown under its button. `buttonRect` is in the hosting
+    /// view's SwiftUI space, which is the hosting view's own space: an
+    /// `NSHostingView` is flipped (top-left origin) just like SwiftUI, so AppKit's
+    /// conversion does the flip — flipping it here as well would put the dropdown
+    /// on the wrong side.
+    private func openSubmenu(_ group: PopBarActionConfig, buttonRect rect: CGRect) {
+        guard case .actions = model.phase, !model.style.isWheel, rect != .zero else { return }
+        let inWindow = hosting.convert(rect, to: nil)
+        let onScreen = panel.convertToScreen(inWindow)
+        submenu.open(group, under: onScreen, barFrame: panel.frame, parent: panel)
     }
 
     deinit {
@@ -252,6 +271,7 @@ final class PopBarPanel {
         model.resultFontSize = PopBarPreferences.resultFontSize
         model.resultContentHeight = nil   // re-measure for this popup's content
         lastMeasuredContentHeight = 0     // drop the previous popup's measurement
+        submenu.close()
         model.phase = .actions
         model.streamingText = ""
         model.notice = nil
@@ -269,6 +289,7 @@ final class PopBarPanel {
     /// entering `.result`, seed the live `streamingText` with the phase's text so
     /// the result view (which reads `streamingText`) shows the initial value.
     func applyPhase(_ phase: PopBarPanelModel.Phase) {
+        submenu.close()
         if case .result(let text) = phase { model.streamingText = text }
         // Leaving the result phase releases the locked top so the next result
         // (or the actions capsule) re-anchors fresh (issue #12).
@@ -396,6 +417,7 @@ final class PopBarPanel {
     }
 
     func hide() {
+        submenu.close()
         panel.orderOut(nil)
         model.phase = .actions
         model.streamingText = ""

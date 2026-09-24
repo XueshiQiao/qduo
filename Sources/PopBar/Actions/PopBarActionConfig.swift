@@ -81,8 +81,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case shortcut       // run the macOS Shortcut named `shortcut` on the selection
         case script         // run the shell command `script` on the selection
         /// A GROUP: runs nothing itself, it only holds `children`. On the wheel it
-        /// unfolds a second ring; in the capsule (which has no second row) its
-        /// children are shown inline in its place, so nothing becomes unreachable.
+        /// unfolds a second ring; in the capsule it opens a dropdown.
         case group
     }
 
@@ -275,14 +274,6 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         where !Self.knownKeys.contains(name) {
             try c.encode(value, forKey: AnyCodingKey(name))
         }
-    }
-
-    /// The capsule presentation has a single row and no second level, so a group
-    /// is shown as its children, inline, in its own place. Flattening (rather than
-    /// hiding the group) is what guarantees an action a user filed into a group
-    /// is still reachable in capsule mode.
-    static func flattenedForCapsule(_ actions: [PopBarActionConfig]) -> [PopBarActionConfig] {
-        actions.flatMap { $0.hasChildren ? $0.children : [$0] }
     }
 }
 

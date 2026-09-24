@@ -62,6 +62,15 @@ final class PopBarPanelModel: ObservableObject {
 
     /// Wired by the controller.
     var onAction: ((PopBarActionConfig) -> Void)?
+    /// Capsule only: the pointer came to rest on a GROUP's button (or it was
+    /// clicked) — open its dropdown under `rect`, the button's frame in the
+    /// hosting view's top-left-origin coordinates. Wired by the panel.
+    var onGroupHover: ((PopBarActionConfig, CGRect) -> Void)?
+    /// Capsule only: the pointer left the button of the group with this id.
+    var onGroupHoverEnd: ((String) -> Void)?
+    /// Capsule only: the pointer is on an ordinary action — any open dropdown
+    /// closes at once, as a menu bar's does.
+    var onPlainHover: (() -> Void)?
     /// Fired when the pointer leaves the ring (wheel styles) and auto-hide is on.
     var onExitRing: (() -> Void)?
     var onCopyResult: ((String) -> Void)?
@@ -141,14 +150,13 @@ struct PopBarContentView: View {
     // MARK: - Actions row
 
     private var actionsBar: some View {
-        // The capsule is a single row with no second level, so a group is shown as
-        // its children, inline, in its place — nothing a user filed into one becomes
-        // unreachable here. (The wheel is the presentation that unfolds them.)
-        let row = PopBarActionConfig.flattenedForCapsule(model.actions)
+        // A group is one button; resting on it opens its dropdown (issue #3), the
+        // capsule's counterpart of the wheel's second ring.
+        let row = model.actions
         return HStack(spacing: 2) {
             ForEach(Array(row.enumerated()), id: \.element.id) { index, action in
                 if index > 0 { separator }
-                CapsuleActionButton(action: action) { model.onAction?(action) }
+                CapsuleActionButton(action: action, model: model)
             }
         }
         .padding(.horizontal, 6)
@@ -388,11 +396,18 @@ private extension Theme {
 /// hit-tests (`.contentShape(Rectangle())`), not just the glyph.
 private struct CapsuleActionButton: View {
     let action: PopBarActionConfig
-    let onTap: () -> Void
+    let model: PopBarPanelModel
     @State private var hovering = false
+    /// This button's frame in the hosting view, kept current so a group's
+    /// dropdown can be placed under it.
+    @State private var frame: CGRect = .zero
+
+    private var isGroup: Bool { action.hasChildren }
 
     var body: some View {
-        Button(action: onTap) {
+        Button {
+            if isGroup { model.onGroupHover?(action, frame) } else { model.onAction?(action) }
+        } label: {
             VStack(spacing: 3) {
                 // Fixed-height icon slot. SF Symbols have different glyph bounding
                 // boxes (magnifyingglass vs lightbulb vs "Aa"/textformat), so a
@@ -403,9 +418,17 @@ private struct CapsuleActionButton: View {
                 Image(systemName: action.iconSymbol)
                     .font(.system(size: 15, weight: .medium))
                     .frame(height: 18)
-                Text(action.title)
-                    .font(.system(size: 9, weight: .medium))
-                    .lineLimit(1)
+                HStack(spacing: 2) {
+                    Text(action.title)
+                        .font(.system(size: 9, weight: .medium))
+                        .lineLimit(1)
+                    // Marks a group: it opens a dropdown rather than running.
+                    if isGroup {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 6, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             .foregroundStyle(.primary)
             .frame(width: 52, height: 40)
@@ -416,8 +439,28 @@ private struct CapsuleActionButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .help(action.title)
+        .background(GeometryReader { geo in
+            Color.clear
+                .onAppear { frame = geo.frame(in: .global) }
+                .onChange(of: geo.frame(in: .global)) { newFrame in
+                    frame = newFrame
+                    // The pointer can already be resting on a group when the bar
+                    // appears, before its frame was known — open it now, since no
+                    // new hover event will come.
+                    if hovering, isGroup, newFrame != .zero { model.onGroupHover?(action, newFrame) }
+                }
+        })
+        .onHover { inside in
+            hovering = inside
+            if isGroup {
+                if inside { model.onGroupHover?(action, frame) } else { model.onGroupHoverEnd?(action.id) }
+            } else if inside {
+                model.onPlainHover?()
+            }
+        }
+        // A group's name is on the button already, and a tooltip would sit on
+        // top of its dropdown.
+        .help(isGroup ? "" : action.title)
     }
 }
 
