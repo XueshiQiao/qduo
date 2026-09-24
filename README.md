@@ -1,177 +1,138 @@
-# QDuo
+<h1 align="center">
+  <img src="./docs/assets/icon.png" alt="QDuo" width="96" /><br/>
+  QDuo
+</h1>
 
-Select text in any macOS app and a small popup appears at the cursor with actions
-you defined — copy, search, open a link, or send the selection to a model and get
-the answer back in place. Or press a hotkey, drag a box over anything on screen,
-and get the text out of it.
+<p align="center">
+  <b>Select text in any app, and your own actions appear right at the cursor — translate, polish, search, speak, transform, or ask a model, and put the result straight back.</b>
+</p>
 
-Extracted from [XTools](https://github.com/XueshiQiao/XTools), where it lived as
-one tool among many.
+<p align="center">
+  <b>🇺🇸 English</b> •
+  <a href="README_CN.md">🇨🇳 中文</a>
+</p>
 
-## What it does
+<p align="center">
+  <a href="https://github.com/XueshiQiao/qduo/actions/workflows/build.yml"><img src="https://github.com/XueshiQiao/qduo/actions/workflows/build.yml/badge.svg" alt="Build" /></a>
+  <a href="https://github.com/XueshiQiao/qduo/releases/latest"><img src="https://img.shields.io/github/v/release/XueshiQiao/qduo" alt="Release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL%20v3.0-blue" alt="License" /></a>
+  <img src="https://img.shields.io/badge/macOS-13%2B-black?logo=apple&logoColor=white" alt="macOS 13+" />
+  <a href="https://github.com/XueshiQiao/qduo/stargazers"><img src="https://img.shields.io/github/stars/XueshiQiao/qduo?style=social" alt="GitHub stars" /></a>
+</p>
 
-- **Selection popup** — a capsule above the selection, or a ring centred on the
-  cursor. Actions can be grouped, and a group opens a second ring.
-- **Actions you define** — each one is local (copy, open, search, reveal) or a
-  prompt sent to a model, with its own model override if you want one. Results
-  stream back as live Markdown.
-- **More than prompts** — open a URL with the selection filled in (search,
-  dictionary, maps, Obsidian…), read it aloud with a system voice, transform it
-  locally (case, sort, join PDF line breaks, Simplified ↔ Traditional, JSON,
-  strip link tracking, word count…), or hand it to a Shortcut or a shell script.
-  Settings → Actions → Add from Template has ready-made ones.
-- **Put the result back** — an action's result can replace the selection, go
-  after it, or go to the clipboard, and the result panel has a Replace button.
-  Only offered where the selection is in a field the app can reach through
-  Accessibility; anywhere else the result is copied instead of pasted blind.
-- **Screenshot text** — hotkey, drag a rectangle, OCR, same popup.
-- **Menu bar only** — no Dock icon. The status item is the whole interface when
-  the settings window is closed. There is no on/off switch: the popup runs
-  whenever the app does, and quitting is how you stop it.
-- **One settings file** — `~/.config/qduo/config.json`, with a generated JSON
-  Schema beside it. Edit it by hand if you like; it is read at launch, so a hand
-  edit takes effect on the next start. API keys are not in it — those stay in the
-  Keychain, which is what makes the file safe to commit. Keys the app does not
-  recognise are preserved rather than dropped, and a version of the file that
-  differs from what the app last read is copied aside before being overwritten.
-  See `docs/config-file.html` for the whole design.
+<p align="center">
+  ⭐ <b>If QDuo saves you a few trips to the clipboard, please <a href="https://github.com/XueshiQiao/qduo">star the repo</a></b> — it helps others find it.
+  <br/>
+  ✨ <a href="https://xueshi.dev">More apps I made → xueshi.dev</a>
+</p>
+
+Select some text — in a browser, a chat, an editor, a PDF — and a small popup appears
+at the cursor with the actions **you** set up. Tap one and it happens right there: no
+copying, no switching apps, no pasting back.
+
+<img src="screenshots/popup-capsule-en.jpg" width="760" alt="QDuo's popup over selected text" />
+
+## ✨ Features
+
+### 🫧 A popup where you already are
+
+- **Two shapes** — a capsule bar above the selection, or a ring centred on the cursor
+  (classic or Liquid Glass). On the ring, a **group** unfolds into a second ring.
+- Works in native apps, browsers and Electron apps; falls back to a clipboard read
+  where an app hides its text, and puts your clipboard back afterwards.
+- **Screenshot text** — press a hotkey, drag a box over anything on screen, and the
+  recognised text comes up in the same popup.
+
+### 🤖 AI actions you write
+
+- Every AI action is a prompt of your own: translate, polish, explain, summarize, fix
+  grammar, change tone, break down a sentence, explain code…
+- Answers **stream in** as formatted text.
+- **DeepSeek, OpenAI, Doubao, Qwen and Ollama** built in, or any OpenAI-compatible
+  endpoint via the base URL. Pick a model **per action** if you like. API keys live in
+  the macOS Keychain.
+
+### 🧰 Actions beyond AI
+
+| Kind | What it does |
+|---|---|
+| **Open URL** | Fill `{text}` into any address — Google, Baidu, Wikipedia, GitHub, the system dictionary (`dict://`), Maps, Obsidian, "ask ChatGPT / Claude"… |
+| **Speak** | Read the selection aloud in a system voice that matches its language |
+| **Transform** | 22 local text operations: change case, camelCase / snake_case, sort / dedupe lines, join PDF line breaks, Simplified ↔ Traditional Chinese, pinyin, spacing between CJK and Latin, format / minify JSON, URL encode / decode, strip link tracking, word count |
+| **Shortcut** | Hand the selection to one of your Shortcuts |
+| **Shell script** | Pipe it through a command; asks before a script runs for the first time |
+
+**Settings → Actions → Add from Template** has all of these ready-made.
+
+### ↩️ Put the result back
+
+A result can **replace the selection**, go **after** it, or go to the **clipboard** —
+per action, or with the Replace button on the result panel. QDuo only writes where it
+can confirm the selection is still where you left it; anywhere else it copies the
+result and tells you why.
+
+### 🛠️ More
+
+- **Menu bar only** — no Dock icon.
+- **One readable settings file** — `~/.config/qduo/config.json`, with a JSON Schema
+  beside it, safe to keep in your dotfiles (keys stay in the Keychain).
+- **152 icons** to choose from, and tags in the action list that flag what matters:
+  AI, a missing key, a script, and where the result goes.
+- **English / 简体中文** interface.
+- **Auto-update** via [Sparkle](https://sparkle-project.org).
+- **Privacy first** — optional anonymous usage stats that never include selected text,
+  paths or personal data. Text goes to a model only when you tap an AI action.
+
+## Usage
+
+1. Launch QDuo — it lives in your menu bar.
+2. Grant **Accessibility** when asked (see below).
+3. Select text anywhere; the popup appears at the cursor. Tap an action.
+4. For AI actions, add an API key in **Settings → AI Models**.
+5. Add, reorder and group actions in **Settings → Actions**, or start from a template.
 
 ## Install
+
+### Homebrew
 
 ```bash
 brew install --cask XueshiQiao/tap/qduo
 ```
 
+<details>
+<summary>Prefer the two-step form?</summary>
+
+```bash
+brew tap XueshiQiao/tap
+brew trust XueshiQiao/tap   # Homebrew 6.0+; earlier versions can skip this line
+brew install --cask qduo
+```
+
+Since Homebrew 6.0 a cask from a third-party tap will not load unless the tap is
+trusted — or the cask is named in full on the command line, which is exactly what
+the one-liner above does.
+</details>
+
 Or download `QDuo.dmg` from [GitHub Releases](https://github.com/XueshiQiao/qduo/releases)
-and drag QDuo into Applications. The app is signed with a Developer ID certificate
-and notarized by Apple, so it opens without a security warning, and it updates
-itself from then on.
+and drag QDuo into your Applications folder.
 
-## Requirements
+The app is signed with an Apple Developer ID certificate and notarized by Apple, so it
+installs without any security warnings.
 
-- macOS 13 or later
-- **Accessibility** permission — how the selection is read
-- **Screen Recording** permission — only for screenshot text
+### Permissions
 
-Not sandboxed: reading the selection out of another app and watching the mouse
-globally are both forbidden inside the sandbox.
+- **Accessibility** (required) — to read the selected text and notice when you select
+  something: `System Settings → Privacy & Security → Accessibility`.
+- **Screen Recording** (optional) — only for screenshot text:
+  `System Settings → Privacy & Security → Screen & System Audio Recording`.
 
-## Build and run
+QDuo is not sandboxed: reading another app's selection and watching the mouse
+globally are both impossible inside the App Sandbox.
 
-```bash
-brew install xcodegen
-xcodegen generate
-scripts/run.sh                 # kill old → build → relaunch (Debug), via `open`
-scripts/run.sh --page actions  # …and pre-select a settings page
-scripts/run.sh --preview       # …and pop the sample popup, to look at the shape
-scripts/run.sh --quiet         # …without opening the settings window
-```
+## Build from Source
 
-Or open the generated `QDuo.xcodeproj` and press Cmd-R.
-
-- The Debug build is a separate app (`QDuo-Debug`, id `…qduo.debug`) so it can be
-  installed alongside a release build. It shares the Keychain and the config file
-  with Release, and keeps its own log.
-- Logs: `~/Library/Logs/QDuo-Debug/QDuo-Debug.log` — `tail -F` it.
-- Tests: `xcodebuild test -project QDuo.xcodeproj -scheme QDuo -destination 'platform=macOS'`.
-  The test target is deliberately **not** hosted in the app — the app installs
-  global input monitors at launch, and a test host would wake all of that on every
-  run. Files under test compile straight into the bundle, so **a new file under
-  test has to be added to the target's `sources` in `project.yml`**.
-
-## Renaming the app
-
-The name lives in exactly one place: the brand block at the top of `project.yml`.
-No Swift file contains it, no directory is named after it, and no localized string
-spells it out — everything reads it back from the built bundle through
-`Sources/Core/Brand.swift`, and strings take it as `%@`.
-
-To rename: edit those five values, rename the GitHub repo, redraw the icon, and
-fix this README.
-
-## The icon
-
-What ships is painted, and lives at `design/icon/painted-master-1024.png` — one
-square image, edge to edge, no corners. To rebuild every file the app needs
-from it:
-
-```bash
-scripts/cut-icon.py design/icon/painted-master-1024.png
-```
-
-That writes the seven catalogue sizes, the copy the sidebar and About page draw
-themselves, and `design/icon/icon-1024-rounded.png` for looking at. The master
-is never scaled to fit: the tile is an 824-point body inside a 1024 canvas, so
-clipping throws away 100 points on each side and the artwork keeps its size.
-That is what full bleed is for.
-
-The tile's outline is the system's own continuous-curvature corner, taken from
-`RoundedRectangle(cornerRadius: 185.4, style: .continuous)` over the body
-Apple's template centres in a 1024 canvas — not a rounded rectangle and not a
-superellipse, neither of which can draw that curve. Against a real system icon's
-alpha it tracks to 1.3px; the best superellipse of any exponent managed 4.0.
-
-`scripts/make-icon.py` draws the same design in vector and is kept as the
-fallback and as the written record of it: every proportion, both colours and the
-reason behind each sit in the constants at the top of that file. Run it and it
-overwrites the catalogue with the vector version; run `cut-icon.py` again to go
-back. It also writes `design/icon/icon-1024-square.png`, the vector master, in
-the same full-bleed form.
-
-The menu bar icon is the same ring and arc with no tile, as a template SVG the
-system tints for light and dark bars. `scripts/make-menubar-icon.py` writes it to
-`Assets.xcassets/MenuBarIcon.imageset/`, reading every proportion from the
-constants in `make-icon.py` — change the mark there, then re-run both.
-
-One known limit of the painted master, accepted deliberately: at 16px the arc
-beside the ring blurs into it. The vector version keeps the two apart at that
-size. 16px only shows up in Finder's list view.
-
-## Layout
-
-```
-project.yml            ← the name, and only here
-design/icon/           the two 1024 masters
-Sources/
-├─ App/                main · AppDelegate · MenuBarController · UpdateController
-├─ Core/               Brand · FileLog · Preferences · Analytics · LocalizationOverride · LLM/
-├─ UI/                 AppChrome · SettingsPage · AppState · MainWindowController · Pages/
-└─ PopBar/             the popup itself — trigger, selection, window, actions, OCR
-Resources/             en + zh-Hans strings
-Supporting/            Info.plist · App.entitlements
-scripts/               run.sh · bump-version.sh
-```
-
-`PopBar` is the internal name of the popup machinery and is unrelated to what the
-app is called — renaming the product does not touch it.
-
-## Release
-
-Pushing a `v*` tag runs sign → notarize → DMG → Sparkle-sign → appcast → GitHub
-Release. Cut one with `scripts/bump-version.sh`, then push the tag. Steps degrade
-gracefully when secrets are absent, so a tag build without them still produces an
-unsigned DMG.
-
-Repository secrets for a signed release:
-
-| Secret | State | What it is |
-|---|---|---|
-| `SPARKLE_EDDSA_KEY` | **set** | This app's own EdDSA private key (keychain account `qduo`). The public half is in `Supporting/Info.plist`. |
-| `MAC_CERTS_P12_BASE64` + `MAC_CERTS_P12_PASSWORD` | missing | Developer ID Application certificate, `.p12` base64-encoded. |
-| `APPLE_ID`, `APPLE_TEAM_ID`, `APP_SPECIFIC_PASSWORD` | missing | For `notarytool`. Team is `584KQTRF3B`. |
-| `MAC_PROVISION_PROFILE_BASE64` | missing | A **Developer ID** provisioning profile for `me.xueshi.qduo`, created in the developer portal. It authorizes the `keychain-access-groups` entitlement; without it a notarized build is SIGKILLed at launch while every static check still passes. A development profile will not do — the profile has to contain the Developer ID certificate that signs the build. |
-| `HOMEBREW_TAP_PAT` | missing | Optional: auto-updates the Homebrew cask. |
-
-**While the repository is private, auto-update cannot work**: Sparkle downloads
-the release asset anonymously, and a private repo refuses that. Make the repo
-public before relying on updates.
-
-## Releasing
-
-`scripts/bump-version.sh` bumps the version, commits and tags; pushing the tag
-builds, signs, notarizes and publishes. The whole routine — release notes, the
-checks, and what to verify afterwards — is `.claude/skills/release/SKILL.md`.
+See [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 
-[GPL-3.0](LICENSE)
+GPL v3.0 — see [LICENSE](LICENSE).
