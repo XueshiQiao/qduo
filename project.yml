@@ -107,6 +107,7 @@ targets:
     sources:
       - Tests
       - path: Sources/PopBar/Window/WheelSubmenu.swift
+      - path: Sources/PopBar/Selection/SelectionText.swift
       - path: Sources/Core/Config/JSONValue.swift
       - path: Sources/PopBar/Actions/PopBarActionConfig.swift
       - path: Sources/PopBar/Actions/TextTransform.swift

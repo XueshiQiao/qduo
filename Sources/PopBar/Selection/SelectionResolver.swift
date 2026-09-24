@@ -9,8 +9,9 @@ import AppKit
 /// is a one-line change with no duplicated policy.
 ///
 /// Rules (the consensus all three reference projects converged on):
-///  - first strategy returning a non-empty string wins;
-///  - an empty result is treated as failure → try the next;
+///  - first strategy returning a non-blank string wins;
+///  - an empty or blank result (only whitespace, line breaks or invisible
+///    characters — see `isBlankSelection`) is treated as failure → try the next;
 ///  - a thrown `.permissionDenied` is fatal → abort the whole chain.
 final class SelectionResolver {
 
@@ -26,7 +27,7 @@ final class SelectionResolver {
     func resolve(_ context: SelectionContext) async -> SelectionResult? {
         for strategy in strategies where strategy.canHandle(context) {
             do {
-                if let result = try await strategy.selectedText(context), !result.text.isEmpty {
+                if let result = try await strategy.selectedText(context), !result.text.isBlankSelection {
                     Self.log.info("resolved \(result.text.count) char(s) via \(strategy.id.rawValue)")
                     return result
                 }

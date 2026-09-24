@@ -32,7 +32,7 @@ final class AccessibilityStrategy: SelectionStrategy {
         }
 
         // 1) Plain selected-text attribute.
-        if let text = copyString(focused, kAXSelectedTextAttribute), !text.isEmpty {
+        if let text = copyString(focused, kAXSelectedTextAttribute), !text.isBlankSelection {
             var result = SelectionResult(text: text, via: id, bounds: selectionBounds(focused))
             if context.resolvesLinks { result.focusedElement = focused }
             result.sourceElement = focused
@@ -40,7 +40,7 @@ final class AccessibilityStrategy: SelectionStrategy {
         }
 
         // 2) WebKit text-marker range (browsers / WebViews).
-        if let text = textViaMarkerRange(focused), !text.isEmpty {
+        if let text = textViaMarkerRange(focused), !text.isBlankSelection {
             var result = SelectionResult(text: text, via: id, bounds: selectionBounds(focused))
             if context.resolvesLinks { result.focusedElement = focused }
             result.sourceElement = focused
