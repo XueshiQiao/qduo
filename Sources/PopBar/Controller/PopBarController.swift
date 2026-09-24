@@ -68,10 +68,14 @@ final class PopBarController {
     /// this app is; a switch to turn it off would only be a slower way to quit,
     /// and it would mean the app could sit in the menu bar doing nothing while
     /// looking exactly like the app doing something.
-    func startIfPermitted() {
+    ///
+    /// `prompt: false` skips the system's Accessibility dialog: on a first launch
+    /// the onboarding guide explains the permission first and asks from its own
+    /// button, and the system shows that dialog only once per app.
+    func startIfPermitted(prompt: Bool = true) {
         guard AccessibilityAuthorizer.isTrusted else {
-            Self.log.info("not trusted for Accessibility yet — asking, and starting once granted")
-            AccessibilityAuthorizer.prompt()
+            Self.log.info("not trusted for Accessibility yet — \(prompt ? "asking" : "not asking yet"), starting once granted")
+            if prompt { AccessibilityAuthorizer.prompt() }
             return
         }
         start()
@@ -135,7 +139,8 @@ final class PopBarController {
         // menu-bar-owning app so the Electron AX-enable + self-skip still work.
         let front = NSWorkspace.shared.frontmostApplication
             ?? NSWorkspace.shared.menuBarOwningApplication
-        // Never read our own UI.
+        // Never read our own UI. (The one exception, the onboarding guide's sample
+        // text, does not come through here — see `showForOnboardingSample`.)
         if front?.bundleIdentifier == Bundle.main.bundleIdentifier { return }
 
         let loc = monitor.lastMouseUpLocation
@@ -216,6 +221,25 @@ final class PopBarController {
         // shouldn't dismiss — that would hide then immediately reshow (flicker).
         if case let .mouseDown(nsEvent) = event, nsEvent.clickCount >= 2 { return }
         windows.dismissTransient()
+    }
+
+    // MARK: - Onboarding sample
+
+    /// Show the popup for text selected in the onboarding guide's "Try it" sample.
+    ///
+    /// This is the single exception to "never read our own UI", and it is narrow
+    /// by construction: the global monitor never sees clicks in our own windows,
+    /// so nothing here is triggered by a gesture. Only the sample text view calls
+    /// this, handing over the text it knows is selected — no selection strategy
+    /// runs and no other window of ours can reach it.
+    func showForOnboardingSample(text: String, anchor: CGPoint) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        resolveTask?.cancel()
+        resolveGeneration &+= 1
+        lastAnchor = anchor
+        windows.showTransient(text: trimmed, url: nil, anchor: anchor, actions: actionStore.actions)
+        Self.log.debug("onboarding sample popup — \(trimmed.count) chars")
     }
 
     // MARK: - Preview (verification affordance)

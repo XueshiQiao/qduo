@@ -56,6 +56,13 @@ final class LLMService: ObservableObject {
         try await LLMClient(config: config).complete(system: system, user: user)
     }
 
+    /// One very small request, to prove a provider + key + model work together
+    /// (the onboarding guide's Test button). Throws the provider's error as is.
+    func testConnection(_ config: LLMConfig) async throws {
+        _ = try await LLMClient(config: config, timeout: 20)
+            .complete(system: "Reply with the single word OK.", user: "ping")
+    }
+
     /// Streaming completion: deltas (displayed text so far) arrive via `onDelta`;
     /// the final stripped + trimmed text is returned. Honors `Task` cancellation.
     @discardableResult

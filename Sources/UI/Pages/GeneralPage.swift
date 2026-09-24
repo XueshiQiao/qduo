@@ -16,6 +16,7 @@ import ServiceManagement
 struct GeneralPage: View {
 
     @ObservedObject private var store: PopBarStore
+    private let openOnboarding: () -> Void
 
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var languageCode: String? = Preferences.languageOverride
@@ -28,8 +29,9 @@ struct GeneralPage: View {
     private static let systemTag = "__system__"
     private static let log = FileLog("GeneralPage")
 
-    init(store: PopBarStore) {
+    init(store: PopBarStore, openOnboarding: @escaping () -> Void = {}) {
         _store = ObservedObject(wrappedValue: store)
+        self.openOnboarding = openOnboarding
     }
 
     var body: some View {
@@ -93,6 +95,13 @@ struct GeneralPage: View {
 
     private var appSection: some View {
         Section {
+            // The onboarding guide opens by itself once, on a new install. This is
+            // the way back to it — always here, finished or not.
+            LabeledContent {
+                Button(L("onboarding.settings.open")) { openOnboarding() }
+            } label: {
+                iconLabel("hand.wave.fill", .orange, L("onboarding.settings.title"))
+            }
             Toggle(isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) })) {
                 iconLabel("power", .green, L("Launch at Login"))
             }

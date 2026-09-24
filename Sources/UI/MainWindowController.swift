@@ -99,7 +99,7 @@ struct MainView: View {
     @ViewBuilder
     private var detail: some View {
         switch appState.selection {
-        case .general:    GeneralPage(store: appState.store)
+        case .general:    GeneralPage(store: appState.store, openOnboarding: appState.showOnboarding)
         case .actions:    ActionsPage(actions: appState.actions, llm: appState.llm)
         case .appearance: AppearancePage(store: appState.store)
         case .ocr:        OCRPage(store: appState.store)

@@ -8,7 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appState: AppState?
     private var menuBarController: MenuBarController?
 
-    /// Set the first time the app is launched, so the settings window opens once —
+    /// Set the first time the app is launched, so the onboarding guide opens once —
     /// on a fresh install there is nothing in the menu bar yet that tells you the
     /// app needs the Accessibility permission before it can do anything.
     private static let hasLaunchedKey = "hasLaunchedBefore"
@@ -29,23 +29,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         Self.log.info("launch — \(Brand.name) v\(Brand.version) (\(Brand.build)), id \(Brand.bundleID)")
 
+        // Read BEFORE `AppState` exists: building it seeds the default actions
+        // into a config file that has none, and after that every install looks
+        // like an existing one.
+        let defaults = UserDefaults.standard
+        let neverLaunched = !defaults.bool(forKey: Self.hasLaunchedKey)
+        let configHasActions = ConfigStore.shared.value("actions") != nil
+        if neverLaunched { defaults.set(true, forKey: Self.hasLaunchedKey) }
+
+        // The onboarding guide opens on a genuinely new install only — never
+        // launched here, and no actions in a config file brought from elsewhere —
+        // or when it relaunched the app itself. See `OnboardingRules.openAtLaunch`.
+        let progressStore = OnboardingProgressStore()
+        var progress = progressStore.load()
+        let onboarding = OnboardingRules.openAtLaunch(
+            isFirstRun: neverLaunched && !configHasActions,
+            relaunchRequested: CommandLine.arguments.contains(OnboardingProgressStore.relaunchArgument),
+            progress: progress)
+        if onboarding == nil, progress.windowOpen {
+            progress.windowOpen = false
+            progressStore.save(progress)
+        }
+
         let state = AppState(updateController: updateController)
         appState = state
         // Start the popup BEFORE any window exists: its whole job is to work while
-        // you are in some other app.
-        state.activate()
+        // you are in some other app. On a first launch the system's Accessibility
+        // dialog waits: the guide explains the permission, then asks for it.
+        state.activate(promptForAccessibility: onboarding != .firstLaunch)
 
         menuBarController = MenuBarController(appState: state, updateController: updateController)
 
-        let defaults = UserDefaults.standard
-        let firstRun = !defaults.bool(forKey: Self.hasLaunchedKey)
-        if firstRun { defaults.set(true, forKey: Self.hasLaunchedKey) }
-
         // `--settings` forces the window open; scripts/run.sh passes it so a rebuild
         // during development comes back with the window where you left it.
-        if firstRun || CommandLine.arguments.contains("--settings") {
+        // A first launch that is not new to the app (a config file brought from
+        // another Mac) gets what every first launch got before the guide existed.
+        let showSettings = CommandLine.arguments.contains("--settings")
+            || (neverLaunched && onboarding == nil)
+        if showSettings {
             DispatchQueue.main.async { [weak self] in self?.menuBarController?.showMainWindow() }
         }
+        if let onboarding {
+            DispatchQueue.main.async { [weak self] in self?.menuBarController?.showOnboarding(reason: onboarding) }
+        }
+    }
+
+    /// Set before AppKit starts tearing windows down on quit, so a window's close
+    /// handler can tell "the user closed me" from "the app is quitting" — macOS's
+    /// own "Quit & Reopen" after a Screen Recording grant must not count as the
+    /// user closing the onboarding guide.
+    static private(set) var isTerminating = false
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        Self.isTerminating = true
+        return .terminateNow
     }
 
     func applicationWillTerminate(_ notification: Notification) {

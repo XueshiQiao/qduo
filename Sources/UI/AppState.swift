@@ -40,6 +40,10 @@ final class AppState: ObservableObject {
 
     private var languageObserver: NSObjectProtocol?
 
+    /// Opens the onboarding guide. Set by `MenuBarController`, which owns the
+    /// windows; Settings → General calls it.
+    var showOnboarding: () -> Void = {}
+
     init(updateController: UpdateController) {
         self.updateController = updateController
         let llm = LLMService()
@@ -69,8 +73,10 @@ final class AppState: ObservableObject {
     // MARK: - Lifecycle
 
     /// Start the app-lifetime background work. Called from `applicationDidFinishLaunching`.
-    func activate() {
-        controller.startIfPermitted()
+    /// `promptForAccessibility: false` on a first launch, where the onboarding
+    /// guide asks for the permission itself (see `startIfPermitted`).
+    func activate(promptForAccessibility: Bool = true) {
+        controller.startIfPermitted(prompt: promptForAccessibility)
         // The screenshot-OCR hotkey has its own lifecycle: it is registered even
         // when the selection popup is switched off, because they are separate
         // features that happen to live in one app.

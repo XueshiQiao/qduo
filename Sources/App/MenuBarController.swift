@@ -19,16 +19,18 @@ final class MenuBarController: NSObject {
     private let appState: AppState
     private let updateController: UpdateController
     private lazy var mainWindowController = MainWindowController(appState: appState)
+    private lazy var onboardingWindowController = OnboardingWindowController(appState: appState)
 
     private var storeObserver: AnyCancellable?
 
-    private enum Tag: Int { case ocr = 200, update = 600 }
+    private enum Tag: Int { case finishSetup = 100, ocr = 200, update = 600 }
 
     init(appState: AppState, updateController: UpdateController) {
         self.appState = appState
         self.updateController = updateController
         super.init()
         setupStatusItem()
+        appState.showOnboarding = { [weak self] in self?.showOnboarding(reason: .manual) }
     }
 
     // MARK: - Setup
@@ -70,6 +72,16 @@ final class MenuBarController: NSObject {
         menu.addItem(titleItem)
 
         menu.addItem(.separator())
+
+        // Only while the app cannot work (Accessibility missing): back into the
+        // onboarding guide. Hidden otherwise — see `menuWillOpen`.
+        let finishItem = NSMenuItem(title: L("menu.finishSetup"),
+                                    action: #selector(openOnboarding(_:)), keyEquivalent: "")
+        finishItem.target = self
+        finishItem.tag = Tag.finishSetup.rawValue
+        if #available(macOS 14.4, *) { finishItem.subtitle = L("menu.finishSetup.subtitle") }
+        finishItem.isHidden = appState.store.isTrusted
+        menu.addItem(finishItem)
 
         let ocrItem = NSMenuItem(title: L("menu.captureText"),
                                  action: #selector(captureText(_:)), keyEquivalent: "")
@@ -118,7 +130,16 @@ final class MenuBarController: NSObject {
         mainWindowController.show()
     }
 
+    /// Open the onboarding guide (first launch, relaunch, Settings, the menu).
+    func showOnboarding(reason: OnboardingOpenReason) {
+        onboardingWindowController.show(reason: reason)
+    }
+
     // MARK: - Actions
+
+    @objc private func openOnboarding(_ sender: NSMenuItem) {
+        showOnboarding(reason: .manual)
+    }
 
     @objc private func captureText(_ sender: NSMenuItem) {
         appState.controller.triggerScreenOCR()
@@ -160,5 +181,6 @@ extension MenuBarController: NSMenuDelegate {
             item.isEnabled = updateController.canCheckForUpdates
         }
         appState.store.refreshTrust()
+        menu.item(withTag: Tag.finishSetup.rawValue)?.isHidden = appState.store.isTrusted
     }
 }

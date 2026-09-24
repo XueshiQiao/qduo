@@ -110,6 +110,7 @@ targets:
       - path: Sources/Core/Config/JSONValue.swift
       - path: Sources/PopBar/Actions/PopBarActionConfig.swift
       - path: Sources/PopBar/Actions/TextTransform.swift
+      - path: Sources/UI/Onboarding/OnboardingProgress.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests
