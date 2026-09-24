@@ -30,14 +30,15 @@ Select some text — in a browser, a chat, an editor, a PDF — and a small popu
 at the cursor with the actions **you** set up. Tap one and it happens right there: no
 copying, no switching apps, no pasting back.
 
-<img src="screenshots/popup-capsule-en.jpg" width="760" alt="QDuo's popup over selected text" />
+<img src="screenshots/popup-ring-en.jpg" width="800" alt="QDuo's ring popup over selected text, with the Files & Web group opened into a second ring" />
 
 ## ✨ Features
 
 ### 🫧 A popup where you already are
 
 - **Two shapes** — a capsule bar above the selection, or a ring centred on the cursor
-  (classic or Liquid Glass). On the ring, a **group** unfolds into a second ring.
+  (classic or Liquid Glass). A **group** unfolds into a second ring on the ring,
+  and opens a dropdown on the bar.
 - Works in native apps, browsers and Electron apps; falls back to a clipboard read
   where an app hides its text, and puts your clipboard back afterwards.
 - **Screenshot text** — press a hotkey, drag a box over anything on screen, and the

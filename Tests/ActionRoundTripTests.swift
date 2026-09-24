@@ -118,6 +118,17 @@ final class ActionRoundTripTests: XCTestCase {
         }
     }
 
+    func testTheDefaultsFoldTheURLAndFileActionsIntoOneGroup() throws {
+        let seed = DefaultActions.seed()
+        XCTAssertEqual(seed.map(\.kind), [.ai, .ai, .ai, .group, .openURL, .speak, .copy])
+        let group = try XCTUnwrap(seed.first { $0.kind == .group })
+        XCTAssertEqual(group.children.map(\.kind), [.webPreview, .quickLook, .revealInFinder])
+        // And the group survives the trip through the config file.
+        let data = try JSONEncoder().encode(seed)
+        let back = try JSONDecoder().decode([PopBarActionConfig].self, from: data)
+        XCTAssertEqual(back.first { $0.kind == .group }?.children.count, 3)
+    }
+
     func testAnEmptyListRoundTripsAsEmpty() throws {
         // Emptying the list is a decision a person can make; it must not come back
         // as something else.

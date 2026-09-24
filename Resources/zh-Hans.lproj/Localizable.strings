@@ -178,6 +178,7 @@
 /* Actions: open URL, speak, transform, shortcut, script, replace */
 "popbar.action.search" = "搜索";
 "popbar.action.speak" = "朗读";
+"popbar.action.filesAndWeb" = "文件与网页";
 "popbar.actions.addTemplate" = "从模板添加";
 "popbar.editor.kind.openURL" = "打开网址";
 "popbar.editor.kind.speak" = "朗读";

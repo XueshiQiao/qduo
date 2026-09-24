@@ -307,14 +307,20 @@ enum DefaultActions {
                                kind: .ai, prompt: polishPrompt),
             PopBarActionConfig(title: L("popbar.action.explain"), iconSymbol: "lightbulb",
                                kind: .ai, prompt: explainPrompt),
-            webPreviewAction(),
-            quickLookAction(),
-            revealInFinderAction(),
+            filesAndWebGroup(),
             searchAction(),
             speakAction(),
             PopBarActionConfig(title: L("popbar.action.copy"), iconSymbol: "doc.on.doc",
                                kind: .copy),
         ]
+    }
+
+    /// The seed's "Files & Web" group: the three actions that only make sense on
+    /// a URL or a file path, folded together so they take one slot, not three.
+    static func filesAndWebGroup() -> PopBarActionConfig {
+        var group = PopBarActionConfig(title: L("popbar.action.filesAndWeb"), iconSymbol: "folder", kind: .group)
+        group.children = [webPreviewAction(), quickLookAction(), revealInFinderAction()]
+        return group
     }
 
     /// The seed / migration "Web Preview" action.

@@ -179,6 +179,7 @@
 /* Actions: open URL, speak, transform, shortcut, script, replace */
 "popbar.action.search" = "Search";
 "popbar.action.speak" = "Speak";
+"popbar.action.filesAndWeb" = "Files & Web";
 "popbar.actions.addTemplate" = "Add from Template";
 "popbar.editor.kind.openURL" = "Open URL";
 "popbar.editor.kind.speak" = "Speak";

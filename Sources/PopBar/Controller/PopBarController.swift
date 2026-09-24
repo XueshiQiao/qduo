@@ -156,7 +156,9 @@ final class PopBarController {
         // Only resolve the associated link when a web-preview action is actually on
         // the wheel — otherwise the strategies attach no material and `LinkResolver`
         // never runs, so the feature costs nothing when it isn't in use.
-        let resolvesLinks = actionStore.actions.contains { $0.kind == .webPreview }
+        let resolvesLinks = actionStore.actions.contains {
+            $0.kind == .webPreview || $0.children.contains { $0.kind == .webPreview }
+        }
         // AX's global origin is the top-left of the PRIMARY display — the one at Cocoa
         // origin (0,0). `NSScreen.screens.first` is NOT guaranteed to be that screen,
         // so pick the origin-zero one explicitly; its height is the correct flip
