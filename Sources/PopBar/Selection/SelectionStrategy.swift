@@ -62,6 +62,58 @@ struct SelectionResult {
     var focusedElement: AXUIElement? = nil
     var htmlData: Data? = nil
     var rtfData: Data? = nil
+    /// The element the text was read out of, whenever a strategy read it through
+    /// Accessibility — unlike `focusedElement`, attached regardless of links. It is
+    /// what `SelectionSource` checks before anything is written back in place of
+    /// the selection.
+    var sourceElement: AXUIElement? = nil
+}
+
+/// Where a selection came from, kept with the popup so a result can later be put
+/// back IN PLACE of it (the Replace button, `output: replace`).
+///
+/// Writing into another app's document is only safe with positive evidence that
+/// the place is still the one the user selected, so this is opt-in: it records
+/// the element and its selected range at trigger time, and `canReplace` is true
+/// only when both were readable. Text captured by ⌘C from an app that hides its
+/// Accessibility tree gets NO Replace — pasting there lands wherever that app
+/// puts focus (a chat's compose box, or a terminal prompt that would run every
+/// line of the result).
+struct SelectionSource {
+
+    enum Origin {
+        /// Selected text in some app.
+        case selection
+        /// Text recognised from a screen region. There is nothing to replace.
+        case ocr
+    }
+
+    let origin: Origin
+    let pid: pid_t?
+    let element: AXUIElement?
+    /// The selected range at trigger time, in the element's own units.
+    let range: CFRange?
+
+    static let ocr = SelectionSource(origin: .ocr, pid: nil, element: nil, range: nil)
+
+    var canReplace: Bool {
+        origin == .selection && pid != nil && element != nil && (range?.length ?? 0) > 0
+    }
+
+    /// Read the selected range of `element`. Off the main thread is fine.
+    static func capture(element: AXUIElement?, pid: pid_t?) -> SelectionSource {
+        SelectionSource(origin: .selection, pid: pid, element: element,
+                        range: element.flatMap(selectedRange(of:)))
+    }
+
+    static func selectedRange(of element: AXUIElement) -> CFRange? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(value as! AXValue, .cfRange, &range) else { return nil }
+        return range
+    }
 }
 
 /// Why a strategy failed. Only `permissionDenied` is *fatal* — it aborts the

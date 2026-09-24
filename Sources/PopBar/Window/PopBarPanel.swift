@@ -254,6 +254,7 @@ final class PopBarPanel {
         lastMeasuredContentHeight = 0     // drop the previous popup's measurement
         model.phase = .actions
         model.streamingText = ""
+        model.notice = nil
         resultTopY = nil   // a fresh popup re-anchors; the result top re-locks on its first result fit
         setPinned(false)   // a fresh popup always starts unpinned
         updateWheelChrome()   // ring hit-test + no window shadow, both scoped to the wheel

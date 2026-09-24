@@ -33,6 +33,12 @@ enum KeySender {
         postKeyCombo(virtualKey: CGKeyCode(kVK_ANSI_C), flags: .maskCommand)
     }
 
+    /// Post ⌘V — used to put a result in place of the selection when the app
+    /// does not take it through Accessibility. Tagged like `copy()`.
+    static func paste() {
+        postKeyCombo(virtualKey: CGKeyCode(kVK_ANSI_V), flags: .maskCommand)
+    }
+
     private static func postKeyCombo(virtualKey: CGKeyCode, flags: CGEventFlags) {
         // .combinedSessionState so the synthesized event merges with the user's
         // real modifier state cleanly.

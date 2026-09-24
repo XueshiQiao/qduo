@@ -22,6 +22,9 @@ enum Pasteboard {
         /// *previous* content whose original source is unknown, set it to the EMPTY
         /// string so a changeCount-scanning manager doesn't misattribute it to us.
         static let source = NSPasteboard.PasteboardType("org.nspasteboard.source")
+        /// "This will be gone in a moment." Applied to text we place only so a
+        /// synthesized ⌘V can paste it, so managers keep it out of the history.
+        static let transient = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
     }
 
     /// Snapshot all current pasteboard items (all representations).

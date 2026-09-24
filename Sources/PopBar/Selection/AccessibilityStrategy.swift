@@ -35,6 +35,7 @@ final class AccessibilityStrategy: SelectionStrategy {
         if let text = copyString(focused, kAXSelectedTextAttribute), !text.isEmpty {
             var result = SelectionResult(text: text, via: id, bounds: selectionBounds(focused))
             if context.resolvesLinks { result.focusedElement = focused }
+            result.sourceElement = focused
             return result
         }
 
@@ -42,6 +43,7 @@ final class AccessibilityStrategy: SelectionStrategy {
         if let text = textViaMarkerRange(focused), !text.isEmpty {
             var result = SelectionResult(text: text, via: id, bounds: selectionBounds(focused))
             if context.resolvesLinks { result.focusedElement = focused }
+            result.sourceElement = focused
             return result
         }
 

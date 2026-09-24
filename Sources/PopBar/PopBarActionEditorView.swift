@@ -40,6 +40,11 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.webpreview")).tag(PopBarActionConfig.Kind.webPreview)
                         Text(L("popbar.editor.kind.quicklook")).tag(PopBarActionConfig.Kind.quickLook)
                         Text(L("popbar.editor.kind.reveal")).tag(PopBarActionConfig.Kind.revealInFinder)
+                        Text(L("popbar.editor.kind.openURL")).tag(PopBarActionConfig.Kind.openURL)
+                        Text(L("popbar.editor.kind.speak")).tag(PopBarActionConfig.Kind.speak)
+                        Text(L("popbar.editor.kind.transform")).tag(PopBarActionConfig.Kind.transform)
+                        Text(L("popbar.editor.kind.shortcut")).tag(PopBarActionConfig.Kind.shortcut)
+                        Text(L("popbar.editor.kind.script")).tag(PopBarActionConfig.Kind.script)
                     }
                     if draft.isPathAction {
                         Text(L("popbar.editor.kind.pathHint"))
@@ -48,6 +53,8 @@ struct ActionEditorView: View {
                     }
                     }
                 }
+
+                kindSpecificSections
 
                 Section(L("popbar.editor.icon")) { iconGrid }
 
@@ -67,7 +74,7 @@ struct ActionEditorView: View {
                 Button(L("popbar.editor.cancel")) { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(L("popbar.editor.save")) { onSave(draft) }
+                Button(L("popbar.editor.save")) { onSave(saved) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!isValid)
             }
@@ -76,18 +83,127 @@ struct ActionEditorView: View {
         .frame(width: 470, height: 600)
     }
 
+    /// The draft as it will be stored: a transform whose operation was never
+    /// touched gets the one its picker was showing.
+    private var saved: PopBarActionConfig {
+        var action = draft
+        if action.kind == .transform, action.op == nil { action.op = TextTransform.uppercase.rawValue }
+        return action
+    }
+
     private var isValid: Bool {
         let titleOK = !draft.title.trimmingCharacters(in: .whitespaces).isEmpty
-        // Only the AI kind needs a prompt; local kinds (copy / web preview) don't.
-        let promptOK = draft.kind != .ai || !draft.prompt.trimmingCharacters(in: .whitespaces).isEmpty
-        return titleOK && promptOK
+        func filled(_ s: String?) -> Bool { !(s ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        switch draft.kind {
+        case .ai:        return titleOK && filled(draft.prompt)
+        case .openURL:   return titleOK && filled(draft.url)
+        // A new transform shows UPPERCASE in its picker before anything is
+        // chosen; saving takes that (see `save`), so nil is valid here.
+        case .transform: return titleOK && (draft.op == nil || draft.op.flatMap(TextTransform.init(rawValue:)) != nil)
+        case .shortcut:  return titleOK && filled(draft.shortcut)
+        case .script:    return titleOK && filled(draft.script)
+        default:         return titleOK
+        }
+    }
+
+    // MARK: - Kind-specific fields
+
+    @ViewBuilder
+    private var kindSpecificSections: some View {
+        switch draft.kind {
+        case .openURL:
+            Section {
+                TextField(L("popbar.editor.url"), text: optionalText(\.url),
+                          prompt: Text(verbatim: "https://www.google.com/search?q={text}"))
+                    .font(.system(size: 12, design: .monospaced))
+                Picker(L("popbar.editor.openIn"), selection: Binding(
+                    get: { draft.openTarget },
+                    set: { draft.openIn = $0 == .browser ? nil : $0.rawValue })) {
+                    Text(L("popbar.editor.openIn.browser")).tag(OpenURLTarget.browser)
+                    Text(L("popbar.editor.openIn.preview")).tag(OpenURLTarget.preview)
+                }
+            } footer: {
+                Text(L("popbar.editor.url.hint")).fixedSize(horizontal: false, vertical: true)
+            }
+        case .speak:
+            Section {
+                Text(L("popbar.editor.speak.hint"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .transform:
+            Section {
+                Picker(L("popbar.editor.op"), selection: Binding(
+                    get: { draft.op.flatMap(TextTransform.init(rawValue:)) ?? .uppercase },
+                    set: { draft.op = $0.rawValue })) {
+                    ForEach(TextTransform.allCases, id: \.self) { op in
+                        Text(L("transform.\(op.rawValue)")).tag(op)
+                    }
+                }
+                .onAppear { if draft.op == nil { draft.op = TextTransform.uppercase.rawValue } }
+                outputPicker
+            }
+        case .shortcut:
+            Section {
+                TextField(L("popbar.editor.shortcut"), text: optionalText(\.shortcut))
+                outputPicker
+            } footer: {
+                Text(L("popbar.editor.shortcut.hint")).fixedSize(horizontal: false, vertical: true)
+            }
+        case .script:
+            Section {
+                TextEditor(text: optionalText(\.script))
+                    .font(.system(size: 12, design: .monospaced))
+                    .frame(minHeight: 70)
+                outputPicker
+            } header: {
+                Text(L("popbar.editor.script"))
+            } footer: {
+                Text(L("popbar.editor.script.hint")).fixedSize(horizontal: false, vertical: true)
+            }
+        case .ai:
+            Section { outputPicker }
+        default:
+            EmptyView()
+        }
+    }
+
+    /// Where the produced text goes. Hidden for `count`, which is always a report.
+    @ViewBuilder
+    private var outputPicker: some View {
+        if !(draft.kind == .transform && draft.op == TextTransform.count.rawValue) {
+            Picker(L("popbar.editor.output"), selection: Binding(
+                get: { draft.outputMode },
+                set: { draft.output = $0 == .panel ? nil : $0.rawValue })) {
+                ForEach(ActionOutput.allCases, id: \.self) { mode in
+                    Text(L("popbar.editor.output.\(mode.rawValue)")).tag(mode)
+                }
+            }
+        }
+    }
+
+    private func optionalText(_ keyPath: WritableKeyPath<PopBarActionConfig, String?>) -> Binding<String> {
+        Binding(get: { draft[keyPath: keyPath] ?? "" }, set: { draft[keyPath: keyPath] = $0 })
     }
 
     // MARK: - Icon grid
 
     private var iconGrid: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Self.iconGroups, id: \.title) { group in
+                    Text(L(group.title)).font(.caption).foregroundStyle(.secondary)
+                    iconRow(group.symbols)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .frame(height: 220)
+    }
+
+    private func iconRow(_ symbols: [String]) -> some View {
         LazyVGrid(columns: iconColumns, spacing: 6) {
-            ForEach(Self.icons, id: \.self) { symbol in
+            ForEach(symbols, id: \.self) { symbol in
                 Button { draft.iconSymbol = symbol } label: {
                     Image(systemName: symbol)
                         .font(.system(size: 15))
@@ -106,7 +222,6 @@ struct ActionEditorView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, 2)
     }
 
     // MARK: - Model override
@@ -157,19 +272,48 @@ struct ActionEditorView: View {
         }
     }
 
-    // Curated SF Symbols (all available on macOS 13).
-    private static let icons: [String] = [
-        "character.bubble", "globe", "globe.asia.australia", "globe.americas",
-        "safari", "safari.fill", "link", "network",
-        "wand.and.stars", "sparkles", "lightbulb", "questionmark.circle",
-        "doc.on.doc", "text.bubble", "quote.bubble", "bubble.left.and.bubble.right",
-        "textformat", "textformat.abc", "textformat.size", "character.book.closed",
-        "book.closed", "pencil", "highlighter", "magnifyingglass",
-        "exclamationmark.bubble", "checkmark.circle", "arrow.2.squarepath", "arrow.uturn.backward",
-        "scissors", "list.bullet", "brain", "bolt.fill",
-        "star.fill", "flag.fill", "tag.fill", "envelope",
-        "paperplane.fill", "speaker.wave.2.fill", "mic.fill", "keyboard",
-        "function", "number", "percent", "a.magnify",
-        "eye", "folder", "doc.text.magnifyingglass", "photo",
+    /// Curated SF Symbols, grouped by what the actions they suit do. Every name
+    /// was checked against the system's own availability table: none needs more
+    /// than macOS 13.0 (`translate`, the obvious one for translating, needs 14.4
+    /// and is left out). The original 48 are all still here, so an icon an action
+    /// already uses never disappears from the picker.
+    private static let iconGroups: [(title: String, symbols: [String])] = [
+        ("icons.ai", ["sparkles", "sparkle", "wand.and.stars", "wand.and.rays", "brain", "brain.head.profile",
+                      "lightbulb", "lightbulb.fill", "bolt.fill", "text.badge.checkmark", "checkmark.seal",
+                      "pencil", "square.and.pencil", "highlighter", "eraser"]),
+        ("icons.chat", ["text.bubble", "quote.bubble", "bubble.left.and.bubble.right", "exclamationmark.bubble",
+                        "questionmark.bubble", "questionmark.circle"]),
+        ("icons.translate", ["character.bubble", "globe", "globe.asia.australia", "globe.americas",
+                             "globe.europe.africa", "character", "character.zh", "character.ja", "a.magnify", "abc",
+                             "character.book.closed", "book.closed", "book", "graduationcap"]),
+        ("icons.text", ["textformat", "textformat.abc", "textformat.size", "textformat.size.larger",
+                        "textformat.size.smaller", "textformat.alt", "bold", "italic", "underline",
+                        "strikethrough", "text.quote", "text.alignleft", "text.append", "text.word.spacing",
+                        "list.bullet", "list.number", "increase.indent", "arrow.up.arrow.down",
+                        "arrow.left.arrow.right", "shuffle"]),
+        ("icons.clipboard", ["doc.on.doc", "doc.on.clipboard", "clipboard", "list.clipboard",
+                             "arrow.right.doc.on.clipboard", "scissors", "trash", "arrow.2.squarepath",
+                             "arrow.uturn.backward", "delete.left"]),
+        ("icons.web", ["magnifyingglass", "binoculars", "safari", "safari.fill", "link", "link.badge.plus",
+                       "network", "arrow.up.right.square", "arrow.up.forward.app", "play.rectangle", "cart",
+                       "map", "mappin.and.ellipse"]),
+        ("icons.calc", ["function", "x.squareroot", "sum", "plus.forwardslash.minus", "percent", "equal.circle",
+                        "number", "dollarsign.circle", "yensign.circle", "eurosign.circle", "banknote", "ruler",
+                        "scalemass", "thermometer.medium", "clock"]),
+        ("icons.calendar", ["calendar", "calendar.badge.plus", "calendar.badge.clock", "alarm", "checklist",
+                            "checkmark.circle"]),
+        ("icons.notes", ["note.text", "note.text.badge.plus", "doc.text", "doc.badge.plus", "doc.append",
+                         "bookmark", "bookmark.fill", "star", "star.fill", "flag.fill", "tag", "tag.fill",
+                         "paperclip", "archivebox", "tray.and.arrow.down"]),
+        ("icons.share", ["square.and.arrow.up", "envelope", "paperplane.fill", "message", "phone", "at",
+                         "person.crop.circle.badge.plus", "printer"]),
+        ("icons.media", ["speaker.wave.2.fill", "waveform", "mic.fill", "music.note", "photo", "camera",
+                         "text.viewfinder", "viewfinder", "qrcode"]),
+        ("icons.dev", ["terminal", "chevron.left.forwardslash.chevron.right", "curlybraces", "curlybraces.square",
+                       "command", "keyboard", "hammer", "wrench.and.screwdriver", "gearshape",
+                       "puzzlepiece.extension", "key", "lock"]),
+        ("icons.files", ["eye", "folder", "folder.badge.plus", "doc.text.magnifyingglass", "macwindow",
+                         "square.on.square"]),
+        ("icons.markers", ["info.circle", "exclamationmark.triangle", "hand.thumbsup"]),
     ]
 }

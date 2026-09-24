@@ -38,6 +38,37 @@ enum ActionRegistry {
         case .revealInFinder:
             return pathPresentation(text: text, forceFinder: true)
 
+        case .openURL:
+            return openURLPresentation(action, text: text)
+
+        case .speak:
+            return .speak(text)
+
+        case .transform:
+            return transformPresentation(action, text: text)
+
+        case .shortcut:
+            let name = (action.shortcut ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return .result("⚠️ \(L("popbar.error.noshortcut"))") }
+            return processPresentation(await ProcessRunner.runShortcut(name, input: text))
+
+        case .script:
+            let script = action.script ?? ""
+            guard !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return .result("⚠️ \(L("popbar.error.noscript"))")
+            }
+            let allowed = await MainActor.run { () -> Bool in
+                if ScriptApproval.isApproved(script) { return true }
+                guard ScriptApproval.ask(title: action.title, script: script) else { return false }
+                ScriptApproval.approve(script)
+                return true
+            }
+            guard allowed else {
+                log.info("script '\(action.title)' not approved — not run")
+                return .none
+            }
+            return processPresentation(await ProcessRunner.runScript(script, input: text))
+
         case .group:
             // A group is not runnable. The wheel never sends one here (tapping a
             // group just keeps its ring open) and the capsule shows its children
@@ -54,7 +85,7 @@ enum ActionRegistry {
             }
             do {
                 let output = try await service.complete(config, system: action.prompt, user: text)
-                return .result(output.isEmpty ? L("popbar.error.empty") : output)
+                return output.isEmpty ? .result(L("popbar.error.empty")) : .output(output)
             } catch {
                 log.error("LLM '\(action.title)' failed: \(error.localizedDescription)")
                 return .result("⚠️ \(L("popbar.error.prefix"))\n\n\(error.localizedDescription)")
@@ -72,6 +103,53 @@ enum ActionRegistry {
         }
         log.debug("web preview: no link in selection and fallback search off → message")
         return .result("⚠️ \(L("popbar.error.nolink"))")
+    }
+
+    private static func openURLPresentation(_ action: PopBarActionConfig, text: String) -> PopBarPresentation {
+        guard let template = action.url, let url = URLTemplate.fill(template, with: text) else {
+            log.debug("openURL '\(action.title)': no usable address")
+            return .result("⚠️ \(L("popbar.error.badurl"))")
+        }
+        // The mini-browser can only show web pages; any other scheme belongs to
+        // the app that owns it, whatever the action asked for.
+        if action.openTarget == .preview, URLTemplate.isWeb(url) { return .webPreview(url) }
+        return .openExternal(url)
+    }
+
+    private static func transformPresentation(_ action: PopBarActionConfig, text: String) -> PopBarPresentation {
+        guard let op = action.op.flatMap(TextTransform.init(rawValue:)) else {
+            return .result("⚠️ \(L("popbar.error.unknownop"))")
+        }
+        if op == .count {
+            return .result(TextTransform.countReport(text, labels: (
+                L("transform.count.characters"), L("transform.count.charactersNoSpaces"),
+                L("transform.count.words"), L("transform.count.lines"))))
+        }
+        switch op.apply(text) {
+        case .success(let out):
+            return .output(out)
+        case .failure(.invalidJSON):
+            return .result("⚠️ \(L("popbar.error.invalidjson"))")
+        case .failure(.notDecodable):
+            return .result("⚠️ \(L("popbar.error.notdecodable"))")
+        }
+    }
+
+    private static func processPresentation(_ result: Result<String, ProcessRunner.Failure>) -> PopBarPresentation {
+        switch result {
+        case .success(let out):
+            // A Shortcut or script that only does something (saves a note) prints
+            // nothing: that is success, and there is nothing to show.
+            return out.isEmpty ? .none : .output(out)
+        case .failure(.timedOut):
+            return .result("⚠️ \(L("popbar.error.timeout"))")
+        case .failure(.exited(let status, let stderr)):
+            let detail = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            return .result("⚠️ \(String(format: L("popbar.error.exited"), Int(status)))"
+                           + (detail.isEmpty ? "" : "\n\n```\n\(detail.prefix(2000))\n```"))
+        case .failure(.couldNotStart(let reason)):
+            return .result("⚠️ \(L("popbar.error.prefix"))\n\n\(reason)")
+        }
     }
 
     /// Both path actions resolve the selection the same way and differ only in what
@@ -131,7 +209,7 @@ enum ActionRegistry {
                 if !displayed.isEmpty { emitted.didEmit = true }
                 onDelta(displayed)
             }
-            return .result(output.isEmpty ? L("popbar.error.empty") : output)
+            return output.isEmpty ? .result(L("popbar.error.empty")) : .output(output)
         } catch is CancellationError {
             return .none   // re-triggered / panel closed — drop silently
         } catch {
@@ -149,7 +227,7 @@ enum ActionRegistry {
             log.error("LLM stream '\(action.title)' failed to start: \(error.localizedDescription) — falling back to one-shot")
             do {
                 let output = try await service.complete(config, system: action.prompt, user: text)
-                return .result(output.isEmpty ? L("popbar.error.empty") : output)
+                return output.isEmpty ? .result(L("popbar.error.empty")) : .output(output)
             } catch is CancellationError {
                 return .none
             } catch let fallbackError {

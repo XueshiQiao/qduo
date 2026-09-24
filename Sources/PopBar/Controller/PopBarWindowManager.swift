@@ -68,16 +68,17 @@ final class PopBarWindowManager {
     /// Refresh the transient window's captured selection in place (double→triple-
     /// click growing the same selection). No hide/reposition → no flicker, so the
     /// window's anchor is left untouched (it stays where it was placed).
-    func refreshTransientSelection(text: String, url: URL?) {
+    func refreshTransientSelection(text: String, url: URL?, source: SelectionSource?) {
         guard transient.isShowingActions else { return }
-        transient.refreshSelection(text: text, url: url)
+        transient.refreshSelection(text: text, url: url, source: source)
     }
 
     /// Show (or recycle) the transient window for a new selection. Works regardless
     /// of how many pinned windows exist.
-    func showTransient(text: String, url: URL?, anchor: CGPoint, actions: [PopBarActionConfig]) {
+    func showTransient(text: String, url: URL?, source: SelectionSource? = nil, anchor: CGPoint,
+                       actions: [PopBarActionConfig]) {
         let placed = offsetAwayFromPinned(anchor)
-        transient.show(text: text, url: url, anchor: placed, actions: actions)
+        transient.show(text: text, url: url, source: source, anchor: placed, actions: actions)
     }
 
     /// Dismiss the transient window (outside click / auto-dismiss). Pinned windows
@@ -137,6 +138,7 @@ final class PopBarWindowManager {
             session?.copyResult(text)
             self?.dismissTransient()
         }
+        session.panel.model.onReplaceResult = { [weak session] text in session?.replaceResult(text) }
         session.panel.model.onClose = { [weak self] in self?.dismissTransient() }
         session.panel.model.onTogglePin = { [weak self] in self?.pinTransient() }
         // A `.none` outcome (e.g. the Copy action) closes the transient.
@@ -173,6 +175,7 @@ final class PopBarWindowManager {
         session.panel.model.onCopyResult = { [weak session] text in
             session?.copyResult(text)
         }
+        session.panel.model.onReplaceResult = { [weak session] text in session?.replaceResult(text) }
         session.panel.model.onClose = { [weak self, weak session] in
             guard let session else { return }
             self?.closePinned(session)

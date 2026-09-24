@@ -30,6 +30,9 @@ final class PopBarSession {
     /// `LinkResolver` (nil if none / no web-preview action on the wheel). Consumed by
     /// the web-preview action when tapped.
     private(set) var url: URL?
+    /// Where this window's selection came from — what a result is put back into
+    /// by Replace. nil for the settings preview's sample text.
+    private(set) var source: SelectionSource?
 
     /// Bumped on every show/recycle of THIS window so a slow AI action can't apply
     /// its result onto a capsule that has since been replaced or dismissed.
@@ -60,18 +63,23 @@ final class PopBarSession {
     /// Update the captured selection text in place WITHOUT a hide/reposition —
     /// used for an in-place refresh (double→triple-click growing the same
     /// selection). The window doesn't move, so its placement is untouched.
-    func refreshSelection(text: String, url: URL?) {
+    func refreshSelection(text: String, url: URL?, source: SelectionSource?) {
         self.text = text
         self.url = url
+        self.source = source
+        panel.model.canReplace = source?.canReplace ?? false
     }
 
     /// Show (or recycle) this window's capsule in its `.actions` phase, anchored at
     /// `anchor`, acting on `text`. Bumps the panel generation and cancels any prior
     /// in-flight action in THIS window so its stale tokens can't bleed into the new
     /// popup.
-    func show(text: String, url: URL?, anchor: CGPoint, actions: [PopBarActionConfig]) {
+    func show(text: String, url: URL?, source: SelectionSource?, anchor: CGPoint,
+              actions: [PopBarActionConfig]) {
         self.text = text
         self.url = url
+        self.source = source
+        panel.model.canReplace = source?.canReplace ?? false
         panelGeneration &+= 1
         actionTask?.cancel()
         actionTask = nil
@@ -127,15 +135,22 @@ final class PopBarSession {
         func isCurrent(_ session: PopBarSession) -> Bool {
             generation == session.panelGeneration && action0 == session.actionGeneration
         }
+        panel.model.resultIsFinalOutput = false
+        panel.model.notice = nil
 
         guard action.isAI else {
             // Local actions (copy / web preview) have no loading/result chrome — run
             // and present. Web preview opens the mini-browser window (via `present`).
+            // One that produces text for the panel and may take a moment (a
+            // Shortcut, a script) shows the panel straight away, with its spinner.
+            if action.hasOutput, action.outputMode == .panel, action.kind != .transform {
+                panel.applyPhase(.result(""))
+            }
             actionTask = Task { [weak self] in
                 let outcome = await ActionRegistry.run(action, on: text, url: url, service: nil, config: nil)
                 await MainActor.run {
                     guard let self, isCurrent(self) else { return }
-                    self.present(outcome)
+                    self.present(outcome, for: action)
                 }
             }
             return
@@ -164,7 +179,7 @@ final class PopBarSession {
                 // FIRST: any delta still queued now fails `isCurrent` and is dropped,
                 // then apply the canonical final outcome.
                 self.actionGeneration &+= 1
-                self.present(outcome)
+                self.present(outcome, for: action)
             }
         }
     }
@@ -193,12 +208,22 @@ final class PopBarSession {
 
     /// Route a presentation to its surface — the single place output types map to UI.
     /// Adding a new `PopBarPresentation` case means adding one branch here.
-    private func present(_ presentation: PopBarPresentation) {
+    private func present(_ presentation: PopBarPresentation, for action: PopBarActionConfig) {
         switch presentation {
         case .none:
             onDismissOutcome?()
         case .result(let output):
+            panel.model.resultIsFinalOutput = false
             panel.applyPhase(.result(output))
+        case .output(let output):
+            deliver(output, as: action.outputMode)
+        case .openExternal(let url):
+            // Dismiss first, as for Finder: the other app comes forward.
+            if !isPinned { onDismissOutcome?() }
+            NSWorkspace.shared.open(url)
+        case .speak(let text):
+            Speaker.shared.toggle(text)
+            if !isPinned { onDismissOutcome?() }
         case .webPreview(let url):
             // Open the mini-browser, then dismiss this popup (the user's attention
             // moves to the preview window, same one-shot feel as Copy) — but NEVER a
@@ -256,6 +281,49 @@ final class PopBarSession {
             DispatchQueue.main.async {
                 NSWorkspace.shared.activateFileViewerSelecting([url])
             }
+        }
+    }
+
+    /// Send produced text where the action's `output` says.
+    private func deliver(_ output: String, as mode: ActionOutput) {
+        switch mode {
+        case .panel:
+            panel.model.resultIsFinalOutput = true
+            panel.applyPhase(.result(output))
+        case .copy:
+            copyResult(output)
+            if isPinned { panel.applyPhase(.result(output)) } else { onDismissOutcome?() }
+        case .replace, .append:
+            guard let source, source.canReplace else {
+                // Nowhere to put it: show it, copied, and say why.
+                copyResult(output)
+                panel.applyPhase(.result(output))
+                panel.model.notice = L("popbar.replace.unavailable")
+                return
+            }
+            write(output, mode: mode == .append ? .append : .replace, source: source)
+        }
+    }
+
+    /// The Replace button on a result.
+    func replaceResult(_ output: String) {
+        guard let source, source.canReplace else { return }
+        write(output, mode: .replace, source: source)
+    }
+
+    private func write(_ output: String, mode: ReplaceWriter.Mode, source: SelectionSource) {
+        switch ReplaceWriter.write(output, mode: mode, original: text, source: source) {
+        case .replaced, .pasted:
+            // Done: a transient popup steps aside. A pinned one keeps showing the
+            // result — and must be told it is final, or a streamed answer would
+            // stay in its streaming state.
+            if isPinned { panel.applyPhase(.result(output)) } else { onDismissOutcome?() }
+        case .contextLost:
+            // The place is gone for good (the source is fixed at trigger time),
+            // so the button would only fail again.
+            panel.model.resultIsFinalOutput = false
+            panel.applyPhase(.result(output))
+            panel.model.notice = L("popbar.replace.lost")
         }
     }
 

@@ -182,6 +182,10 @@ final class PopBarController {
                                       focusedElement: result.focusedElement, html: result.htmlData, rtf: result.rtfData)
                 url = LinkResolver.resolve(probe).url
             }
+            // Where the text came from, for putting a result back in its place.
+            // Read here, off the main thread, like the link: it is one or two AX
+            // calls against the app that owns the selection.
+            let source = SelectionSource.capture(element: result?.sourceElement, pid: context.pid)
             if Task.isCancelled { return }
             await MainActor.run {
                 guard generation == self.resolveGeneration, self.running else { return }
@@ -194,10 +198,11 @@ final class PopBarController {
                     // its placed anchor stays put. `lastAnchor` still tracks the raw
                     // selection location for the NEXT re-trigger's proximity check.
                     self.lastAnchor = loc
-                    self.windows.refreshTransientSelection(text: result.text, url: url)
+                    self.windows.refreshTransientSelection(text: result.text, url: url, source: source)
                 } else {
                     self.lastAnchor = loc
-                    self.windows.showTransient(text: result.text, url: url, anchor: loc, actions: self.actionStore.actions)
+                    self.windows.showTransient(text: result.text, url: url, source: source, anchor: loc,
+                                               actions: self.actionStore.actions)
                 }
             }
         }

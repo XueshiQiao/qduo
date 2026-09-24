@@ -19,6 +19,40 @@ enum PopBarPresentation {
     /// and selected inside its parent — two different `NSWorkspace` calls, so the
     /// flag is carried here rather than re-checked on disk at present time.
     case revealInFinder(URL, isDirectory: Bool)
+    /// Text an action PRODUCED (an AI answer, a transform, a shortcut's output),
+    /// as opposed to a message about it. Where it goes — the panel, in place of
+    /// the selection, after it, or the clipboard — is the action's `output`, so
+    /// the session routes it, not the action.
+    case output(String)
+    /// A URL for another app to open: the browser, the dictionary, Obsidian…
+    case openExternal(URL)
+    /// Read the text aloud (or stop reading, if something already is).
+    case speak(String)
+}
+
+/// Where an action's produced text goes. Stored as a string on the action (see
+/// `PopBarActionConfig.output`), so a value added by a newer build survives an
+/// older one rewriting the file; an unknown value behaves as `.panel`.
+enum ActionOutput: String, CaseIterable {
+    /// Shown in the result panel, which offers a Replace button when the
+    /// selection can take one. The default: nothing is written into a document
+    /// unless the action says so.
+    case panel
+    /// Put in place of the selection.
+    case replace
+    /// Put after the selection, which is kept.
+    case append
+    /// Put on the clipboard; nothing is shown.
+    case copy
+}
+
+/// Where the `openURL` kind opens its page. Stored as a string, like `output`.
+enum OpenURLTarget: String, CaseIterable {
+    /// The default browser — or, for a non-web scheme (`dict://`, `obsidian://`),
+    /// whatever app owns that scheme.
+    case browser
+    /// The popup's own floating mini-browser. Web pages only.
+    case preview
 }
 
 /// Optional per-action model override. The API key is resolved per-provider from
@@ -41,6 +75,11 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case webPreview     // local: open the selection's associated link in the mini-browser
         case quickLook      // local: Quick Look the selected path (folders open in Finder)
         case revealInFinder // local: show the selected path in Finder
+        case openURL        // local: fill `url`'s {text} with the selection and open it
+        case speak          // local: read the selection aloud with a system voice
+        case transform      // local: a `TextTransform` named by `op`
+        case shortcut       // run the macOS Shortcut named `shortcut` on the selection
+        case script         // run the shell command `script` on the selection
         /// A GROUP: runs nothing itself, it only holds `children`. On the wheel it
         /// unfolds a second ring; in the capsule (which has no second row) its
         /// children are shown inline in its place, so nothing becomes unreachable.
@@ -56,6 +95,41 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     var prompt: String
     /// nil = use the global default model.
     var modelOverride: ModelOverride?
+
+    // Kind-specific parameters. Flat, like `prompt`, and each one optional so it
+    // is only written for the kind that uses it. The ones with a fixed set of
+    // values (`openIn`, `op`, `output`) are held as the RAW STRING rather than an
+    // enum: once a key is known to this build, `extra` no longer protects its
+    // value, and decoding an enum would drop or rewrite a value a newer build
+    // wrote — the same trap `unsupportedKindRaw` exists for.
+
+    /// `openURL`: the address, with `{text}` standing for the selection
+    /// (encoded as one query value).
+    var url: String?
+    /// `openURL`: an `OpenURLTarget` raw value. nil = browser.
+    var openIn: String?
+    /// `transform`: a `TextTransform` raw value.
+    var op: String?
+    /// `shortcut`: the name of the Shortcut to run.
+    var shortcut: String?
+    /// `script`: a shell command, run by the user's login shell with the
+    /// selection on standard input.
+    var script: String?
+    /// `ai`, `transform`, `shortcut`, `script`: an `ActionOutput` raw value.
+    /// nil = the panel.
+    var output: String?
+
+    /// Where this action's produced text goes. `count` is a report about the
+    /// selection, never a stand-in for it, so it always goes to the panel.
+    var outputMode: ActionOutput {
+        if kind == .transform, op == TextTransform.count.rawValue { return .panel }
+        return output.flatMap(ActionOutput.init(rawValue:)) ?? .panel
+    }
+
+    /// Whether this kind produces text that `output` applies to.
+    var hasOutput: Bool { [.ai, .transform, .shortcut, .script].contains(kind) }
+
+    var openTarget: OpenURLTarget { openIn.flatMap(OpenURLTarget.init(rawValue:)) ?? .browser }
 
     /// Sub-actions, shown on the wheel's second ring when this one is hovered.
     /// Empty = an ordinary action.
@@ -108,9 +182,6 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         self.unsupportedKindRaw = nil
     }
 
-    /// Runs entirely on-device (no LLM). Drives the "REAL" tag. A group runs
-    /// nothing at all, so it is not "local" either.
-    var isLocal: Bool { kind != .ai && kind != .group && !isUnsupported }
     /// An unsupported action decodes as `.ai`, but it must not be RUN as one —
     /// it has no prompt and was never meant for the model.
     var isAI: Bool { kind == .ai && !isUnsupported }
@@ -121,6 +192,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, id, title, iconSymbol, kind, prompt, modelOverride, children
+        case url, openIn, op, shortcut, script, output
     }
     private static let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
     init(from decoder: Decoder) throws {
@@ -138,6 +210,12 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         unsupportedKindRaw = (knownKind == nil) ? rawKind : nil
         prompt = (try? c.decode(String.self, forKey: .prompt)) ?? ""
         modelOverride = try? c.decodeIfPresent(ModelOverride.self, forKey: .modelOverride)
+        url = try? c.decodeIfPresent(String.self, forKey: .url)
+        openIn = try? c.decodeIfPresent(String.self, forKey: .openIn)
+        op = try? c.decodeIfPresent(String.self, forKey: .op)
+        shortcut = try? c.decodeIfPresent(String.self, forKey: .shortcut)
+        script = try? c.decodeIfPresent(String.self, forKey: .script)
+        output = try? c.decodeIfPresent(String.self, forKey: .output)
         // Flatten anything deeper than one level (see `children`). Decoding is
         // deliberately lenient here for the same reason every other field is: a
         // malformed children array must not throw away the whole action list.
@@ -177,8 +255,17 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encode(title, forKey: key(.title))
         try c.encode(iconSymbol, forKey: key(.iconSymbol))
         try c.encode(unsupportedKindRaw ?? kind.rawValue, forKey: key(.kind))
-        try c.encode(prompt, forKey: key(.prompt))
+        // Only an action that has a prompt writes one: a Speak or Search action
+        // carrying `"prompt": ""` is noise in a file people read. Decoding already
+        // treats a missing prompt as empty, so nothing is lost.
+        if !prompt.isEmpty { try c.encode(prompt, forKey: key(.prompt)) }
         try c.encodeIfPresent(modelOverride, forKey: key(.modelOverride))
+        try c.encodeIfPresent(url, forKey: key(.url))
+        try c.encodeIfPresent(openIn, forKey: key(.openIn))
+        try c.encodeIfPresent(op, forKey: key(.op))
+        try c.encodeIfPresent(shortcut, forKey: key(.shortcut))
+        try c.encodeIfPresent(script, forKey: key(.script))
+        try c.encodeIfPresent(output, forKey: key(.output))
         // Only written when there is something to write, so an action that never
         // had children does not grow an empty array.
         if !children.isEmpty { try c.encode(children, forKey: key(.children)) }
@@ -232,6 +319,8 @@ enum DefaultActions {
             webPreviewAction(),
             quickLookAction(),
             revealInFinderAction(),
+            searchAction(),
+            speakAction(),
             PopBarActionConfig(title: L("popbar.action.copy"), iconSymbol: "doc.on.doc",
                                kind: .copy),
         ]
@@ -250,5 +339,197 @@ enum DefaultActions {
     /// The seed / migration "Show in Finder" action.
     static func revealInFinderAction() -> PopBarActionConfig {
         PopBarActionConfig(title: L("popbar.action.reveal"), iconSymbol: "folder", kind: .revealInFinder)
+    }
+
+    /// Search the web for the selection, in the default browser.
+    static func searchAction() -> PopBarActionConfig {
+        openURL(L("popbar.action.search"), "magnifyingglass", "https://www.google.com/search?q={text}")
+    }
+
+    /// Read the selection aloud.
+    static func speakAction() -> PopBarActionConfig {
+        PopBarActionConfig(title: L("popbar.action.speak"), iconSymbol: "speaker.wave.2.fill", kind: .speak)
+    }
+
+    // MARK: - Builders
+
+    static func openURL(_ title: String, _ icon: String, _ url: String,
+                        in target: OpenURLTarget = .browser) -> PopBarActionConfig {
+        var a = PopBarActionConfig(title: title, iconSymbol: icon, kind: .openURL)
+        a.url = url
+        if target != .browser { a.openIn = target.rawValue }
+        return a
+    }
+
+    static func transform(_ title: String, _ icon: String, _ op: TextTransform) -> PopBarActionConfig {
+        var a = PopBarActionConfig(title: title, iconSymbol: icon, kind: .transform)
+        a.op = op.rawValue
+        // A transform's result stands in for the selection, so the template puts
+        // it there. The kind itself defaults to the panel (see `output`): a
+        // hand-written transform never writes into a document by omission.
+        if op.producesReplacement { a.output = ActionOutput.replace.rawValue }
+        return a
+    }
+
+    static func ai(_ title: String, _ icon: String, _ prompt: String) -> PopBarActionConfig {
+        PopBarActionConfig(title: title, iconSymbol: icon, kind: .ai, prompt: prompt)
+    }
+}
+
+/// Ready-made actions the user adds from Settings → Actions → Add from Template.
+/// Each is an ordinary action config, opened in the editor so it can be adjusted
+/// before it is saved — there is no separate template format.
+enum ActionTemplates {
+
+    struct Section: Identifiable {
+        let id: String
+        let title: String
+        let actions: [PopBarActionConfig]
+    }
+
+    static func sections() -> [Section] {
+        [
+            Section(id: "ai", title: L("template.section.ai"), actions: [
+                DefaultActions.ai(L("template.summarize"), "text.quote", Prompts.summarize),
+                DefaultActions.ai(L("template.grammar"), "text.badge.checkmark", Prompts.grammar),
+                toneGroup(),
+                DefaultActions.ai(L("template.analyze"), "graduationcap", Prompts.analyze),
+                DefaultActions.ai(L("template.explainCode"), "chevron.left.forwardslash.chevron.right", Prompts.explainCode),
+            ]),
+            Section(id: "text", title: L("template.section.text"), actions: [
+                DefaultActions.transform(L("transform.uppercase"), "textformat.size.larger", .uppercase),
+                DefaultActions.transform(L("transform.lowercase"), "textformat.size.smaller", .lowercase),
+                DefaultActions.transform(L("transform.titleCase"), "textformat", .titleCase),
+                DefaultActions.transform(L("transform.sentenceCase"), "textformat.abc", .sentenceCase),
+                DefaultActions.transform(L("transform.camelCase"), "textformat.alt", .camelCase),
+                DefaultActions.transform(L("transform.snakeCase"), "textformat.alt", .snakeCase),
+                DefaultActions.transform(L("transform.kebabCase"), "textformat.alt", .kebabCase),
+                DefaultActions.transform(L("transform.joinLines"), "text.append", .joinLines),
+                DefaultActions.transform(L("transform.trim"), "scissors", .trim),
+                DefaultActions.transform(L("transform.sortLines"), "arrow.up.arrow.down", .sortLines),
+                DefaultActions.transform(L("transform.uniqueLines"), "list.bullet", .uniqueLines),
+                DefaultActions.transform(L("transform.reverseLines"), "arrow.up.arrow.down", .reverseLines),
+                DefaultActions.transform(L("transform.toSimplified"), "character.zh", .toSimplified),
+                DefaultActions.transform(L("transform.toTraditional"), "character.zh", .toTraditional),
+                DefaultActions.transform(L("transform.pinyin"), "abc", .pinyin),
+                DefaultActions.transform(L("transform.spaceCJK"), "text.word.spacing", .spaceCJK),
+                DefaultActions.transform(L("transform.jsonPretty"), "curlybraces", .jsonPretty),
+                DefaultActions.transform(L("transform.jsonMinify"), "curlybraces.square", .jsonMinify),
+                DefaultActions.transform(L("transform.urlEncode"), "percent", .urlEncode),
+                DefaultActions.transform(L("transform.urlDecode"), "percent", .urlDecode),
+                DefaultActions.transform(L("transform.cleanURL"), "link", .cleanURL),
+                DefaultActions.transform(L("transform.count"), "number", .count),
+            ]),
+            Section(id: "web", title: L("template.section.web"), actions: [
+                DefaultActions.openURL("Google", "magnifyingglass", "https://www.google.com/search?q={text}"),
+                DefaultActions.openURL(L("template.baidu"), "magnifyingglass", "https://www.baidu.com/s?wd={text}"),
+                DefaultActions.openURL("Bing", "magnifyingglass", "https://www.bing.com/search?q={text}"),
+                DefaultActions.openURL("DuckDuckGo", "magnifyingglass", "https://duckduckgo.com/?q={text}"),
+                DefaultActions.openURL("Kagi", "magnifyingglass", "https://kagi.com/search?q={text}"),
+                DefaultActions.openURL(L("template.wikipedia"), "book", "https://en.wikipedia.org/w/index.php?search={text}"),
+                DefaultActions.openURL("GitHub", "chevron.left.forwardslash.chevron.right", "https://github.com/search?q={text}"),
+                DefaultActions.openURL(L("template.dictionary"), "character.book.closed", "dict://{text}"),
+                DefaultActions.openURL(L("template.maps"), "map", "maps://?q={text}"),
+                DefaultActions.openURL(L("template.chatgpt"), "bubble.left.and.bubble.right", "https://chatgpt.com/?q={text}"),
+                DefaultActions.openURL(L("template.claude"), "bubble.left.and.bubble.right", "https://claude.ai/new?q={text}"),
+                DefaultActions.openURL(L("template.obsidian"), "note.text.badge.plus", "obsidian://new?content={text}"),
+            ]),
+            Section(id: "automation", title: L("template.section.automation"), actions: [
+                DefaultActions.speakAction(),
+                shortcutTemplate(),
+                scriptTemplate(),
+            ]),
+        ]
+    }
+
+    private static func toneGroup() -> PopBarActionConfig {
+        var group = PopBarActionConfig(title: L("template.tone"), iconSymbol: "textformat.alt", kind: .group)
+        group.children = [
+            DefaultActions.ai(L("template.tone.formal"), "checkmark.seal", Prompts.formal),
+            DefaultActions.ai(L("template.tone.casual"), "text.bubble", Prompts.casual),
+            DefaultActions.ai(L("template.tone.concise"), "scissors", Prompts.concise),
+        ]
+        return group
+    }
+
+    private static func shortcutTemplate() -> PopBarActionConfig {
+        var a = PopBarActionConfig(title: L("template.shortcut"), iconSymbol: "command", kind: .shortcut)
+        a.shortcut = ""
+        return a
+    }
+
+    private static func scriptTemplate() -> PopBarActionConfig {
+        var a = PopBarActionConfig(title: L("template.script"), iconSymbol: "terminal", kind: .script)
+        // A harmless example that shows the contract: the selection arrives on
+        // standard input, whatever is printed comes back.
+        a.script = "tr '[:lower:]' '[:upper:]'"
+        return a
+    }
+
+    enum Prompts {
+        static let summarize = """
+        Summarize the user's text as a few short bullet points that keep every key fact. \
+        Respond in the same language as the text. Output ONLY the summary.
+        """
+        static let grammar = """
+        Correct the spelling, grammar and punctuation of the user's text. Change nothing \
+        else — keep its wording, tone, language and formatting. Output ONLY the corrected text.
+        """
+        static let analyze = """
+        The user is learning the language of the selected text. Break the sentence down: \
+        its structure, the role of each part, and any idioms or grammar points worth \
+        knowing. Explain in Simplified Chinese if the text is not Chinese, otherwise in English. \
+        Be concise.
+        """
+        static let explainCode = """
+        Explain what the user's code does, step by step, then point out any bugs or \
+        risky spots. Be concise. Respond in the language the user most likely reads, \
+        judging by any comments; default to English.
+        """
+        static let formal = """
+        Rewrite the user's text in a formal, professional tone. Keep its language and \
+        meaning. Output ONLY the rewritten text.
+        """
+        static let casual = """
+        Rewrite the user's text in a friendly, casual tone. Keep its language and meaning. \
+        Output ONLY the rewritten text.
+        """
+        static let concise = """
+        Rewrite the user's text to be as short as possible without losing meaning. Keep \
+        its language. Output ONLY the rewritten text.
+        """
+    }
+}
+
+/// Fills an `openURL` action's address with the selection.
+///
+/// `{text}` is replaced by the selection encoded as ONE query value: everything
+/// outside `urlQueryAllowed` is escaped, and so are `& = + # ? /`, which would
+/// otherwise change the query's structure. A space becomes `%20`. This is fixed
+/// on purpose — changing it later would change what every saved template does.
+enum URLTemplate {
+
+    static let placeholder = "{text}"
+
+    static let valueAllowed: CharacterSet = {
+        var set = CharacterSet.urlQueryAllowed
+        set.remove(charactersIn: "&=+#?/")
+        return set
+    }()
+
+    /// nil when the result is not a URL at all (an empty or malformed template).
+    static func fill(_ template: String, with text: String) -> URL? {
+        let value = text.addingPercentEncoding(withAllowedCharacters: valueAllowed) ?? ""
+        let filled = template
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: placeholder, with: value)
+        guard let url = URL(string: filled), url.scheme != nil else { return nil }
+        return url
+    }
+
+    /// Whether a page at this URL can be shown in the popup's own mini-browser.
+    /// Anything else (`dict:`, `obsidian:`, `mailto:`) belongs to another app.
+    static func isWeb(_ url: URL) -> Bool {
+        ["http", "https"].contains(url.scheme?.lowercased() ?? "")
     }
 }

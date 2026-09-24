@@ -15,6 +15,15 @@ one tool among many.
 - **Actions you define** — each one is local (copy, open, search, reveal) or a
   prompt sent to a model, with its own model override if you want one. Results
   stream back as live Markdown.
+- **More than prompts** — open a URL with the selection filled in (search,
+  dictionary, maps, Obsidian…), read it aloud with a system voice, transform it
+  locally (case, sort, join PDF line breaks, Simplified ↔ Traditional, JSON,
+  strip link tracking, word count…), or hand it to a Shortcut or a shell script.
+  Settings → Actions → Add from Template has ready-made ones.
+- **Put the result back** — an action's result can replace the selection, go
+  after it, or go to the clipboard, and the result panel has a Replace button.
+  Only offered where the selection is in a field the app can reach through
+  Accessibility; anywhere else the result is copied instead of pasted blind.
 - **Screenshot text** — hotkey, drag a rectangle, OCR, same popup.
 - **Menu bar only** — no Dock icon. The status item is the whole interface when
   the settings window is closed. There is no on/off switch: the popup runs

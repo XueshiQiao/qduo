@@ -15,7 +15,7 @@ enum ConfigSchema {
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Selection popup configuration",
-      "description": "Everything in the app's Settings window. Edit it by hand if you like — the app reads this file at launch, so changes take effect the next time it starts. API keys are NOT here; they live in the macOS Keychain, so this file is safe to commit.",
+      "description": "Everything in the app's Settings window. Edit it by hand if you like — the app reads this file at launch, so changes take effect the next time it starts. API keys are NOT here; they live in the macOS Keychain, so this file holds no secrets and can be committed. Note that an action of kind \\"script\\" runs a shell command: read a config from someone else before using it (the app also asks before a script runs for the first time).",
       "type": "object",
       "properties": {
         "$schema": { "type": "string" },
@@ -140,10 +140,27 @@ enum ConfigSchema {
             "iconSymbol": { "type": "string", "description": "An SF Symbol name, e.g. \\"doc.on.doc\\"." },
             "kind": {
               "type": "string",
-              "description": "What the action does. \\"ai\\" sends the selection to a model; the rest act locally."
+              "enum": ["ai", "copy", "webPreview", "quickLook", "revealInFinder", "openURL", "speak",
+                       "transform", "shortcut", "script", "group"],
+              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. group = hold children. The rest act on links and paths."
             },
             "prompt": { "type": "string",
               "description": "For \\"ai\\": the instruction sent with the selection." },
+            "url": { "type": "string",
+              "description": "For \\"openURL\\": the address. {text} is replaced by the selection, encoded as one query value. e.g. https://www.google.com/search?q={text} or dict://{text}" },
+            "openIn": { "type": "string", "enum": ["browser", "preview"],
+              "description": "For \\"openURL\\": browser (default) or the popup's preview window. Addresses that are not web pages always open in the app that handles them." },
+            "op": { "type": "string",
+              "enum": ["uppercase", "lowercase", "titleCase", "sentenceCase", "camelCase", "snakeCase", "kebabCase",
+                       "sortLines", "uniqueLines", "reverseLines", "joinLines", "trim", "toSimplified", "toTraditional",
+                       "pinyin", "spaceCJK", "jsonPretty", "jsonMinify", "urlEncode", "urlDecode", "cleanURL", "count"],
+              "description": "For \\"transform\\": which operation. count always shows its result in the popup." },
+            "shortcut": { "type": "string",
+              "description": "For \\"shortcut\\": the name of a Shortcut. The selection is its input; its output is the result." },
+            "script": { "type": "string",
+              "description": "For \\"script\\": a shell command, run by your login shell. The selection is on standard input and in $QDUO_TEXT; what it prints is the result. Times out after 10 seconds." },
+            "output": { "type": "string", "enum": ["panel", "replace", "append", "copy"],
+              "description": "For ai, transform, shortcut and script: where the result goes. panel (default) shows it in the popup, which offers a Replace button; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
             "modelOverride": {
               "type": "object",
               "description": "Use a different model for THIS action only.",

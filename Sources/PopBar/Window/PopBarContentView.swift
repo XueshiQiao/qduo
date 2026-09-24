@@ -65,6 +65,18 @@ final class PopBarPanelModel: ObservableObject {
     /// Fired when the pointer leaves the ring (wheel styles) and auto-hide is on.
     var onExitRing: (() -> Void)?
     var onCopyResult: ((String) -> Void)?
+    /// Put the result in place of the selection (the Replace button).
+    var onReplaceResult: ((String) -> Void)?
+    /// Whether the selection this popup acts on can be replaced — decides whether
+    /// the Replace button is offered at all (see `SelectionSource.canReplace`).
+    @Published var canReplace = false
+    /// Whether the text in the result panel is a FINISHED result an action
+    /// produced — not an error message, and not an answer still streaming in.
+    /// Only that is offered for Replace.
+    @Published var resultIsFinalOutput = false
+    /// A one-line note under the toolbar, e.g. why a result could not be put back.
+    /// Cleared whenever the popup shows something new.
+    @Published var notice: String?
     var onClose: (() -> Void)?
     var onTogglePin: (() -> Void)?
 
@@ -168,12 +180,24 @@ struct PopBarContentView: View {
                              help: L(model.isPinned ? "popbar.unpin" : "popbar.pin"),
                              active: model.isPinned) { model.onTogglePin?() }
                 Spacer()
+                if model.canReplace, model.resultIsFinalOutput, !text.isEmpty {
+                    ChromeButton(symbol: "arrow.2.squarepath", help: L("popbar.replace.result")) {
+                        model.onReplaceResult?(text)
+                    }
+                }
                 ChromeButton(symbol: "doc.on.doc", help: L("popbar.copy.result")) {
                     model.onCopyResult?(text)
                 }
                 ChromeButton(symbol: "xmark", help: L("popbar.close")) {
                     model.onClose?()
                 }
+            }
+            if let notice = model.notice {
+                Label(notice, systemImage: "info.circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: resultWidth, alignment: .leading)
             }
             ScrollViewReader { proxy in
                 ScrollView {

@@ -144,7 +144,7 @@ final class ScreenOCRController {
                     NSPasteboard.general.setString(trimmed, forType: .string)
                 }
                 Self.log.info("OCR recognized \(trimmed.count) chars → capsule")
-                self.windows.showTransient(text: trimmed, url: nil, anchor: anchor,
+                self.windows.showTransient(text: trimmed, url: nil, source: .ocr, anchor: anchor,
                                            actions: self.actionStore.actions)
             }
         }
