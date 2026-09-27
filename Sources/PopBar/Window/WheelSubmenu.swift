@@ -505,11 +505,12 @@ struct SubmenuItem: Identifiable, Equatable {
 }
 
 /// How the hovered child is marked. The two skins mark it differently: the classic
-/// ring fills the wedge with the accent colour, the liquid ring uses a small
-/// neutral dot (a coloured fill was explicitly rejected for that skin).
+/// ring fills the wedge with the accent colour; the liquid ring draws nothing extra
+/// and tints the child's icon + label instead (a coloured wedge fill was explicitly
+/// rejected for that skin).
 enum SubmenuHighlight: Equatable {
     case fill(Color)
-    case dot(Color)
+    case glyphTint
 }
 
 /// The ENTIRE second ring, as one animatable unit.
@@ -633,16 +634,8 @@ struct SubmenuRing<Material: View>: View, Animatable {
                     .clipShape(arc)
                     .frame(width: canvas, height: canvas)
                     .opacity(fade)
-            case .dot(let color):
-                let m = (a0 + step / 2) * .pi / 180
-                Circle()
-                    .fill(color)
-                    .frame(width: 5, height: 5)
-                    // Inner edge, same as the main ring's dot (see `selectionDot`),
-                    // so it never sits on a label.
-                    .position(x: canvas / 2 + cos(m) * (r.inner + 7),
-                              y: canvas / 2 + sin(m) * (r.inner + 7))
-                    .opacity(fade)
+            case .glyphTint:
+                EmptyView()   // the tint is applied by `glyphColor` on the item itself
             }
         }
     }

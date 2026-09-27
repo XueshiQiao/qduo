@@ -515,9 +515,6 @@ struct WheelActionsView: View {
                     .frame(width: o * 2, height: o * 2)
             }
 
-            // selected compartment indicator — a small dot (paired with bold label)
-            if let i = hoveredIndex { selectionDot(i) }
-
             liquidIcons
         }
         .frame(width: d, height: d)
@@ -598,7 +595,10 @@ struct WheelActionsView: View {
                         .frame(maxWidth: layout.labelWidth)
                 }
             }
-            .foregroundStyle(glyphColor(hot: hot, dark: dark))
+            // While the pointer is out on this slice's second ring, the slice is the
+            // open parent rather than the thing under the pointer: a softer tint.
+            .foregroundStyle(glyphColor(hot: hot, dark: dark)
+                .opacity(hot && pointerOnSecondRing(of: action.id) ? 0.55 : 1))
             // Halo lifts the glyphs off the glass: a white glow on the bright ring,
             // a soft dark glow on the dark ring (mirrors the mockup's per-theme
             // text-shadow — light: white .6, dark: black .55).
@@ -609,46 +609,24 @@ struct WheelActionsView: View {
         }
     }
 
+    /// Whether the pointer is out past the main ring while `id`'s second ring is open.
+    /// Judged from where the pointer is, not from `hoveredChild`: that is cleared
+    /// whenever the pointer crosses a divider or waits out the unfold, which made
+    /// the parent's tint flicker between soft and full.
+    private func pointerOnSecondRing(of id: String) -> Bool {
+        guard expanded, submenu?.parentID == id, let p = lastHover else { return false }
+        let c = canvas / 2
+        return hypot(p.x - c, p.y - c) > layout.outerRadius
+    }
+
     /// Glyph tint for the liquid ring, per appearance (`docs/popbar-wheel-liquid.html`
-    /// tokens). Light: locked dark-navy ink (`--glyph`/`--glyphHot`). Dark: near-white
-    /// glyphs (`rgba(255,255,255,.92)` → white when hot) so nothing washes out on the
-    /// dark Liquid Glass.
+    /// tokens). Resting: dark-navy ink in light mode, near-white in dark mode, so
+    /// nothing washes out on the glass. Hovered: the system tint (accent) colour —
+    /// that tint, with the bold label, IS the hover mark on this skin. A dot used to
+    /// do the job; wherever it sat it crowded a label or an arc on the ring.
     private func glyphColor(hot: Bool, dark: Bool) -> Color {
-        if dark {
-            return hot ? .white : Color.white.opacity(0.92)
-        }
-        return hot ? Color(red: 0.05, green: 0.09, blue: 0.16)
-                   : Color(red: 0.17, green: 0.21, blue: 0.27)
-    }
-
-    private var hoveredIndex: Int? {
-        guard let id = hovered else { return nil }
-        return actions.firstIndex { $0.id == id }
-    }
-
-    /// Selected-compartment highlight. Deliberately SIMPLE + neutral (no colour, no
-    /// "water-drop" blob, per the user): a soft, even brightening of the hovered
-    /// wedge, soft-edged and masked to the ring. (The hovered icon also scales up — see
-    /// `liquidIcons` — which carries most of the selection feedback.)
-    /// Selected-compartment indicator: a small neutral dot near the hovered slice's
-    /// INNER edge. Paired with the slice's label going bold (see `liquidIcons`). No
-    /// size change / glow / colour, per the user.
-    ///
-    /// Inner, not outer: the icon + label stack sits at `midRadius`, and on the
-    /// diagonal lower slices its label reaches out to where an outer-edge dot sat,
-    /// so the dot landed on the text. Nothing is drawn nearer the centre than the
-    /// stack's inner end, so a dot 7pt off the inner edge never meets a label.
-    /// While the pointer is out on this slice's second ring, the dot stays but dims:
-    /// the slice is then the open parent, not the thing under the pointer.
-    @ViewBuilder
-    private func selectionDot(_ i: Int) -> some View {
-        let d = canvas, r = layout.innerRadius + 7
-        let a = angles(i), m = a.mid.radians
-        Circle()
-            .fill(isDark ? Color.white.opacity(0.9) : Color(red: 0.10, green: 0.13, blue: 0.20))
-            .frame(width: 5, height: 5)
-            .opacity(hoveredChild == nil ? 1 : 0.35)
-            .position(x: d / 2 + cos(m) * r, y: d / 2 + sin(m) * r)
+        if hot { return .accentColor }
+        return dark ? Color.white.opacity(0.92) : Color(red: 0.17, green: 0.21, blue: 0.27)
     }
 
     private var depthGradient: RadialGradient {
@@ -1046,7 +1024,7 @@ struct WheelActionsView: View {
         case .classic:
             return .fill(Color.accentColor)
         case .liquid:
-            return .dot(isDark ? Color.white.opacity(0.9) : Color(red: 0.10, green: 0.13, blue: 0.20))
+            return .glyphTint   // the child's icon + label take the tint (childGlyphColor)
         }
     }
 
