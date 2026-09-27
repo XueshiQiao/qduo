@@ -1,14 +1,15 @@
 import SwiftUI
 import AppKit
 import ServiceManagement
+import UniformTypeIdentifiers
 
-/// The General page: the Accessibility permission, and the app-level settings
-/// that have nowhere better to live (launch at login, language, the log file).
+/// The General page: the Accessibility permission, the app-level settings
+/// (launch at login, language), how the selection is read and where it is not,
+/// and the config / log files.
 ///
-/// There is no on/off switch, by design. Reading the selection IS the app; a
-/// switch for it would only be a slower way to quit, and it would let the app sit
-/// in the menu bar doing nothing while looking exactly like the app doing
-/// something. To stop it, quit it.
+/// There is no global on/off switch, by design. Reading the selection IS the app;
+/// a switch for it would only be a slower way to quit. Per-app exclusion covers
+/// the real need — "not in this app".
 ///
 /// The Accessibility block appears only while the permission is missing — it is
 /// the one thing standing between a fresh install and a working popup, so it goes
@@ -37,8 +38,9 @@ struct GeneralPage: View {
     var body: some View {
         Form {
             if !store.isTrusted { permissionSection }
-            howItStopsSection
             appSection
+            readingSection
+            excludedAppsSection
             diagnosticsSection
         }
         .formStyle(.grouped)
@@ -50,21 +52,93 @@ struct GeneralPage: View {
         .onReceive(trustPoll) { _ in store.refreshTrust() }
     }
 
-    // MARK: - What this is, and how to stop it
+    // MARK: - How the selection is read
 
-    /// Says out loud what the absence of a switch means. Without this the page
-    /// reads as if a control is missing.
-    private var howItStopsSection: some View {
+    private var readingSection: some View {
         Section {
-            HStack(spacing: 10) {
-                IconTile(symbol: "text.bubble.fill", color: .indigo)
+            Toggle(isOn: Binding(get: { store.simulateCopy }, set: { store.setSimulateCopy($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(L("popbar.always.title")).fontWeight(.medium)
-                    Text(String(format: L("popbar.always.body"), Brand.name))
+                    iconLabel("command", .blue, L("popbar.simulateCopy.title"))
+                    Text(L("popbar.simulateCopy.body"))
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        } header: {
+            Text(L("popbar.reading.header"))
+        }
+    }
+
+    // MARK: - Excluded apps
+
+    private var excludedAppsSection: some View {
+        Section {
+            if store.excludedApps.isEmpty {
+                Text(L("popbar.excluded.empty"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(store.excludedApps, id: \.self) { id in
+                ExcludedAppRow(bundleID: id) { store.includeApp(id) }
+            }
+            Menu(L("popbar.excluded.add")) {
+                let running = Self.runningApps(excluding: store.excludedApps)
+                ForEach(running, id: \.bundleID) { app in
+                    Button {
+                        store.excludeApp(app.bundleID)
+                    } label: {
+                        // Menus drop a Label's icon unless the style asks for it.
+                        Label { Text(app.name) } icon: { Image(nsImage: app.icon) }
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
+                if !running.isEmpty { Divider() }
+                Button(L("popbar.excluded.choose")) { chooseApp() }
+            }
+            .fixedSize()
+        } header: {
+            Text(L("popbar.excluded.header"))
+        } footer: {
+            Text(L("popbar.excluded.footer"))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private struct RunningApp {
+        let bundleID: String
+        let name: String
+        let icon: NSImage
+    }
+
+    /// Apps with a Dock presence, alphabetised — the ones a person selects text in.
+    private static func runningApps(excluding excluded: [String]) -> [RunningApp] {
+        var seen = Set(excluded)
+        seen.insert(Bundle.main.bundleIdentifier ?? "")
+        return NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .compactMap { app -> RunningApp? in
+                guard let id = app.bundleIdentifier, seen.insert(id).inserted else { return nil }
+                return RunningApp(bundleID: id, name: app.localizedName ?? id,
+                                  icon: Self.menuIcon(app.icon))
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    private static func menuIcon(_ image: NSImage?) -> NSImage {
+        let icon = (image ?? NSWorkspace.shared.icon(for: .application)).copy() as! NSImage
+        icon.size = NSSize(width: 16, height: 16)
+        return icon
+    }
+
+    /// For an app that is not running right now.
+    private func chooseApp() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls {
+            if let id = Bundle(url: url)?.bundleIdentifier { store.excludeApp(id) }
         }
     }
 
@@ -166,5 +240,31 @@ struct GeneralPage: View {
     private func setLanguage(_ code: String?) {
         languageCode = code
         Preferences.setLanguageOverride(code)
+    }
+}
+
+/// One excluded app: its icon and name when it is installed, the bare bundle ID
+/// when it is not (a hand-edited config, or an app since deleted) — still
+/// removable either way.
+private struct ExcludedAppRow: View {
+    let bundleID: String
+    let remove: () -> Void
+
+    var body: some View {
+        let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+        HStack(spacing: 8) {
+            Image(nsImage: url.map { NSWorkspace.shared.icon(forFile: $0.path) }
+                  ?? NSWorkspace.shared.icon(for: .application))
+                .resizable().frame(width: 20, height: 20)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(url.map { FileManager.default.displayName(atPath: $0.path) } ?? bundleID)
+                if url != nil {
+                    Text(bundleID).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Button(L("popbar.excluded.remove"), action: remove)
+                .buttonStyle(.borderless)
+        }
     }
 }

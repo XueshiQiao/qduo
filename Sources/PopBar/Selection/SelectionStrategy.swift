@@ -43,6 +43,9 @@ struct SelectionContext {
     /// copied rich pasteboard) and the controller runs `LinkResolver`. When false,
     /// zero link work happens — the feature isn't on, so it costs nothing.
     let resolvesLinks: Bool
+    /// Whether the user allows the synthetic-⌘C fallback (`popup.simulateCopy`).
+    /// Sampled on main at trigger time, since the config is main-thread only.
+    var allowsSimulatedCopy: Bool = true
 
     var bundleID: String? { frontmostApp?.bundleIdentifier }
     var pid: pid_t? { frontmostApp?.processIdentifier }

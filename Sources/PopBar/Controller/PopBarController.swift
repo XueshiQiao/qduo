@@ -142,6 +142,11 @@ final class PopBarController {
         // Never read our own UI. (The one exception, the onboarding guide's sample
         // text, does not come through here — see `showForOnboardingSample`.)
         if front?.bundleIdentifier == Bundle.main.bundleIdentifier { return }
+        // Apps the user excluded in Settings: selecting there never opens the popup.
+        if let id = front?.bundleIdentifier, PopBarPreferences.excludedApps.contains(id) {
+            Self.log.debug("trigger ignored — \(id) is excluded")
+            return
+        }
 
         let loc = monitor.lastMouseUpLocation
         // Same spot + the transient already showing its actions → this is a
@@ -170,7 +175,8 @@ final class PopBarController {
             frontmostApp: front,
             mouseLocation: loc,
             clipboardChangeCountAtGestureStart: monitor.gestureStartClipboardChangeCount,
-            resolvesLinks: resolvesLinks)
+            resolvesLinks: resolvesLinks,
+            allowsSimulatedCopy: PopBarPreferences.simulateCopy)
         Self.log.debug("trigger — front=\(front?.bundleIdentifier ?? front?.localizedName ?? "nil") inPlace=\(inPlace) resolvesLinks=\(resolvesLinks)")
 
         resolveTask?.cancel()

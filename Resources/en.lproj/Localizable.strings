@@ -170,8 +170,6 @@
 "popbar.ocr.noText" = "No text found";
 "popbar.ocr.captureFailed" = "Couldn't capture the screen";
 "popbar.ocr.overlay.hint" = "Drag to select an area to recognize · Esc to cancel";
-"popbar.always.title" = "Always on while the app is running";
-"popbar.always.body" = "Select text in any app and the popup appears at the cursor. There is no switch — to stop it, quit %@ from the menu bar icon.";
 "diagnostics.config.title" = "Settings file";
 "diagnostics.revealConfig" = "Reveal in Finder";
 "diagnostics.config.subtitle" = "Every setting on these pages lives in %@. You can edit it by hand — changes take effect the next time the app starts. API keys are not in it; those stay in the Keychain.";
@@ -377,3 +375,14 @@
 "onboarding.try.menuBar" = "From now on %@ lives in the menu bar, top right: settings, Screenshot Text and Quit are all there.";
 "onboarding.settings.title" = "Getting Started";
 "onboarding.settings.open" = "Open";
+
+/* Reading the selection, excluded apps */
+"popbar.reading.header" = "Reading the selection";
+"popbar.simulateCopy.title" = "Press ⌘C when an app won't share the selection";
+"popbar.simulateCopy.body" = "Some apps — most browsers and Electron apps — don't hand over selected text directly. With this on, the popup presses ⌘C for you and puts your clipboard back afterwards. Turn it off if the popup appears where it shouldn't; it will then stay silent in those apps.";
+"popbar.excluded.header" = "Excluded apps";
+"popbar.excluded.empty" = "No apps excluded.";
+"popbar.excluded.add" = "Add App…";
+"popbar.excluded.choose" = "Choose from Applications…";
+"popbar.excluded.remove" = "Remove";
+"popbar.excluded.footer" = "Selecting text in these apps never opens the popup. The screenshot OCR hotkey still works in them.";

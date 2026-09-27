@@ -87,6 +87,12 @@ final class ConfigStore: ObservableObject {
         return value.stringValue
     }
 
+    /// The strings of an array setting. A non-string element is skipped rather
+    /// than failing the whole list — one typo must not empty it.
+    func stringArray(_ path: String) -> [String] {
+        (document[path: path]?.arrayValue ?? []).compactMap { $0.stringValue }
+    }
+
     func value(_ path: String) -> JSONValue? { document[path: path] }
 
     // MARK: - Writing
@@ -100,6 +106,7 @@ final class ConfigStore: ObservableObject {
     func set(_ path: String, _ value: Bool)   { set(path, .bool(value)) }
     func set(_ path: String, _ value: Double) { set(path, .number(value)) }
     func set(_ path: String, _ value: String) { set(path, .string(value)) }
+    func set(_ path: String, _ value: [String]) { set(path, .array(value.map(JSONValue.string))) }
 
     /// Clears a setting back to "unset". Used for "follow the system", which is
     /// meaningfully different from any particular value.

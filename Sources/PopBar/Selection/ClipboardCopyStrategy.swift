@@ -21,6 +21,9 @@ final class ClipboardCopyStrategy: SelectionStrategy {
     private let pollInterval: TimeInterval = 0.005   // 5ms
     private let pollTimeout: TimeInterval = 0.4       // 400ms
 
+    /// Off when the user turned the ⌘C fallback off in Settings.
+    func canHandle(_ context: SelectionContext) -> Bool { context.allowsSimulatedCopy }
+
     func selectedText(_ context: SelectionContext) async throws -> SelectionResult? {
         guard AXIsProcessTrusted() else { throw SelectionError.permissionDenied }
 

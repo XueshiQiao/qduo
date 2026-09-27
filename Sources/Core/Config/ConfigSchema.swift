@@ -57,6 +57,14 @@ enum ConfigSchema {
             "resultFontSize": {
               "type": "number", "minimum": 11, "maximum": 20,
               "description": "Base font size of the rendered result."
+            },
+            "simulateCopy": {
+              "type": "boolean",
+              "description": "When an app does not hand over the selection directly, press Cmd+C for you and read the clipboard (restored afterwards). Needed for most browsers and Electron apps. Default true."
+            },
+            "excludedApps": {
+              "type": "array", "items": { "type": "string" },
+              "description": "Bundle IDs of apps where selecting text never opens the popup, e.g. \\"com.microsoft.Excel\\". The screenshot-OCR hotkey still works in them."
             }
           },
           "additionalProperties": true

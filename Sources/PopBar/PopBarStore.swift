@@ -17,6 +17,8 @@ final class PopBarStore: ObservableObject {
     @Published var wheelSubSeam: Double
     @Published var wheelSubThickness: Double
     @Published private(set) var isTrusted: Bool
+    @Published private(set) var simulateCopy: Bool
+    @Published private(set) var excludedApps: [String]
 
     // Screenshot OCR
     @Published var screenOCREnabled: Bool
@@ -42,6 +44,8 @@ final class PopBarStore: ObservableObject {
         self.wheelSubSeam = PopBarPreferences.wheelSubSeam
         self.wheelSubThickness = PopBarPreferences.wheelSubThickness
         self.isTrusted = AccessibilityAuthorizer.isTrusted
+        self.simulateCopy = PopBarPreferences.simulateCopy
+        self.excludedApps = PopBarPreferences.excludedApps
         self.screenOCREnabled = PopBarPreferences.screenOCREnabled
         self.screenOCRAutoCopy = PopBarPreferences.screenOCRAutoCopy
         self.screenOCRHotKey = PopBarPreferences.screenOCRHotKey
@@ -145,6 +149,25 @@ final class PopBarStore: ObservableObject {
     func setWheelAutoHideOnExit(_ on: Bool) {
         wheelAutoHideOnExit = on
         PopBarPreferences.wheelAutoHideOnExit = on
+    }
+
+    // MARK: - Where the popup reads
+
+    /// Read at trigger time, so the next selection honors it.
+    func setSimulateCopy(_ on: Bool) {
+        simulateCopy = on
+        PopBarPreferences.simulateCopy = on
+    }
+
+    func excludeApp(_ bundleID: String) {
+        guard !excludedApps.contains(bundleID) else { return }
+        excludedApps.append(bundleID)
+        PopBarPreferences.excludedApps = excludedApps
+    }
+
+    func includeApp(_ bundleID: String) {
+        excludedApps.removeAll { $0 == bundleID }
+        PopBarPreferences.excludedApps = excludedApps
     }
 
     func requestPermission() { AccessibilityAuthorizer.prompt() }

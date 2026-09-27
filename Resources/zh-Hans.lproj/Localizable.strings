@@ -169,8 +169,6 @@
 "popbar.ocr.noText" = "未识别到文本";
 "popbar.ocr.captureFailed" = "截屏失败";
 "popbar.ocr.overlay.hint" = "拖拽框选要识别的区域 · Esc 取消";
-"popbar.always.title" = "App 开着时一直生效";
-"popbar.always.body" = "在任何 app 里选中文字，光标旁就会弹出来。没有开关——想停掉就从菜单栏图标退出 %@。";
 "diagnostics.config.title" = "设置文件";
 "diagnostics.revealConfig" = "在访达中显示";
 "diagnostics.config.subtitle" = "这几页里的每一项设置都存在 %@。你可以直接改它——改完下次启动 App 时生效。API Key 不在里面，那个存在钥匙串里。";
@@ -376,3 +374,14 @@
 "onboarding.try.menuBar" = "以后 %@ 就住在屏幕右上角的菜单栏里：设置、截屏取字、退出都在那儿。";
 "onboarding.settings.title" = "新手引导";
 "onboarding.settings.open" = "重新打开";
+
+/* Reading the selection, excluded apps */
+"popbar.reading.header" = "读取选中内容";
+"popbar.simulateCopy.title" = "App 不直接提供选中内容时，自动按 ⌘C";
+"popbar.simulateCopy.body" = "有些 app（大多数浏览器、Electron app）不直接提供选中的文字。打开后会替你按一次 ⌘C 读取，读完把剪贴板还原。如果弹框在不该出现的地方出现，可以关掉它；关掉后在这些 app 里选中文字不会再弹。";
+"popbar.excluded.header" = "屏蔽的 App";
+"popbar.excluded.empty" = "还没有屏蔽任何 app。";
+"popbar.excluded.add" = "添加 App…";
+"popbar.excluded.choose" = "从「应用程序」中选择…";
+"popbar.excluded.remove" = "移除";
+"popbar.excluded.footer" = "在这些 app 里选中文字不会弹出弹框。截图 OCR 快捷键在这些 app 里照常可用。";

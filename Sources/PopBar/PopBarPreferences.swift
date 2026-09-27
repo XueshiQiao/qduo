@@ -23,6 +23,8 @@ enum PopBarPreferences {
         static let autoExpandHeight   = "popup.autoExpandHeight"
         static let resultFontSize     = "popup.resultFontSize"
         static let style              = "popup.style"
+        static let simulateCopy       = "popup.simulateCopy"
+        static let excludedApps       = "popup.excludedApps"
         static let wheelOuterRadius   = "wheel.outerRadius"
         static let wheelInnerRadius   = "wheel.innerRadius"
         static let wheelShowIcons     = "wheel.showIcons"
@@ -149,6 +151,24 @@ enum PopBarPreferences {
                            showIcons: wheelShowIcons, showLabels: wheelShowLabels,
                            submenuSeam: CGFloat(wheelSubSeam),
                            submenuThickness: CGFloat(wheelSubThickness))
+    }
+
+    // MARK: - Where the popup reads
+
+    /// Whether the last way of reading a selection — pressing ⌘C for the user and
+    /// reading the clipboard — may be used. Opt-out; default ON, because browsers
+    /// and Electron apps are only readable this way. Off, the popup reads only what
+    /// an app hands over without a key press.
+    static var simulateCopy: Bool {
+        get { config.bool(P.simulateCopy, default: true) }
+        set { config.set(P.simulateCopy, newValue) }
+    }
+
+    /// Bundle IDs of apps where selecting never opens the popup. The screenshot-OCR
+    /// hotkey still works there: it is pressed on purpose.
+    static var excludedApps: [String] {
+        get { config.stringArray(P.excludedApps) }
+        set { config.set(P.excludedApps, newValue) }
     }
 
     // MARK: - Screenshot OCR
