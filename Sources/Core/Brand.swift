@@ -54,7 +54,7 @@ enum Brand {
     static let authorXURL = URL(string: "https://x.com/XueshiQiao")!
     static let authorXHandle = "@XueshiQiao"
     static let feedbackURL = URL(
-        string: "https://xueshasoho.feishu.cn/share/base/form/shrcnZK4KXsAg0w80ERWkf1WoXc")!
+        string: "https://xueshasoho.feishu.cn/share/base/form/shrcnKnSShwmwWWC4ggLGTWGJBg")!
 
     // MARK: - Locations on disk
 
