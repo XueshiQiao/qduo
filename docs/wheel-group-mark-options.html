@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>组标记方案</title>
+<style>
+:root{--bg:#f5f5f7;--ink:#1d1d1f;--muted:#6e6e73;--card:#fff;--line:rgba(0,0,0,.1);--accent:#0a7aff;--greenBg:rgba(52,199,89,.13);--green:#1f9d45;--warnBg:rgba(255,59,48,.1);--warn:#d70015;
+  --shadow:0 0 0 .5px rgba(0,0,0,.16),0 18px 44px rgba(0,0,0,.10)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#101012;--ink:#f5f5f7;--muted:#a1a1a6;--card:#1c1c1e;--line:rgba(255,255,255,.12);--accent:#3b9bff;--greenBg:rgba(50,215,75,.14);--green:#32d74b;--warnBg:rgba(255,69,58,.16);--warn:#ff6961;--shadow:0 0 0 .5px rgba(255,255,255,.14),0 18px 44px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--bg:#101012;--ink:#f5f5f7;--muted:#a1a1a6;--card:#1c1c1e;--line:rgba(255,255,255,.12);--accent:#3b9bff;--greenBg:rgba(50,215,75,.14);--green:#32d74b;--warnBg:rgba(255,69,58,.16);--warn:#ff6961;--shadow:0 0 0 .5px rgba(255,255,255,.14),0 18px 44px rgba(0,0,0,.5)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+main{max-width:1600px;margin:0 auto;padding:40px 16px 90px}
+h1{font-size:32px;margin:0 0 8px}
+h2{font-size:22px;margin:46px 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lede{color:var(--muted);max-width:860px}
+.letter{font-size:13px;font-weight:700;color:#fff;background:var(--accent);border-radius:7px;padding:1px 9px}
+.letter.cur{background:#8e8e93}
+.tag{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
+.tag.rec{background:var(--greenBg);color:var(--green)} .tag.bad{background:var(--warnBg);color:var(--warn)}
+.desc{margin:2px 0 12px;color:var(--muted);max-width:900px}
+.bar{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)}
+.bar button{font:inherit;font-size:14px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.bar button.on{background:var(--accent);color:#fff;border-color:transparent}
+.bar .sp{flex:1}
+.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(430px * var(--z)),1fr));gap:10px}
+
+.cap{font-size:13px;color:var(--muted);text-align:center;margin:6px 0 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 11px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-size:12.5px;font-weight:600}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.scroll{overflow-x:auto}
+
+/* ---------- stage: a slice of the Field Notes page behind the ring ---------- */
+.stage{position:relative;height:var(--sh);border-radius:14px;overflow:hidden;
+  background:radial-gradient(60% 70% at 0% 0%,#f6c9a9 0%,transparent 70%),radial-gradient(60% 70% at 100% 0%,#b7c6f7 0%,transparent 70%),radial-gradient(60% 70% at 0% 100%,#a6e3cf 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#cdb7f3 0%,transparent 70%),#efeaf1}
+.stage .page{position:absolute;inset:18px;border-radius:16px;background:rgba(255,255,255,.86);padding:20px 22px;
+  font:400 17px/1.65 "New York","Iowan Old Style",Georgia,serif;color:#2b2a30;overflow:hidden}
+.stage .page .sel{background:#cfd9ff}
+body.darkStage .stage{background:radial-gradient(60% 70% at 0% 0%,#3a2a3f 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#1e2a4a 0%,transparent 70%),#14141a}
+body.darkStage .stage .page{background:rgba(30,30,34,.92);color:#e6e6ea}
+body.darkStage .stage .page .sel{background:#2d4a7a}
+.ringwrap{position:absolute;left:50%;top:50%;width:0;height:0;zoom:var(--z)}
+/* glass pieces: a blurred, tinted disc clipped to a path */
+.glass{position:absolute;left:-250px;top:-250px;width:500px;height:500px;
+  -webkit-backdrop-filter:blur(14px) saturate(1.5) brightness(1.06);backdrop-filter:blur(14px) saturate(1.5) brightness(1.06);
+  background:rgba(226,226,234,.55)}
+body.darkStage .glass{background:rgba(20,20,26,.48);-webkit-backdrop-filter:blur(14px) saturate(1.3) brightness(.8);backdrop-filter:blur(14px) saturate(1.3) brightness(.8)}
+.overlay{position:absolute;left:-250px;top:-250px;width:500px;height:500px;overflow:visible;pointer-events:none}
+.item{position:absolute;width:72px;margin-left:-36px!important;margin-left:-32px;text-align:center;color:#2b3445;pointer-events:none;
+  text-shadow:0 0 2px rgba(255,255,255,.6)}
+body.darkStage .item{color:rgba(255,255,255,.92);text-shadow:0 0 1.5px rgba(0,0,0,.55)}
+.item svg{display:block;margin:0 auto;width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.item .ico{height:18px;display:flex;align-items:center;justify-content:center}
+.item .lbl{margin-top:2px;font:500 9px/11px -apple-system,"SF Pro Text",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item.hot{color:#0d1729} body.darkStage .item.hot{color:#fff}
+.item.b .lbl{font-weight:700}
+.cursor{position:absolute;width:12px;height:18px;margin:-1px 0 0 -1px;background:#111;
+  clip-path:polygon(0 0,0 100%,28% 76%,48% 100%,62% 94%,43% 70%,78% 70%);filter:drop-shadow(0 0 1px #fff)}
+</style>
+</head>
+<body>
+<main>
+<p style="margin:0 0 6px;color:var(--muted);font-weight:600;font-size:13px;letter-spacing:.05em">QDUO · 圆环 · 组标记 · 2026-09-27</p>
+<h1>"这一格有二级菜单"怎么标</h1>
+<p class="lede">现在：带二级菜单的格子（组）在外沿画一小段弧，二级菜单展开时这段弧变成品牌渐变。下面是几种替代思路。每个方案四张图：<b>平时</b>（鼠标在别处，看组标记本身）、悬停普通动作、悬停组（二级菜单展开）、进到二级菜单。悬停配色都用刚定下的蓝 → 青渐变。默认放大 1.6 倍。</p>
+<div class="bar">
+  <button data-bg="light" class="on">浅色背景</button><button data-bg="dark">深色背景</button>
+  <span class="sp"></span>
+  <button data-z="1">实际大小</button><button data-z="1.6" class="on">放大 1.6×</button>
+</div>
+
+<div id="opts"></div>
+
+<h2>对比</h2>
+<div class="card scroll"><table>
+<tr><th></th><th>平时</th><th>展开时</th><th>额外信息</th><th>圆环上多了什么</th></tr>
+<tr><td><b>现状 外沿短弧</b></td><td>外沿一小段弧</td><td>弧变品牌色</td><td>—</td><td>一段弧</td></tr>
+<tr><td><b>A 文字后加 ›</b></td><td>组名后面一个 ›</td><td>› 跟文字一起变渐变</td><td>—</td><td>什么都没多</td></tr>
+<tr><td><b>B 朝外小三角</b></td><td>外沿指向外的小三角</td><td>三角变品牌色</td><td>暗示展开方向</td><td>一个小三角</td></tr>
+<tr><td><b>C 数量小点</b></td><td>外沿一排点</td><td>点变品牌色</td><td>有几个子项</td><td>几个点</td></tr>
+<tr><td><b>D 露出二级环</b></td><td>外沿外一道细玻璃边</td><td>边长成二级菜单</td><td>二级菜单有多宽</td><td>圆环外一道边</td></tr>
+<tr><td><b>E 图标角标</b></td><td>图标右上角数字</td><td>角标填品牌色</td><td>有几个子项</td><td>一个角标</td></tr>
+</table></div>
+
+<h2>我的推荐：A 文字后加 ›</h2>
+<ul>
+<li>› 是 macOS 菜单里"这里有子菜单"的标准写法，用户不用学；它是文字的一部分，跟着文字走，<b>永远不会和圆环上的任何弧线、边缘挤在一起</b>，也不会压字。</li>
+<li>圆环外沿彻底干净，你觉得别扭的那段弧没了；展开时 › 和组名一起变成渐变色，和现在的悬停效果是一套。</li>
+<li>如果想要更有设计感、跟"圆环"这个造型呼应的，选 <b>D 露出二级环</b>：平时就暗示了二级菜单藏在后面、有多宽，展开时是同一个东西长出来，动画上最连贯。</li>
+</ul>
+<p style="color:var(--muted);font-size:14px">说明：玻璃效果用浏览器的背景模糊模拟，真实的 Liquid Glass 还会有折射，会更通透一些；图标是按 SF Symbols 手画的近似版本。几何位置（文字、圆点、刻度、弧线的半径和角度）和 app 代码一致。</p>
+</main>
+
+<script>
+// ---------------- icons (approximations of the SF Symbols the app uses) ----------------
+const I = {
+  translate:'<path d="M4 5h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M7 13l2.5-6 2.5 6M7.8 11h3.4"/>',
+  bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/>',
+  quote:'<path d="M5 11h4v6H5zM5 11c0-3 1-5 4-6M14 11h4v6h-4zM14 11c0-3 1-5 4-6"/>',
+  wand:'<path d="M4 20L15 9M13 7l2-2 2 2-2 2zM19 3v3M17.5 4.5h3M19 11v2M18 12h2M9 3v2M8 4h2"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+  speak:'<path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  copy:'<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 16V6a2 2 0 0 1 2-2h8"/>',
+  check:'<path d="M4 7h10M4 11h7M4 15h5M13 16l2.5 2.5L21 13"/>',
+  scissors:'<circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8 8.5L20 17M8 15.5L20 7"/>',
+  seal:'<path d="M12 3l2.2 1.6 2.7-.2.8 2.6 2.2 1.6-.9 2.6.9 2.6-2.2 1.6-.8 2.6-2.7-.2L12 21l-2.2-1.6-2.7.2-.8-2.6-2.2-1.6.9-2.6-.9-2.6 2.2-1.6.8-2.6 2.7.2z"/><path d="M9 12l2 2 4-4"/>',
+  book:'<path d="M4 5c3-1 5-1 8 1v14c-3-2-5-2-8-1zM20 5c-3-1-5-1-8 1v14c3-2 5-2 8-1z"/>',
+  bookc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12 8h4"/>',
+};
+const MENU = [
+  {t:'Translate', i:'translate'}, {t:'Explain', i:'bulb'}, {t:'Summarize', i:'quote'},
+  {t:'Rewrite', i:'wand', kids:[{t:'Polish',i:'wand'},{t:'Fix Grammar',i:'check'},{t:'Concise',i:'scissors'},{t:'Formal',i:'seal'}]},
+  {t:'Search', i:'search', kids:[{t:'Google',i:'search'},{t:'Wikipedia',i:'book'},{t:'Dictionary',i:'bookc'}]},
+  {t:'Speak', i:'speak'}, {t:'Copy', i:'copy'},
+];
+// ---------------- geometry (points, same numbers as WheelActionsView) ----------------
+const IR = 53, OR = 116, SEAM = 5, SUBT = 56, SUB0 = OR + SEAM, SUB1 = SUB0 + SUBT, MID = (IR + OR) / 2, SUBMID = (SUB0 + SUB1) / 2;
+const N = MENU.length, STEP = 360 / N, GAP = 2.4, CSTEP = 40;
+const rad = a => a * Math.PI / 180;
+const P = (a, r) => [r * Math.sin(rad(a)), -r * Math.cos(rad(a))];         // clockwise from 12 o'clock
+const f = n => n.toFixed(2);
+function sector(a0, a1, r0, r1) {
+  const [x0, y0] = P(a0, r1), [x1, y1] = P(a1, r1), [x2, y2] = P(a1, r0), [x3, y3] = P(a0, r0), big = (a1 - a0) > 180 ? 1 : 0;
+  return `M${f(x0)} ${f(y0)}A${r1} ${r1} 0 ${big} 1 ${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}A${r0} ${r0} 0 ${big} 0 ${f(x3)} ${f(y3)}Z`;
+}
+const annulus = (r0, r1) => `M0 ${-r1}A${r1} ${r1} 0 1 1 0 ${r1}A${r1} ${r1} 0 1 1 0 ${-r1}ZM0 ${-r0}A${r0} ${r0} 0 1 0 0 ${r0}A${r0} ${r0} 0 1 0 0 ${-r0}Z`;
+const slice = i => ({a0: i * STEP + GAP / 2, a1: (i + 1) * STEP - GAP / 2, mid: i * STEP + STEP / 2});
+function childSlice(pi, j) { const k = MENU[pi].kids.length, st = slice(pi).mid - k * CSTEP / 2; return {a0: st + j * CSTEP + GAP / 2, a1: st + (j + 1) * CSTEP - GAP / 2, mid: st + j * CSTEP + CSTEP / 2}; }
+
+// ---------------- the options: how each state is drawn ----------------
+// st: 'hover' | 'selected'; returns SVG markup drawn over the glass for one slice
+const ink = () => document.body.classList.contains('darkStage') ? 'rgba(255,255,255,.9)' : 'rgb(26,33,51)';
+const isDk = () => document.body.classList.contains('darkStage');
+// width of a label in the app's 9pt label font, to size marks that hug the text
+const _cv = document.createElement('canvas').getContext('2d');
+const textW = (t, bold) => { _cv.font = `${bold ? 700 : 500} 9px -apple-system, "SF Pro Text", sans-serif`; return Math.min(_cv.measureText(t).width, 64); };
+// c = {s, st:'hover'|'selected', ring:'main'|'sub', r0, r1, x, y, t}
+// Each option decides the hovered glyph paint. paint(ctx) → {solid:'#hex'} or {grad:[c0,c1], angle}
+// ctx = {item, idx, ring:'main'|'sub', angle, parent, st}
+const HUE = a => `hsl(${Math.round(((a % 360) + 360) % 360)}, ${isDk() ? 80 : 72}%, ${isDk() ? 68 : 46}%)`;
+const KIND = {Translate:'ai', Explain:'ai', Summarize:'ai', Rewrite:'ai', Polish:'ai', 'Fix Grammar':'ai', Concise:'ai', Formal:'ai',
+  Search:'web', Google:'web', Wikipedia:'web', Dictionary:'web', Speak:'sys', Copy:'sys'};
+const BRAND = () => isDk() ? ['#60A5FA', '#22D3EE'] : ['#2563EB', '#06B6D4'];
+const REST = () => isDk() ? 'rgba(255,255,255,.55)' : 'rgba(26,33,51,.5)';
+// groupMark(c) → SVG for one group slice. c = {s, open, kids, i}
+const OPTS = [
+  {id:'现状', cur:true, name:'外沿短弧', tag:'',
+   desc:'外沿往里 2–5pt 画一段 ±5.5° 的短弧；展开时变品牌色。',
+   groupMark: c => `<path d="${sector(c.s.mid - 5.5, c.s.mid + 5.5, OR - 5, OR - 2)}" fill="${c.open ? BRAND()[0] : REST()}"/>`},
+  {id:'A', name:'文字后面加 ›', tag:'<span class="tag rec">推荐</span>',
+   desc:'和 macOS 菜单里"有子菜单"的写法一样：组名后面跟一个小 ›。圆环上不再有额外图形；展开时 › 跟着文字一起变成渐变色。所有人都认得这个符号，不用学。',
+   chevron: true, groupMark: () => ''},
+  {id:'B', name:'朝外的小三角', tag:'',
+   desc:'外沿画一个指向外面的小三角（宽 7pt），意思是"往外推，还有一圈"——方向正好就是二级菜单展开的方向。展开时三角变成品牌色。',
+   groupMark: c => { const [tx, ty] = P(c.s.mid, OR - 2), [lx, ly] = P(c.s.mid - 2.2, OR - 7.5), [rx, ry] = P(c.s.mid + 2.2, OR - 7.5);
+     return `<path d="M${f(tx)} ${f(ty)}L${f(lx)} ${f(ly)}L${f(rx)} ${f(ry)}Z" fill="${c.open ? BRAND()[0] : REST()}" stroke="${c.open ? BRAND()[0] : REST()}" stroke-width="1" stroke-linejoin="round"/>`; }},
+  {id:'C', name:'子项数量的小点', tag:'',
+   desc:'外沿画一排小圆点，<b>有几个子项就几个点</b>（Rewrite 4 个、Search 3 个），沿着圆弧排。既说明"这里有二级菜单"，又说明有多少项。展开时点变成品牌色。',
+   groupMark: c => { let g = ''; const k = c.kids, gap = 4.2, st = c.s.mid - gap * (k - 1) / 2;
+     for (let j = 0; j < k; j++) { const [x, y] = P(st + j * gap, OR - 5); g += `<circle cx="${f(x)}" cy="${f(y)}" r="1.35" fill="${c.open ? BRAND()[0] : REST()}"/>`; }
+     return g; }},
+  {id:'D', name:'露出一截二级环', tag:'',
+   desc:'在圆环<b>外面</b>贴着外沿露出一条极细的玻璃边（宽 3pt），长度正好等于二级菜单展开后的跨度，像二级环折叠藏在主环后面、露出一道边。展开时它就长成真正的二级菜单，前后是连贯的。',
+   peek: true, groupMark: c => c.open ? '' : `<path d="${sector(c.s.mid - c.kids * 20 + 1, c.s.mid + c.kids * 20 - 1, OR + 1.5, OR + 4.5)}" fill="${isDk() ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.85)'}" stroke="${isDk() ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.12)'}" stroke-width=".6"/>`},
+  {id:'E', name:'图标角标', tag:'',
+   desc:'组的图标右上角挂一个小圆角标，写着子项数量（4、3）。像 App 图标上的数字角标，一看就懂"里面还有东西"。展开时角标填品牌色、数字变白。',
+   badge: true, groupMark: () => ''},
+];
+// three scenes: [hovered main index, open group index, hovered child index]
+const SCENES = [
+  {cap:'平时：鼠标在 Translate 上，看组标记本身', hover:0, open:null, child:null, cursor:[0, IR + 5]},
+  {cap:'悬停普通动作（Summarize，斜下方）', hover:2, open:null, child:null, cursor:[2, IR + 5]},
+  {cap:'悬停组（Search），二级菜单展开', hover:4, open:4, child:null, cursor:[4, IR + 5]},
+  {cap:'进到二级菜单（Wikipedia）：Search 变"选中"', hover:null, open:4, child:1, cursor:[4, SUB0 + 9]},
+];
+
+let GID = 0;
+function badge(n, lit) {
+  const [c0, c1] = BRAND(), dk = isDk();
+  const bg = lit ? `linear-gradient(160deg,${c0},${c1})` : (dk ? 'rgba(255,255,255,.28)' : 'rgba(26,33,51,.16)');
+  return `<span style="position:absolute;left:calc(50% + 5px);top:-3px;min-width:11px;height:11px;padding:0 2px;border-radius:6px;background:${bg};color:${lit ? '#fff' : (dk ? '#fff' : '#1a2133')};font:700 7.5px/11px -apple-system,sans-serif;text-align:center">${n}</span>`;
+}
+function item(x, y, it, hot, bold, paint, soft, opt) {
+  let ico = I[it.i], lblStyle = '', svgExtra = '', stroke = '';
+  if (hot && paint) {
+    if (paint.solid) { stroke = paint.solid; lblStyle = `color:${paint.solid};text-shadow:none`; }
+    else { const id = 'g' + (GID++), [c0, c1] = paint.grad;
+      svgExtra = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></linearGradient></defs>`;
+      stroke = `url(#${id})`;
+      lblStyle = `background:linear-gradient(${paint.angle}deg,${c0},${c1});-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none`; }
+  }
+  const icoSvg = stroke ? ico.replace(/fill="currentColor"/g, `fill="${stroke}"`) : ico;
+  return `<div class="item${hot ? ' hot' : ''}${bold ? ' b' : ''}" style="left:${x}px;top:${y - 15.5}px;${soft ? 'opacity:.55' : ''}">
+    <div class="ico"><svg viewBox="0 0 24 24" ${stroke ? `style="stroke:${stroke}"` : ''}>${svgExtra}${icoSvg}</svg></div><div class="lbl" style="${lblStyle}">${it.t}${opt && opt.chevron && it.kids ? '<span style="opacity:.7;margin-left:1px">›</span>' : ''}</div>${opt && opt.badge && it.kids ? badge(it.kids.length, hot) : ''}</div>`;
+}
+function scene(opt, sc) {
+  const dk = isDk();
+  let clip = annulus(IR, OR), marks = '', items = '', subClip = '';
+  if (sc.open != null) {
+    MENU[sc.open].kids.forEach((k, j) => {
+      const s = childSlice(sc.open, j);
+      subClip += sector(s.a0, s.a1, SUB0, SUB1);
+      const hot = sc.child === j;
+      const [x, y] = P(s.mid, SUBMID);
+      items += item(x, y, k, hot, hot, hot && {grad: BRAND(), angle: 160}, false, opt);
+    });
+  }
+  MENU.forEach((m, i) => {
+    const s = slice(i);
+    const hot = sc.hover === i || (sc.open === i && sc.child != null);
+    const soft = sc.open === i && sc.child != null;          // open parent while the pointer is on its second ring
+    const [x, y] = P(s.mid, MID);
+    if (m.kids) marks += opt.groupMark({s, open: sc.open === i, kids: m.kids.length, i});
+    items += item(x, y, m, hot, hot, hot && {grad: BRAND(), angle: 160}, soft, opt);
+  });
+  const [cx, cy] = P(slice(sc.cursor[0]).mid + (sc.child != null ? childSlice(sc.open, sc.child).mid - slice(sc.open).mid : 10), sc.cursor[1]);
+  return glass(clip) + (subClip ? glass(subClip) : '') +
+    `<svg class="overlay" viewBox="-250 -250 500 500">
+       <path d="${clip}" fill="none" stroke="${dk ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.10)'}" stroke-width=".8" fill-rule="evenodd"/>
+       ${subClip ? `<path d="${subClip}" fill="none" stroke="${dk ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.10)'}" stroke-width=".8"/>` : ''}
+       ${marks}</svg>` + items +
+    `<div class="cursor" style="left:${cx}px;top:${cy}px"></div>`;
+}
+// A blurred, tinted disc masked to a path (mask, not clip-path: Chrome clips a
+// backdrop-filter to the bounding box when clip-path is used).
+function glass(d) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="-250 -250 500 500"><path fill-rule="evenodd" d="${d}"/></svg>`;
+  const url = `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29')}')`;
+  return `<div class="glass" style="-webkit-mask-image:${url};mask-image:${url}"></div>`;
+}
+// shift every coordinate pair of a path by +250 so it lines up with the 500px glass box
+function shift(d) {
+  return d.replace(/([MLA])([^MLAZ]*)/g, (q, cmd, args) => {
+    const n = args.trim().split(/[ ,]+/).map(Number);
+    if (cmd === 'A') { n[5] += 250; n[6] += 250; } else { n[0] += 250; n[1] += 250; }
+    return cmd + n.join(' ');
+  });
+}
+function render() {
+  const root = document.getElementById('opts'); root.innerHTML = '';
+  OPTS.forEach(o => {
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2><span class="letter${o.cur ? ' cur' : ''}">${o.id}</span>${o.name} ${o.tag || ''}</h2><p class="desc">${o.desc}</p>
+      <div class="row">${SCENES.map(sc => `<div><div class="stage"><div class="page">Most mornings I walk the long way to work, past the bakery and the shuttered flower stall. <span class="sel">The light arrives slowly, first on the rooftops, then on the high windows.</span> By seven the trams are full again, and the quiet waits for tomorrow. On Sundays the market fills the square before the bells.</div>
+        <div class="ringwrap">${scene(o, sc)}</div></div><p class="cap">${sc.cap}</p></div>`).join('')}</div>`;
+    root.appendChild(sec);
+  });
+}
+let Z = 1;
+function setZoom(z) { Z = z; document.documentElement.style.setProperty('--z', z); document.documentElement.style.setProperty('--sh', Math.round(430 * z) + 'px'); }
+document.querySelectorAll('.bar button').forEach(b => b.onclick = () => {
+  if (b.dataset.bg) { document.querySelectorAll('[data-bg]').forEach(x => x.classList.toggle('on', x === b)); document.body.classList.toggle('darkStage', b.dataset.bg === 'dark'); render(); }
+  if (b.dataset.z) { document.querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b)); setZoom(+b.dataset.z); }
+});
+setZoom(1.6); render();
+</script>
+</body>
+</html>

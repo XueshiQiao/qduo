@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>圆环悬停标记方案</title>
+<style>
+:root{--bg:#f5f5f7;--ink:#1d1d1f;--muted:#6e6e73;--card:#fff;--line:rgba(0,0,0,.1);--accent:#0a7aff;--greenBg:rgba(52,199,89,.13);--green:#1f9d45;--warnBg:rgba(255,59,48,.1);--warn:#d70015;
+  --shadow:0 0 0 .5px rgba(0,0,0,.16),0 18px 44px rgba(0,0,0,.10)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#101012;--ink:#f5f5f7;--muted:#a1a1a6;--card:#1c1c1e;--line:rgba(255,255,255,.12);--accent:#3b9bff;--greenBg:rgba(50,215,75,.14);--green:#32d74b;--warnBg:rgba(255,69,58,.16);--warn:#ff6961;--shadow:0 0 0 .5px rgba(255,255,255,.14),0 18px 44px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--bg:#101012;--ink:#f5f5f7;--muted:#a1a1a6;--card:#1c1c1e;--line:rgba(255,255,255,.12);--accent:#3b9bff;--greenBg:rgba(50,215,75,.14);--green:#32d74b;--warnBg:rgba(255,69,58,.16);--warn:#ff6961;--shadow:0 0 0 .5px rgba(255,255,255,.14),0 18px 44px rgba(0,0,0,.5)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:40px 16px 90px}
+h1{font-size:32px;margin:0 0 8px}
+h2{font-size:22px;margin:46px 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lede{color:var(--muted);max-width:860px}
+.letter{font-size:13px;font-weight:700;color:#fff;background:var(--accent);border-radius:7px;padding:1px 9px}
+.letter.cur{background:#8e8e93}
+.tag{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
+.tag.rec{background:var(--greenBg);color:var(--green)} .tag.bad{background:var(--warnBg);color:var(--warn)}
+.desc{margin:2px 0 12px;color:var(--muted);max-width:900px}
+.bar{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)}
+.bar button{font:inherit;font-size:14px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.bar button.on{background:var(--accent);color:#fff;border-color:transparent}
+.bar .sp{flex:1}
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:900px){.row{grid-template-columns:1fr}}
+.cap{font-size:13px;color:var(--muted);text-align:center;margin:6px 0 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 11px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-size:12.5px;font-weight:600}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.scroll{overflow-x:auto}
+
+/* ---------- stage: a slice of the Field Notes page behind the ring ---------- */
+.stage{position:relative;height:var(--sh);border-radius:14px;overflow:hidden;
+  background:radial-gradient(60% 70% at 0% 0%,#f6c9a9 0%,transparent 70%),radial-gradient(60% 70% at 100% 0%,#b7c6f7 0%,transparent 70%),radial-gradient(60% 70% at 0% 100%,#a6e3cf 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#cdb7f3 0%,transparent 70%),#efeaf1}
+.stage .page{position:absolute;inset:18px;border-radius:16px;background:rgba(255,255,255,.86);padding:20px 22px;
+  font:400 17px/1.65 "New York","Iowan Old Style",Georgia,serif;color:#2b2a30;overflow:hidden}
+.stage .page .sel{background:#cfd9ff}
+body.darkStage .stage{background:radial-gradient(60% 70% at 0% 0%,#3a2a3f 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#1e2a4a 0%,transparent 70%),#14141a}
+body.darkStage .stage .page{background:rgba(30,30,34,.92);color:#e6e6ea}
+body.darkStage .stage .page .sel{background:#2d4a7a}
+.ringwrap{position:absolute;left:50%;top:50%;width:0;height:0;zoom:var(--z)}
+/* glass pieces: a blurred, tinted disc clipped to a path */
+.glass{position:absolute;left:-250px;top:-250px;width:500px;height:500px;
+  -webkit-backdrop-filter:blur(14px) saturate(1.5) brightness(1.06);backdrop-filter:blur(14px) saturate(1.5) brightness(1.06);
+  background:rgba(226,226,234,.55)}
+body.darkStage .glass{background:rgba(20,20,26,.48);-webkit-backdrop-filter:blur(14px) saturate(1.3) brightness(.8);backdrop-filter:blur(14px) saturate(1.3) brightness(.8)}
+.overlay{position:absolute;left:-250px;top:-250px;width:500px;height:500px;overflow:visible;pointer-events:none}
+.item{position:absolute;width:64px;margin-left:-32px;text-align:center;color:#2b3445;pointer-events:none;
+  text-shadow:0 0 2px rgba(255,255,255,.6)}
+body.darkStage .item{color:rgba(255,255,255,.92);text-shadow:0 0 1.5px rgba(0,0,0,.55)}
+.item svg{display:block;margin:0 auto;width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.item .ico{height:18px;display:flex;align-items:center;justify-content:center}
+.item .lbl{margin-top:2px;font:500 9px/11px -apple-system,"SF Pro Text",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item.hot{color:#0d1729} body.darkStage .item.hot{color:#fff}
+.item.b .lbl{font-weight:700}
+.cursor{position:absolute;width:12px;height:18px;margin:-1px 0 0 -1px;background:#111;
+  clip-path:polygon(0 0,0 100%,28% 76%,48% 100%,62% 94%,43% 70%,78% 70%);filter:drop-shadow(0 0 1px #fff)}
+</style>
+</head>
+<body>
+<main>
+<p style="margin:0 0 6px;color:var(--muted);font-weight:600;font-size:13px;letter-spacing:.05em">QDUO · 圆环 · 悬停标记 · 2026-09-27</p>
+<h1>圆环上"鼠标在哪一格"怎么标（第三版：圆点放内侧）</h1>
+<p class="lede">现在的做法是在悬停那一格离外沿 11pt 处画一个 5pt 小圆点，外加文字加粗。问题出在<b>斜下方的几格</b>（下面「现状」里的 Summarize、Search）：文字在图标下方，圆点又往外偏，正好落进文字框里。<br>
+需要区分三种状态：<b>悬停</b>（鼠标正在这一格上）、<b>选中</b>（这个组的二级菜单开着、鼠标在二级菜单里）、<b>普通</b>。这一版<b>去掉了整格提亮</b>，并处理了内沿弧线和外侧圆弧（组的刻度、二级菜单）挤在一起的问题。下面每个方案画三张图：悬停一格普通动作、悬停一个组、鼠标进到二级菜单。尺寸按 app 真实数值 1:1 画（内半径 53、外半径 116、二级菜单 121–177，单位 pt），菜单是 B′。</p>
+
+<div class="bar">
+  <button data-bg="light" class="on">浅色背景</button><button data-bg="dark">深色背景</button>
+  <span class="sp"></span>
+  <button data-z="1" class="on">实际大小</button><button data-z="1.6">放大 1.6×</button>
+</div>
+
+<div id="opts"></div>
+
+<h2>对比</h2>
+<div class="card scroll"><table>
+<tr><th></th><th>圆点离圆心</th><th>离最近的文字</th><th>选中（组开着）</th><th>改动量</th></tr>
+<tr><td><b>现状</b></td><td>105pt（外沿往里 11）</td><td>斜下方几格：<b>压在字上</b></td><td>圆点不变</td><td>—</td></tr>
+<tr><td><b>A 内侧</b></td><td>60pt（内圈边往外 7）</td><td>至少 6pt 空隙，任何一格都一样</td><td>圆点变淡</td><td>只改圆点半径 + 选中时的透明度</td></tr>
+<tr><td><b>B 空心处</b></td><td>47pt（内圈边往里 6）</td><td>至少 20pt</td><td>组名加粗</td><td>圆点画到圆环外面，二级菜单要另外处理</td></tr>
+</table></div>
+
+<h2>我的推荐：A</h2>
+<ul>
+<li>就是你说的思路：圆点挪到内侧。文字和图标离圆心最近 69pt，圆点最外只到 62.5pt，<b>在几何上就不可能再压字</b>，不用每格单独调。</li>
+<li>保留了大家已经熟悉的"圆点 + 加粗"，只是换了位置；外沿的组刻度和二级菜单都在外侧，内侧的圆点和它们隔着整个圆环，不会挤在一起。</li>
+<li>B 让圆环更干净，但圆点离开了它标记的那一格，要多看一眼才对得上；二级菜单里也没有合适的"空心处"。</li>
+</ul>
+<p style="color:var(--muted);font-size:14px">说明：玻璃效果用浏览器的背景模糊模拟，真实的 Liquid Glass 还会有折射，会更通透一些；图标是按 SF Symbols 手画的近似版本。几何位置（文字、圆点、刻度、弧线的半径和角度）和 app 代码一致。</p>
+</main>
+
+<script>
+// ---------------- icons (approximations of the SF Symbols the app uses) ----------------
+const I = {
+  translate:'<path d="M4 5h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M7 13l2.5-6 2.5 6M7.8 11h3.4"/>',
+  bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/>',
+  quote:'<path d="M5 11h4v6H5zM5 11c0-3 1-5 4-6M14 11h4v6h-4zM14 11c0-3 1-5 4-6"/>',
+  wand:'<path d="M4 20L15 9M13 7l2-2 2 2-2 2zM19 3v3M17.5 4.5h3M19 11v2M18 12h2M9 3v2M8 4h2"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+  speak:'<path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  copy:'<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 16V6a2 2 0 0 1 2-2h8"/>',
+  check:'<path d="M4 7h10M4 11h7M4 15h5M13 16l2.5 2.5L21 13"/>',
+  scissors:'<circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8 8.5L20 17M8 15.5L20 7"/>',
+  seal:'<path d="M12 3l2.2 1.6 2.7-.2.8 2.6 2.2 1.6-.9 2.6.9 2.6-2.2 1.6-.8 2.6-2.7-.2L12 21l-2.2-1.6-2.7.2-.8-2.6-2.2-1.6.9-2.6-.9-2.6 2.2-1.6.8-2.6 2.7.2z"/><path d="M9 12l2 2 4-4"/>',
+  book:'<path d="M4 5c3-1 5-1 8 1v14c-3-2-5-2-8-1zM20 5c-3-1-5-1-8 1v14c3-2 5-2 8-1z"/>',
+  bookc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12 8h4"/>',
+};
+const MENU = [
+  {t:'Translate', i:'translate'}, {t:'Explain', i:'bulb'}, {t:'Summarize', i:'quote'},
+  {t:'Rewrite', i:'wand', kids:[{t:'Polish',i:'wand'},{t:'Fix Grammar',i:'check'},{t:'Concise',i:'scissors'},{t:'Formal',i:'seal'}]},
+  {t:'Search', i:'search', kids:[{t:'Google',i:'search'},{t:'Wikipedia',i:'book'},{t:'Dictionary',i:'bookc'}]},
+  {t:'Speak', i:'speak'}, {t:'Copy', i:'copy'},
+];
+// ---------------- geometry (points, same numbers as WheelActionsView) ----------------
+const IR = 53, OR = 116, SEAM = 5, SUBT = 56, SUB0 = OR + SEAM, SUB1 = SUB0 + SUBT, MID = (IR + OR) / 2, SUBMID = (SUB0 + SUB1) / 2;
+const N = MENU.length, STEP = 360 / N, GAP = 2.4, CSTEP = 40;
+const rad = a => a * Math.PI / 180;
+const P = (a, r) => [r * Math.sin(rad(a)), -r * Math.cos(rad(a))];         // clockwise from 12 o'clock
+const f = n => n.toFixed(2);
+function sector(a0, a1, r0, r1) {
+  const [x0, y0] = P(a0, r1), [x1, y1] = P(a1, r1), [x2, y2] = P(a1, r0), [x3, y3] = P(a0, r0), big = (a1 - a0) > 180 ? 1 : 0;
+  return `M${f(x0)} ${f(y0)}A${r1} ${r1} 0 ${big} 1 ${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}A${r0} ${r0} 0 ${big} 0 ${f(x3)} ${f(y3)}Z`;
+}
+const annulus = (r0, r1) => `M0 ${-r1}A${r1} ${r1} 0 1 1 0 ${r1}A${r1} ${r1} 0 1 1 0 ${-r1}ZM0 ${-r0}A${r0} ${r0} 0 1 0 0 ${r0}A${r0} ${r0} 0 1 0 0 ${-r0}Z`;
+const slice = i => ({a0: i * STEP + GAP / 2, a1: (i + 1) * STEP - GAP / 2, mid: i * STEP + STEP / 2});
+function childSlice(pi, j) { const k = MENU[pi].kids.length, st = slice(pi).mid - k * CSTEP / 2; return {a0: st + j * CSTEP + GAP / 2, a1: st + (j + 1) * CSTEP - GAP / 2, mid: st + j * CSTEP + CSTEP / 2}; }
+
+// ---------------- the options: how each state is drawn ----------------
+// st: 'hover' | 'selected'; returns SVG markup drawn over the glass for one slice
+const ink = () => document.body.classList.contains('darkStage') ? 'rgba(255,255,255,.9)' : 'rgb(26,33,51)';
+const isDk = () => document.body.classList.contains('darkStage');
+// width of a label in the app's 9pt label font, to size marks that hug the text
+const _cv = document.createElement('canvas').getContext('2d');
+const textW = (t, bold) => { _cv.font = `${bold ? 700 : 500} 9px -apple-system, "SF Pro Text", sans-serif`; return Math.min(_cv.measureText(t).width, 64); };
+// c = {s, st:'hover'|'selected', ring:'main'|'sub', r0, r1, x, y, t}
+const OPTS = [
+  {id:'现状', cur:true, name:'圆点在外侧（现在的样子）', tag:'<span class="tag bad">斜下方会压字</span>',
+   desc:'悬停：离外沿 11pt 的 5pt 圆点，文字加粗。组开着时圆点留在组上，组的外沿刻度变蓝。',
+   mark: c => { const [x, y] = P(c.s.mid, c.r1 - 11); return `<circle cx="${f(x)}" cy="${f(y)}" r="2.5" fill="${ink()}"/>`; },
+   bold: () => true, tick: 'blue'},
+  {id:'A', name:'圆点在内侧（圆环上，贴内圈边）', tag:'<span class="tag rec">推荐</span>',
+   desc:'同样的 5pt 圆点，从外沿挪到<b>离内圈边 7pt</b> 的位置。所有文字和图标离圆心至少 69pt，圆点最外只到 62.5pt，中间始终空着 6pt 以上，哪一格都压不到。组开着、鼠标在二级菜单里时，组上的圆点<b>变淡</b>表示"选中"；二级菜单里悬停，圆点同样放在子格的内侧。其他全部照旧（加粗、外沿刻度变蓝）。',
+   mark: c => { const [x, y] = P(c.s.mid, c.r0 + 7); return `<circle cx="${f(x)}" cy="${f(y)}" r="2.5" fill="${ink()}" opacity="${c.st === 'hover' ? 1 : .35}"/>`; },
+   bold: st => st === 'hover', tick: 'blue'},
+  {id:'B', name:'圆点在中间空心处', tag:'',
+   desc:'圆点再往里挪，放到<b>圆环中间的空心处</b>，离内圈边 6pt，不在玻璃上。圆环本身完全干净。二级菜单里悬停时，空心处的圆点转到对着子项的方向（因为二级菜单没有自己的空心处）；组本身靠加粗表示"选中"。',
+   mark: c => '', centerDot: true,
+   bold: st => st !== null, tick: 'blue'},
+];
+// three scenes: [hovered main index, open group index, hovered child index]
+const SCENES = [
+  {cap:'悬停普通动作（Summarize，斜下方）', hover:2, open:null, child:null, cursor:[2, IR + 5]},
+  {cap:'悬停组（Search），二级菜单展开', hover:4, open:4, child:null, cursor:[4, IR + 5]},
+  {cap:'进到二级菜单（Wikipedia）：Search 变"选中"', hover:null, open:4, child:1, cursor:[4, SUB0 + 9]},
+];
+
+function item(x, y, it, hot, bold) {
+  return `<div class="item${hot ? ' hot' : ''}${bold ? ' b' : ''}" style="left:${x}px;top:${y - 15.5}px">
+    <div class="ico"><svg viewBox="0 0 24 24">${I[it.i]}</svg></div><div class="lbl">${it.t}</div></div>`;
+}
+function scene(opt, sc) {
+  const dk = isDk();
+  let clip = annulus(IR, OR), marks = '', items = '', subClip = '';
+  if (sc.open != null) {
+    MENU[sc.open].kids.forEach((k, j) => {
+      const s = childSlice(sc.open, j);
+      subClip += sector(s.a0, s.a1, SUB0, SUB1);
+      const st = sc.child === j ? 'hover' : null;
+      const [x, y] = P(s.mid, SUBMID);
+      if (st) marks += opt.mark({s, st, ring: 'sub', r0: SUB0, r1: SUB1, x, y, t: k.t});
+      items += item(x, y, k, !!st, st && opt.bold('hover'));
+    });
+  }
+  MENU.forEach((m, i) => {
+    const s = slice(i);
+    const st = sc.hover === i ? 'hover' : (sc.open === i && sc.child != null ? 'selected' : null);
+    const drawn = opt.cur && st === 'selected' ? 'hover' : st;   // the app keeps the dot on the open parent
+    const [x, y] = P(s.mid, MID);
+    if (drawn) marks += opt.mark({s, st: drawn, ring: 'main', r0: IR, r1: OR, x, y, t: m.t});
+    // group tick at the outer rim (±5.5°, r OR-5..OR-2)
+    const open = sc.open === i;
+    if (m.kids && !(opt.tick === 'hideWhenOpen' && open))
+      marks += `<path d="${sector(s.mid - 5.5, s.mid + 5.5, OR - 5, OR - 2)}" fill="${opt.tick === 'blue' && open ? '#0a7aff' : (dk ? 'rgba(255,255,255,.55)' : 'rgba(26,33,51,.5)')}"/>`;
+    items += item(x, y, m, !!drawn, drawn ? opt.bold(drawn) : false);
+  });
+  // centre pointer: a short arc just inside the hole, aimed at wherever the mouse is
+  if (opt.centerDot) {
+    const aim = sc.child != null ? childSlice(sc.open, sc.child).mid : slice(sc.hover).mid;
+    const [x, y] = P(aim, IR - 6);
+    marks += `<circle cx="${f(x)}" cy="${f(y)}" r="2.5" fill="${ink()}"/>`;
+  }
+  if (opt.center) {
+    const aim = sc.child != null ? childSlice(sc.open, sc.child).mid : slice(sc.hover).mid;
+    marks += `<path d="${sector(aim - 13, aim + 13, IR - 7, IR - 4)}" fill="${ink()}" opacity=".85"/>`;
+  }
+  const [cx, cy] = P(slice(sc.cursor[0]).mid + (sc.child != null ? childSlice(sc.open, sc.child).mid - slice(sc.open).mid : 10), sc.cursor[1]);
+  return glass(clip) + (subClip ? glass(subClip) : '') +
+    `<svg class="overlay" viewBox="-250 -250 500 500">
+       <path d="${clip}" fill="none" stroke="${dk ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.10)'}" stroke-width=".8" fill-rule="evenodd"/>
+       ${subClip ? `<path d="${subClip}" fill="none" stroke="${dk ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.10)'}" stroke-width=".8"/>` : ''}
+       ${marks}</svg>` + items +
+    `<div class="cursor" style="left:${cx}px;top:${cy}px"></div>`;
+}
+// A blurred, tinted disc masked to a path (mask, not clip-path: Chrome clips a
+// backdrop-filter to the bounding box when clip-path is used).
+function glass(d) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="-250 -250 500 500"><path fill-rule="evenodd" d="${d}"/></svg>`;
+  const url = `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29')}')`;
+  return `<div class="glass" style="-webkit-mask-image:${url};mask-image:${url}"></div>`;
+}
+// shift every coordinate pair of a path by +250 so it lines up with the 500px glass box
+function shift(d) {
+  return d.replace(/([MLA])([^MLAZ]*)/g, (q, cmd, args) => {
+    const n = args.trim().split(/[ ,]+/).map(Number);
+    if (cmd === 'A') { n[5] += 250; n[6] += 250; } else { n[0] += 250; n[1] += 250; }
+    return cmd + n.join(' ');
+  });
+}
+function render() {
+  const root = document.getElementById('opts'); root.innerHTML = '';
+  OPTS.forEach(o => {
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2><span class="letter${o.cur ? ' cur' : ''}">${o.id}</span>${o.name} ${o.tag || ''}</h2><p class="desc">${o.desc}</p>
+      <div class="row">${SCENES.map(sc => `<div><div class="stage"><div class="page">Most mornings I walk the long way to work, past the bakery and the shuttered flower stall. <span class="sel">The light arrives slowly, first on the rooftops, then on the high windows.</span> By seven the trams are full again, and the quiet waits for tomorrow. On Sundays the market fills the square before the bells.</div>
+        <div class="ringwrap">${scene(o, sc)}</div></div><p class="cap">${sc.cap}</p></div>`).join('')}</div>`;
+    root.appendChild(sec);
+  });
+}
+let Z = 1;
+function setZoom(z) { Z = z; document.documentElement.style.setProperty('--z', z); document.documentElement.style.setProperty('--sh', Math.round(430 * z) + 'px'); }
+document.querySelectorAll('.bar button').forEach(b => b.onclick = () => {
+  if (b.dataset.bg) { document.querySelectorAll('[data-bg]').forEach(x => x.classList.toggle('on', x === b)); document.body.classList.toggle('darkStage', b.dataset.bg === 'dark'); render(); }
+  if (b.dataset.z) { document.querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b)); setZoom(+b.dataset.z); }
+});
+setZoom(1); render();
+</script>
+</body>
+</html>

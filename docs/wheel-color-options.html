@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>圆环悬停配色方案</title>
+<style>
+:root{--bg:#f5f5f7;--ink:#1d1d1f;--muted:#6e6e73;--card:#fff;--line:rgba(0,0,0,.1);--accent:#0a7aff;--greenBg:rgba(52,199,89,.13);--green:#1f9d45;--warnBg:rgba(255,59,48,.1);--warn:#d70015;
+  --shadow:0 0 0 .5px rgba(0,0,0,.16),0 18px 44px rgba(0,0,0,.10)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#101012;--ink:#f5f5f7;--muted:#a1a1a6;--card:#1c1c1e;--line:rgba(255,255,255,.12);--accent:#3b9bff;--greenBg:rgba(50,215,75,.14);--green:#32d74b;--warnBg:rgba(255,69,58,.16);--warn:#ff6961;--shadow:0 0 0 .5px rgba(255,255,255,.14),0 18px 44px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--bg:#101012;--ink:#f5f5f7;--muted:#a1a1a6;--card:#1c1c1e;--line:rgba(255,255,255,.12);--accent:#3b9bff;--greenBg:rgba(50,215,75,.14);--green:#32d74b;--warnBg:rgba(255,69,58,.16);--warn:#ff6961;--shadow:0 0 0 .5px rgba(255,255,255,.14),0 18px 44px rgba(0,0,0,.5)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+main{max-width:1600px;margin:0 auto;padding:40px 16px 90px}
+h1{font-size:32px;margin:0 0 8px}
+h2{font-size:22px;margin:46px 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lede{color:var(--muted);max-width:860px}
+.letter{font-size:13px;font-weight:700;color:#fff;background:var(--accent);border-radius:7px;padding:1px 9px}
+.letter.cur{background:#8e8e93}
+.tag{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
+.tag.rec{background:var(--greenBg);color:var(--green)} .tag.bad{background:var(--warnBg);color:var(--warn)}
+.desc{margin:2px 0 12px;color:var(--muted);max-width:900px}
+.bar{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)}
+.bar button{font:inherit;font-size:14px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.bar button.on{background:var(--accent);color:#fff;border-color:transparent}
+.bar .sp{flex:1}
+.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(430px * var(--z)),1fr));gap:10px}
+
+.cap{font-size:13px;color:var(--muted);text-align:center;margin:6px 0 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 11px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-size:12.5px;font-weight:600}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.scroll{overflow-x:auto}
+
+/* ---------- stage: a slice of the Field Notes page behind the ring ---------- */
+.stage{position:relative;height:var(--sh);border-radius:14px;overflow:hidden;
+  background:radial-gradient(60% 70% at 0% 0%,#f6c9a9 0%,transparent 70%),radial-gradient(60% 70% at 100% 0%,#b7c6f7 0%,transparent 70%),radial-gradient(60% 70% at 0% 100%,#a6e3cf 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#cdb7f3 0%,transparent 70%),#efeaf1}
+.stage .page{position:absolute;inset:18px;border-radius:16px;background:rgba(255,255,255,.86);padding:20px 22px;
+  font:400 17px/1.65 "New York","Iowan Old Style",Georgia,serif;color:#2b2a30;overflow:hidden}
+.stage .page .sel{background:#cfd9ff}
+body.darkStage .stage{background:radial-gradient(60% 70% at 0% 0%,#3a2a3f 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#1e2a4a 0%,transparent 70%),#14141a}
+body.darkStage .stage .page{background:rgba(30,30,34,.92);color:#e6e6ea}
+body.darkStage .stage .page .sel{background:#2d4a7a}
+.ringwrap{position:absolute;left:50%;top:50%;width:0;height:0;zoom:var(--z)}
+/* glass pieces: a blurred, tinted disc clipped to a path */
+.glass{position:absolute;left:-250px;top:-250px;width:500px;height:500px;
+  -webkit-backdrop-filter:blur(14px) saturate(1.5) brightness(1.06);backdrop-filter:blur(14px) saturate(1.5) brightness(1.06);
+  background:rgba(226,226,234,.55)}
+body.darkStage .glass{background:rgba(20,20,26,.48);-webkit-backdrop-filter:blur(14px) saturate(1.3) brightness(.8);backdrop-filter:blur(14px) saturate(1.3) brightness(.8)}
+.overlay{position:absolute;left:-250px;top:-250px;width:500px;height:500px;overflow:visible;pointer-events:none}
+.item{position:absolute;width:64px;margin-left:-32px;text-align:center;color:#2b3445;pointer-events:none;
+  text-shadow:0 0 2px rgba(255,255,255,.6)}
+body.darkStage .item{color:rgba(255,255,255,.92);text-shadow:0 0 1.5px rgba(0,0,0,.55)}
+.item svg{display:block;margin:0 auto;width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.item .ico{height:18px;display:flex;align-items:center;justify-content:center}
+.item .lbl{margin-top:2px;font:500 9px/11px -apple-system,"SF Pro Text",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item.hot{color:#0d1729} body.darkStage .item.hot{color:#fff}
+.item.b .lbl{font-weight:700}
+.cursor{position:absolute;width:12px;height:18px;margin:-1px 0 0 -1px;background:#111;
+  clip-path:polygon(0 0,0 100%,28% 76%,48% 100%,62% 94%,43% 70%,78% 70%);filter:drop-shadow(0 0 1px #fff)}
+</style>
+</head>
+<body>
+<main>
+<p style="margin:0 0 6px;color:var(--muted);font-weight:600;font-size:13px;letter-spacing:.05em">QDUO · 圆环 · 悬停配色 · 2026-09-27</p>
+<h1>悬停时图标和文字用什么颜色</h1>
+<p class="lede">现在（v2，已提交）：悬停那一格的图标和文字变成系统强调色（tint color），组开着时淡一些。下面是几种更有性格的配色思路，每种都画了三张图：悬停普通动作、悬停一个组、进到二级菜单。尺寸 1:1，菜单是 B′。顶部可以切深色背景、放大。</p>
+<div class="bar">
+  <button data-bg="light" class="on">浅色背景</button><button data-bg="dark">深色背景</button>
+  <span class="sp"></span>
+  <button data-z="1">实际大小</button><button data-z="1.6" class="on">放大 1.6×</button>
+</div>
+
+<div id="opts"></div>
+
+<h2>对比</h2>
+<div class="card scroll"><table>
+<tr><th></th><th>颜色从哪来</th><th>颜色有没有含义</th><th>跟系统强调色走吗</th><th>工作量</th></tr>
+<tr><td><b>现状</b></td><td>系统强调色</td><td>没有</td><td>是（换了粉色也跟着粉）</td><td>—</td></tr>
+<tr><td><b>A 品牌渐变</b></td><td>QDuo 图标的蓝 → 青</td><td>"这是 QDuo"</td><td>否，永远是品牌色</td><td>小：一个渐变替换一个颜色</td></tr>
+<tr><td><b>B 色轮</b></td><td>这一格在圆环上的角度</td><td>没有，纯装饰</td><td>否</td><td>小：按角度算颜色</td></tr>
+<tr><td><b>C 按类别</b></td><td>动作类型（AI / 查询 / 系统）</td><td>有：一眼看出哪些是 AI</td><td>否</td><td>中：动作类型已有，定一套三色</td></tr>
+<tr><td><b>D 每个动作自带</b></td><td>用户在设置里挑</td><td>用户自己定</td><td>否</td><td>大：配置文件 + 设置页 + 默认调色板</td></tr>
+</table></div>
+
+<h2>我的推荐：A 品牌渐变</h2>
+<ul>
+<li>最有辨识度：蓝 → 青就是 QDuo 图标的颜色，放进宣传视频里，悬停的那一下就在强化品牌。</li>
+<li>和 Liquid Glass 的冷色调天然搭配，浅色、深色背景下都清楚；也不会因为用户把系统强调色换成粉色、黄色而变得不协调。</li>
+<li>改动小：只把"悬停颜色"从一个纯色换成一个渐变，组外沿的刻度也用同一渐变的起始色，全局统一。</li>
+<li>如果想让颜色带信息量，<b>C 按类别</b>是第二选择——视频里观众能看出"这几个是 AI"。B 和 D 更像玩具或个性化选项，适合以后做成设置里的一个开关。</li>
+</ul>
+<p style="color:var(--muted);font-size:14px">说明：玻璃效果用浏览器的背景模糊模拟，真实的 Liquid Glass 还会有折射，会更通透一些；图标是按 SF Symbols 手画的近似版本。几何位置（文字、圆点、刻度、弧线的半径和角度）和 app 代码一致。</p>
+</main>
+
+<script>
+// ---------------- icons (approximations of the SF Symbols the app uses) ----------------
+const I = {
+  translate:'<path d="M4 5h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M7 13l2.5-6 2.5 6M7.8 11h3.4"/>',
+  bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/>',
+  quote:'<path d="M5 11h4v6H5zM5 11c0-3 1-5 4-6M14 11h4v6h-4zM14 11c0-3 1-5 4-6"/>',
+  wand:'<path d="M4 20L15 9M13 7l2-2 2 2-2 2zM19 3v3M17.5 4.5h3M19 11v2M18 12h2M9 3v2M8 4h2"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+  speak:'<path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  copy:'<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 16V6a2 2 0 0 1 2-2h8"/>',
+  check:'<path d="M4 7h10M4 11h7M4 15h5M13 16l2.5 2.5L21 13"/>',
+  scissors:'<circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8 8.5L20 17M8 15.5L20 7"/>',
+  seal:'<path d="M12 3l2.2 1.6 2.7-.2.8 2.6 2.2 1.6-.9 2.6.9 2.6-2.2 1.6-.8 2.6-2.7-.2L12 21l-2.2-1.6-2.7.2-.8-2.6-2.2-1.6.9-2.6-.9-2.6 2.2-1.6.8-2.6 2.7.2z"/><path d="M9 12l2 2 4-4"/>',
+  book:'<path d="M4 5c3-1 5-1 8 1v14c-3-2-5-2-8-1zM20 5c-3-1-5-1-8 1v14c3-2 5-2 8-1z"/>',
+  bookc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12 8h4"/>',
+};
+const MENU = [
+  {t:'Translate', i:'translate'}, {t:'Explain', i:'bulb'}, {t:'Summarize', i:'quote'},
+  {t:'Rewrite', i:'wand', kids:[{t:'Polish',i:'wand'},{t:'Fix Grammar',i:'check'},{t:'Concise',i:'scissors'},{t:'Formal',i:'seal'}]},
+  {t:'Search', i:'search', kids:[{t:'Google',i:'search'},{t:'Wikipedia',i:'book'},{t:'Dictionary',i:'bookc'}]},
+  {t:'Speak', i:'speak'}, {t:'Copy', i:'copy'},
+];
+// ---------------- geometry (points, same numbers as WheelActionsView) ----------------
+const IR = 53, OR = 116, SEAM = 5, SUBT = 56, SUB0 = OR + SEAM, SUB1 = SUB0 + SUBT, MID = (IR + OR) / 2, SUBMID = (SUB0 + SUB1) / 2;
+const N = MENU.length, STEP = 360 / N, GAP = 2.4, CSTEP = 40;
+const rad = a => a * Math.PI / 180;
+const P = (a, r) => [r * Math.sin(rad(a)), -r * Math.cos(rad(a))];         // clockwise from 12 o'clock
+const f = n => n.toFixed(2);
+function sector(a0, a1, r0, r1) {
+  const [x0, y0] = P(a0, r1), [x1, y1] = P(a1, r1), [x2, y2] = P(a1, r0), [x3, y3] = P(a0, r0), big = (a1 - a0) > 180 ? 1 : 0;
+  return `M${f(x0)} ${f(y0)}A${r1} ${r1} 0 ${big} 1 ${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}A${r0} ${r0} 0 ${big} 0 ${f(x3)} ${f(y3)}Z`;
+}
+const annulus = (r0, r1) => `M0 ${-r1}A${r1} ${r1} 0 1 1 0 ${r1}A${r1} ${r1} 0 1 1 0 ${-r1}ZM0 ${-r0}A${r0} ${r0} 0 1 0 0 ${r0}A${r0} ${r0} 0 1 0 0 ${-r0}Z`;
+const slice = i => ({a0: i * STEP + GAP / 2, a1: (i + 1) * STEP - GAP / 2, mid: i * STEP + STEP / 2});
+function childSlice(pi, j) { const k = MENU[pi].kids.length, st = slice(pi).mid - k * CSTEP / 2; return {a0: st + j * CSTEP + GAP / 2, a1: st + (j + 1) * CSTEP - GAP / 2, mid: st + j * CSTEP + CSTEP / 2}; }
+
+// ---------------- the options: how each state is drawn ----------------
+// st: 'hover' | 'selected'; returns SVG markup drawn over the glass for one slice
+const ink = () => document.body.classList.contains('darkStage') ? 'rgba(255,255,255,.9)' : 'rgb(26,33,51)';
+const isDk = () => document.body.classList.contains('darkStage');
+// width of a label in the app's 9pt label font, to size marks that hug the text
+const _cv = document.createElement('canvas').getContext('2d');
+const textW = (t, bold) => { _cv.font = `${bold ? 700 : 500} 9px -apple-system, "SF Pro Text", sans-serif`; return Math.min(_cv.measureText(t).width, 64); };
+// c = {s, st:'hover'|'selected', ring:'main'|'sub', r0, r1, x, y, t}
+// Each option decides the hovered glyph paint. paint(ctx) → {solid:'#hex'} or {grad:[c0,c1], angle}
+// ctx = {item, idx, ring:'main'|'sub', angle, parent, st}
+const HUE = a => `hsl(${Math.round(((a % 360) + 360) % 360)}, ${isDk() ? 80 : 72}%, ${isDk() ? 68 : 46}%)`;
+const KIND = {Translate:'ai', Explain:'ai', Summarize:'ai', Rewrite:'ai', Polish:'ai', 'Fix Grammar':'ai', Concise:'ai', Formal:'ai',
+  Search:'web', Google:'web', Wikipedia:'web', Dictionary:'web', Speak:'sys', Copy:'sys'};
+const OPTS = [
+  {id:'现状', cur:true, name:'系统强调色（v2，现在的样子）', tag:'',
+   desc:'所有悬停都用同一个系统蓝。干净、跟系统一致，但单调；而且用户在系统设置里换了强调色（比如粉色、石墨色）时，和玻璃的冷色调不一定搭。',
+   paint: () => ({solid: isDk() ? '#3b9bff' : '#0a7aff'})},
+  {id:'A', name:'品牌渐变（取自 QDuo 图标）', tag:'<span class="tag rec">推荐</span>',
+   desc:'悬停的图标和文字用 QDuo 图标本身的<b>蓝 → 青</b>渐变上色（图标背景就是这两种颜色）。一眼能认出是 QDuo，和冷色调的玻璃也最搭；不随系统强调色变化，所以永远好看。',
+   paint: () => ({grad: isDk() ? ['#5aa2ff', '#4fe3f7'] : ['#2f6bff', '#08b8d8'], angle: 135})},
+  {id:'B', name:'按位置取色（色轮）', tag:'',
+   desc:'圆环本身就是个"轮"：每一格按它所在的角度从色轮上取一个颜色，转一圈，颜色也转一圈。平时都是墨色，只有悬停的那一格亮出自己的颜色。二级菜单里的子项沿用各自角度的颜色，和父级自然衔接。动作一多，颜色会更细腻；缺点是颜色本身不带含义。',
+   paint: c => ({solid: HUE(c.angle + 200)})},
+  {id:'C', name:'按类别取色', tag:'',
+   desc:'颜色带含义：<b>AI 动作</b>用紫 → 粉的渐变（现在大家对"AI"的通用印象），<b>查询/网页</b>用蓝，<b>朗读、复制</b>这类系统动作用青绿。组的颜色跟着它里面的动作走。观众在视频里转一圈，能直接看出"哪些是 AI"。',
+   paint: c => { const k = KIND[c.item.t];
+     if (k === 'ai') return {grad: isDk() ? ['#b18cff', '#ff8fcf'] : ['#7b4dff', '#e0469a'], angle: 135};
+     if (k === 'web') return {solid: isDk() ? '#5aa2ff' : '#1f6fe5'};
+     return {solid: isDk() ? '#4fd8b5' : '#0f9b7a'}; }},
+  {id:'D', name:'每个动作自带颜色', tag:'<span class="tag bad">要加设置项</span>',
+   desc:'像快捷指令 / Raycast 那样，每个动作可以在设置里挑一个颜色（默认给一套好看的调色板）。最灵活、最个性，但要在配置文件和设置页加一个颜色字段，工作量最大。下面用一套默认调色板演示。',
+   paint: c => { const pal = isDk() ? ['#ff8a80','#ffb74d','#ffd54f','#81c784','#4dd0e1','#64b5f6','#b39ddb','#f48fb1'] : ['#e5484d','#f76b15','#d4a106','#30a46c','#0797b9','#3e63dd','#8e4ec6','#d6409f'];
+     const idx = c.ring === 'sub' ? (c.parentIdx * 3 + c.idx + 2) : c.idx; return {solid: pal[idx % pal.length]}; }},
+];
+// three scenes: [hovered main index, open group index, hovered child index]
+const SCENES = [
+  {cap:'（示意）假如每一格都亮起来：整套颜色放在一起的样子', hover:null, open:null, child:null, all:true, cursor:[0, IR + 5]},
+  {cap:'悬停普通动作（Summarize，斜下方）', hover:2, open:null, child:null, cursor:[2, IR + 5]},
+  {cap:'悬停组（Search），二级菜单展开', hover:4, open:4, child:null, cursor:[4, IR + 5]},
+  {cap:'进到二级菜单（Wikipedia）：Search 变"选中"', hover:null, open:4, child:1, cursor:[4, SUB0 + 9]},
+];
+
+let GID = 0;
+function item(x, y, it, hot, bold, paint, soft) {
+  let ico = I[it.i], lblStyle = '', svgExtra = '', stroke = '';
+  if (hot && paint) {
+    if (paint.solid) { stroke = paint.solid; lblStyle = `color:${paint.solid};text-shadow:none`; }
+    else { const id = 'g' + (GID++), [c0, c1] = paint.grad;
+      svgExtra = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></linearGradient></defs>`;
+      stroke = `url(#${id})`;
+      lblStyle = `background:linear-gradient(${paint.angle}deg,${c0},${c1});-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none`; }
+  }
+  const icoSvg = stroke ? ico.replace(/fill="currentColor"/g, `fill="${stroke}"`) : ico;
+  return `<div class="item${hot ? ' hot' : ''}${bold ? ' b' : ''}" style="left:${x}px;top:${y - 15.5}px;${soft ? 'opacity:.55' : ''}">
+    <div class="ico"><svg viewBox="0 0 24 24" ${stroke ? `style="stroke:${stroke}"` : ''}>${svgExtra}${icoSvg}</svg></div><div class="lbl" style="${lblStyle}">${it.t}</div></div>`;
+}
+function scene(opt, sc) {
+  const dk = isDk();
+  let clip = annulus(IR, OR), marks = '', items = '', subClip = '';
+  if (sc.open != null) {
+    MENU[sc.open].kids.forEach((k, j) => {
+      const s = childSlice(sc.open, j);
+      subClip += sector(s.a0, s.a1, SUB0, SUB1);
+      const hot = sc.child === j;
+      const [x, y] = P(s.mid, SUBMID);
+      items += item(x, y, k, hot, hot, hot && opt.paint({item: k, idx: j, parentIdx: sc.open, ring: 'sub', angle: s.mid}));
+    });
+  }
+  MENU.forEach((m, i) => {
+    const s = slice(i);
+    const hot = sc.all || sc.hover === i || (sc.open === i && sc.child != null);
+    const soft = sc.open === i && sc.child != null;          // open parent while the pointer is on its second ring
+    const [x, y] = P(s.mid, MID);
+    if (m.kids) {
+      const tickPaint = sc.open === i ? opt.paint({item: m, idx: i, ring: 'main', angle: s.mid}) : null;
+      const tickFill = tickPaint ? (tickPaint.solid || tickPaint.grad[0]) : (dk ? 'rgba(255,255,255,.55)' : 'rgba(26,33,51,.5)');
+      marks += `<path d="${sector(s.mid - 5.5, s.mid + 5.5, OR - 5, OR - 2)}" fill="${tickFill}"/>`;
+    }
+    items += item(x, y, m, hot, hot, hot && opt.paint({item: m, idx: i, ring: 'main', angle: s.mid}), soft);
+  });
+  const [cx, cy] = P(slice(sc.cursor[0]).mid + (sc.child != null ? childSlice(sc.open, sc.child).mid - slice(sc.open).mid : 10), sc.cursor[1]);
+  return glass(clip) + (subClip ? glass(subClip) : '') +
+    `<svg class="overlay" viewBox="-250 -250 500 500">
+       <path d="${clip}" fill="none" stroke="${dk ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.10)'}" stroke-width=".8" fill-rule="evenodd"/>
+       ${subClip ? `<path d="${subClip}" fill="none" stroke="${dk ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.10)'}" stroke-width=".8"/>` : ''}
+       ${marks}</svg>` + items +
+    `<div class="cursor" style="left:${cx}px;top:${cy}px"></div>`;
+}
+// A blurred, tinted disc masked to a path (mask, not clip-path: Chrome clips a
+// backdrop-filter to the bounding box when clip-path is used).
+function glass(d) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="-250 -250 500 500"><path fill-rule="evenodd" d="${d}"/></svg>`;
+  const url = `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29')}')`;
+  return `<div class="glass" style="-webkit-mask-image:${url};mask-image:${url}"></div>`;
+}
+// shift every coordinate pair of a path by +250 so it lines up with the 500px glass box
+function shift(d) {
+  return d.replace(/([MLA])([^MLAZ]*)/g, (q, cmd, args) => {
+    const n = args.trim().split(/[ ,]+/).map(Number);
+    if (cmd === 'A') { n[5] += 250; n[6] += 250; } else { n[0] += 250; n[1] += 250; }
+    return cmd + n.join(' ');
+  });
+}
+function render() {
+  const root = document.getElementById('opts'); root.innerHTML = '';
+  OPTS.forEach(o => {
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2><span class="letter${o.cur ? ' cur' : ''}">${o.id}</span>${o.name} ${o.tag || ''}</h2><p class="desc">${o.desc}</p>
+      <div class="row">${SCENES.map(sc => `<div><div class="stage"><div class="page">Most mornings I walk the long way to work, past the bakery and the shuttered flower stall. <span class="sel">The light arrives slowly, first on the rooftops, then on the high windows.</span> By seven the trams are full again, and the quiet waits for tomorrow. On Sundays the market fills the square before the bells.</div>
+        <div class="ringwrap">${scene(o, sc)}</div></div><p class="cap">${sc.cap}</p></div>`).join('')}</div>`;
+    root.appendChild(sec);
+  });
+}
+let Z = 1;
+function setZoom(z) { Z = z; document.documentElement.style.setProperty('--z', z); document.documentElement.style.setProperty('--sh', Math.round(430 * z) + 'px'); }
+document.querySelectorAll('.bar button').forEach(b => b.onclick = () => {
+  if (b.dataset.bg) { document.querySelectorAll('[data-bg]').forEach(x => x.classList.toggle('on', x === b)); document.body.classList.toggle('darkStage', b.dataset.bg === 'dark'); render(); }
+  if (b.dataset.z) { document.querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b)); setZoom(+b.dataset.z); }
+});
+setZoom(1.6); render();
+</script>
+</body>
+</html>
