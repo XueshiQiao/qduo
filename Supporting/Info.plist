@@ -29,7 +29,7 @@
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © Xueshi Qiao</string>
+    <string>Copyright © XueshiQiao</string>
 
     <!-- Brand values Swift reads back at runtime (Sources/Core/Brand.swift), so
          no Swift file has to contain a name or a URL. Both are set in project.yml. -->

@@ -40,7 +40,7 @@
 "about.website.description" = "Author website —";
 "about.analytics.toggle" = "Share anonymous usage statistics";
 "about.analytics.subtitle" = "Helps improve the app. No selected text, process names, paths, or personal data ever leave your device.";
-"about.copyright" = "© 2026 Xueshi Qiao. All rights reserved.";
+"about.copyright" = "© 2026 XueshiQiao. All rights reserved.";
 "about.version.format" = "Version %1$@ (%2$@)";
 "popbar.status.needsPermission" = "Needs permission";
 "popbar.perm.header" = "Permission";

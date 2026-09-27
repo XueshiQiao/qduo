@@ -143,8 +143,15 @@ final class PopBarController {
         // text, does not come through here — see `showForOnboardingSample`.)
         if front?.bundleIdentifier == Bundle.main.bundleIdentifier { return }
         // Apps the user excluded in Settings: selecting there never opens the popup.
-        if let id = front?.bundleIdentifier, PopBarPreferences.excludedApps.contains(id) {
+        // Case-insensitive: the list is hand-editable, and bundle IDs are too.
+        if let id = front?.bundleIdentifier,
+           PopBarPreferences.excludedApps.contains(where: { $0.caseInsensitiveCompare(id) == .orderedSame }) {
             Self.log.debug("trigger ignored — \(id) is excluded")
+            // A read still running for an earlier selection must not land on top
+            // of the excluded app, and neither may a popup left from before.
+            resolveTask?.cancel()
+            resolveGeneration &+= 1
+            windows.dismissTransient()
             return
         }
 

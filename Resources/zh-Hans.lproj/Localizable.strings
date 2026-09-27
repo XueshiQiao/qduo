@@ -39,7 +39,7 @@
 "about.website.description" = "作者网站 —";
 "about.analytics.toggle" = "分享匿名使用统计";
 "about.analytics.subtitle" = "帮助改进这个 App。你选中的文字、进程名、路径和任何个人数据都不会离开你的设备。";
-"about.copyright" = "© 2026 乔学诗。保留所有权利。";
+"about.copyright" = "© 2026 XueshiQiao。保留所有权利。";
 "about.version.format" = "版本 %1$@ (%2$@)";
 "popbar.status.needsPermission" = "需要授权";
 "popbar.perm.header" = "权限";
