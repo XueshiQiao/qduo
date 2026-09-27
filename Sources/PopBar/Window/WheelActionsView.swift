@@ -631,16 +631,24 @@ struct WheelActionsView: View {
     /// wedge, soft-edged and masked to the ring. (The hovered icon also scales up — see
     /// `liquidIcons` — which carries most of the selection feedback.)
     /// Selected-compartment indicator: a small neutral dot near the hovered slice's
-    /// outer edge. Paired with the slice's label going bold (see `liquidIcons`). No
+    /// INNER edge. Paired with the slice's label going bold (see `liquidIcons`). No
     /// size change / glow / colour, per the user.
+    ///
+    /// Inner, not outer: the icon + label stack sits at `midRadius`, and on the
+    /// diagonal lower slices its label reaches out to where an outer-edge dot sat,
+    /// so the dot landed on the text. Nothing is drawn nearer the centre than the
+    /// stack's inner end, so a dot 7pt off the inner edge never meets a label.
+    /// While the pointer is out on this slice's second ring, the dot stays but dims:
+    /// the slice is then the open parent, not the thing under the pointer.
     @ViewBuilder
     private func selectionDot(_ i: Int) -> some View {
-        let d = canvas, o = layout.outerRadius
+        let d = canvas, r = layout.innerRadius + 7
         let a = angles(i), m = a.mid.radians
         Circle()
             .fill(isDark ? Color.white.opacity(0.9) : Color(red: 0.10, green: 0.13, blue: 0.20))
             .frame(width: 5, height: 5)
-            .position(x: d / 2 + cos(m) * (o - 11), y: d / 2 + sin(m) * (o - 11))
+            .opacity(hoveredChild == nil ? 1 : 0.35)
+            .position(x: d / 2 + cos(m) * r, y: d / 2 + sin(m) * r)
     }
 
     private var depthGradient: RadialGradient {

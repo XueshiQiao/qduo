@@ -638,8 +638,10 @@ struct SubmenuRing<Material: View>: View, Animatable {
                 Circle()
                     .fill(color)
                     .frame(width: 5, height: 5)
-                    .position(x: canvas / 2 + cos(m) * (r.outer - 10),
-                              y: canvas / 2 + sin(m) * (r.outer - 10))
+                    // Inner edge, same as the main ring's dot (see `selectionDot`),
+                    // so it never sits on a label.
+                    .position(x: canvas / 2 + cos(m) * (r.inner + 7),
+                              y: canvas / 2 + sin(m) * (r.inner + 7))
                     .opacity(fade)
             }
         }
