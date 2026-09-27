@@ -70,7 +70,13 @@ enum LinkResolver {
         """)
 
         let t1 = timed(.t1Text) { .ran(fromText(probe.text)) }
-        let t2 = timed(.t2PointURL) { .ran(urlUnderPoint(probe.mouseLocation, flipHeight: probe.screenFlipHeight)) }
+        let t2 = timed(.t2PointURL) {
+            // Hit-testing over our own window (the ring is usually under the cursor)
+            // would run AppKit/SwiftUI on this background thread — see OwnWindowHit.
+            let axPoint = CGPoint(x: probe.mouseLocation.x, y: probe.screenFlipHeight - probe.mouseLocation.y)
+            if OwnWindowHit.coversNow(axPoint) { return .skipped("cursor is over a QDuo window") }
+            return .ran(urlUnderPoint(probe.mouseLocation, flipHeight: probe.screenFlipHeight))
+        }
         let t3 = timed(.t3SelectionAttr) {
             guard let el = probe.focusedElement else { return .skipped("no focused element") }
             return .ran(urlInSelection(of: el))
