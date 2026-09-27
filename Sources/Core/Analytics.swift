@@ -25,6 +25,17 @@ enum Analytics {
 
     private static var started = false
 
+    /// The SDK only starts its own send timer when the app becomes active
+    /// (`NSApplication.didBecomeActiveNotification`). A menu-bar app almost never
+    /// does, so events sat in memory until quit — and the flush at quit is an
+    /// async task the process rarely outlives. This timer sends them regardless.
+    private static var flushTimer: Timer?
+    #if DEBUG
+    private static let flushInterval: TimeInterval = 5
+    #else
+    private static let flushInterval: TimeInterval = 60
+    #endif
+
     /// True only once a real (non-placeholder) key has been configured.
     private static var isConfigured: Bool {
         !appKey.isEmpty && !appKey.hasPrefix("A-XX-")
@@ -40,6 +51,9 @@ enum Analytics {
         }
         started = true
         Aptabase.shared.initialize(appKey: appKey)
+        flushTimer = Timer.scheduledTimer(withTimeInterval: flushInterval, repeats: true) { _ in
+            Aptabase.shared.flush()
+        }
         track("app_launched")
         trackUpdateInstalledIfNeeded()
     }
