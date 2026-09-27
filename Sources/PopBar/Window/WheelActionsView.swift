@@ -428,7 +428,8 @@ struct WheelActionsView: View {
                 let hot = expanded && submenu?.parentID == action.id
                 RingSector(startAngle: .degrees(mid - 5.5), endAngle: .degrees(mid + 5.5),
                            innerRadius: layout.outerRadius - 5, outerRadius: layout.outerRadius - 2)
-                    .fill(hot ? AnyShapeStyle(Color.accentColor)
+                    // Lit in the same paint as a hovered glyph on this skin.
+                    .fill(hot ? (skin == .liquid ? AnyShapeStyle(brandGradient) : AnyShapeStyle(Color.accentColor))
                               : AnyShapeStyle(tickColor))
                     .frame(width: d, height: d)
             }
@@ -597,8 +598,8 @@ struct WheelActionsView: View {
             }
             // While the pointer is out on this slice's second ring, the slice is the
             // open parent rather than the thing under the pointer: a softer tint.
-            .foregroundStyle(glyphColor(hot: hot, dark: dark)
-                .opacity(hot && pointerOnSecondRing(of: action.id) ? 0.55 : 1))
+            .foregroundStyle(glyphStyle(hot: hot, dark: dark))
+            .opacity(hot && pointerOnSecondRing(of: action.id) ? 0.55 : 1)
             // Halo lifts the glyphs off the glass: a white glow on the bright ring,
             // a soft dark glow on the dark ring (mirrors the mockup's per-theme
             // text-shadow — light: white .6, dark: black .55).
@@ -619,14 +620,26 @@ struct WheelActionsView: View {
         return hypot(p.x - c, p.y - c) > layout.outerRadius
     }
 
-    /// Glyph tint for the liquid ring, per appearance (`docs/popbar-wheel-liquid.html`
+    /// Glyph paint for the liquid ring, per appearance (`docs/popbar-wheel-liquid.html`
     /// tokens). Resting: dark-navy ink in light mode, near-white in dark mode, so
-    /// nothing washes out on the glass. Hovered: the system tint (accent) colour —
-    /// that tint, with the bold label, IS the hover mark on this skin. A dot used to
-    /// do the job; wherever it sat it crowded a label or an arc on the ring.
-    private func glyphColor(hot: Bool, dark: Bool) -> Color {
-        if hot { return .accentColor }
-        return dark ? Color.white.opacity(0.92) : Color(red: 0.17, green: 0.21, blue: 0.27)
+    /// nothing washes out on the glass. Hovered: QDuo's brand gradient — that, with
+    /// the bold label, IS the hover mark on this skin. (A dot used to do the job;
+    /// wherever it sat it crowded a label or an arc. The system accent colour came
+    /// next, but it follows whatever the user picked in System Settings and does not
+    /// always sit well on the cool glass; the brand colours always do.)
+    private func glyphStyle(hot: Bool, dark: Bool) -> AnyShapeStyle {
+        if hot { return AnyShapeStyle(brandGradient) }
+        return AnyShapeStyle(dark ? Color.white.opacity(0.92) : Color(red: 0.17, green: 0.21, blue: 0.27))
+    }
+
+    /// The app icon's own gradient (`scripts/make-icon.py`: #2563EB above, #06B6D4
+    /// below, leaning slightly right). Lifted a step in dark mode so it reads on the
+    /// dark glass.
+    private var brandGradient: LinearGradient {
+        let (top, bottom) = isDark
+            ? (Color(red: 0.376, green: 0.647, blue: 0.980), Color(red: 0.133, green: 0.827, blue: 0.933))   // #60A5FA → #22D3EE
+            : (Color(red: 0.145, green: 0.388, blue: 0.922), Color(red: 0.024, green: 0.714, blue: 0.831))   // #2563EB → #06B6D4
+        return LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: UnitPoint(x: 0.35, y: 1))
     }
 
     private var depthGradient: RadialGradient {
@@ -1080,10 +1093,10 @@ struct WheelActionsView: View {
             .mask(shape.fill())
     }
 
-    private func childGlyphColor(hot: Bool, dark: Bool) -> Color {
+    private func childGlyphColor(hot: Bool, dark: Bool) -> AnyShapeStyle {
         switch skin {
-        case .classic: return hot ? .white : .primary
-        case .liquid:  return glyphColor(hot: hot, dark: dark)
+        case .classic: return AnyShapeStyle(hot ? Color.white : Color.primary)
+        case .liquid:  return glyphStyle(hot: hot, dark: dark)
         }
     }
 

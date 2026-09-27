@@ -563,7 +563,7 @@ struct SubmenuRing<Material: View>: View, Animatable {
     var hoveredIndex: Int?
     var highlight: SubmenuHighlight
     var dividerColor: Color
-    var glyphColor: (Bool) -> Color
+    var glyphColor: (Bool) -> AnyShapeStyle
     var glyphShadow: Color?
 
     var material: (RoundedRingSector) -> Material
