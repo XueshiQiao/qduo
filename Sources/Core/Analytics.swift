@@ -5,10 +5,11 @@ import Aptabase
 /// rest of the codebase never imports `Aptabase` directly and the opt-out gate
 /// lives in exactly one place.
 ///
-/// SCAFFOLDING NOTE: `appKey` is a placeholder. Until you create an Aptabase
-/// project and paste its real key here, `start()` skips initialization and every
-/// event is a silent no-op — the facade is wired up but inert, so nothing leaves
-/// the device. Replace `appKey`, ship, and it goes live.
+/// `appKey` is the project's real Aptabase key. `start()` still refuses a
+/// placeholder key ("A-XX-…"), so a fork that blanks it goes inert rather than
+/// sending events somewhere else. Debug builds report too, on purpose: Aptabase
+/// marks their events as debug and shows them apart from release data, and a
+/// debug run is how a key change gets checked end to end.
 ///
 /// Privacy contract:
 /// - No bundle IDs, process names, or paths ever leave the device.
@@ -19,8 +20,8 @@ enum Analytics {
 
     private static let log = FileLog("Analytics")
 
-    /// PLACEHOLDER — replace with the real Aptabase app key (format "A-XX-0000000000").
-    private static let appKey = "A-XX-0000000000"
+    /// The Aptabase app key (US region).
+    private static let appKey = "A-US-7811464121"
 
     private static var started = false
 
