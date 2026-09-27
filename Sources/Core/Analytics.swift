@@ -25,17 +25,6 @@ enum Analytics {
 
     private static var started = false
 
-    /// The SDK only starts its own send timer when the app becomes active
-    /// (`NSApplication.didBecomeActiveNotification`). A menu-bar app almost never
-    /// does, so events sat in memory until quit — and the flush at quit is an
-    /// async task the process rarely outlives. This timer sends them regardless.
-    private static var flushTimer: Timer?
-    #if DEBUG
-    private static let flushInterval: TimeInterval = 5
-    #else
-    private static let flushInterval: TimeInterval = 60
-    #endif
-
     /// True only once a real (non-placeholder) key has been configured.
     private static var isConfigured: Bool {
         !appKey.isEmpty && !appKey.hasPrefix("A-XX-")
@@ -51,11 +40,28 @@ enum Analytics {
         }
         started = true
         Aptabase.shared.initialize(appKey: appKey)
-        flushTimer = Timer.scheduledTimer(withTimeInterval: flushInterval, repeats: true) { _ in
-            Aptabase.shared.flush()
-        }
+        startSending()
         track("app_launched")
         trackUpdateInstalledIfNeeded()
+    }
+
+    /// The SDK only starts its send timer when the app becomes active
+    /// (`NSApplication.didBecomeActiveNotification`). A menu-bar app almost never
+    /// does, so events sat in memory until quit — and the flush at quit is an
+    /// async task the process rarely outlives. Start the SDK's own timer now.
+    ///
+    /// It has to be the SDK's timer, not one of ours calling `flush()`: the SDK's
+    /// queue dequeues without a barrier, so two flushes running at once race, and
+    /// only its own timer guards against overlapping itself. `startPolling` is
+    /// private but `@objc`; if a future SDK drops it, we log and carry on (events
+    /// then go out once the app is brought to the front, as before).
+    private static func startSending() {
+        let startPolling = NSSelectorFromString("startPolling")
+        if Aptabase.shared.responds(to: startPolling) {
+            Aptabase.shared.perform(startPolling)
+        } else {
+            log.error("Aptabase has no startPolling — events wait until the app is activated")
+        }
     }
 
     static func flush() {
