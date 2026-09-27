@@ -415,7 +415,31 @@ struct WheelActionsView: View {
             }
             // With labels shown, a group says so with a › after its name (see
             // `sliceLabel`); only an icons-only ring still needs the rim tick.
-            if !layout.showLabels { submenuTicks }
+            if !layout.showLabels { submenuTicks } else { openGroupPointer }
+        }
+    }
+
+    /// While a group's second ring is open, a small triangle on that slice's outer
+    /// edge points out at it: "this is where that ring came from". Only the open
+    /// group gets one, so it never joins the resting ring.
+    @ViewBuilder
+    private var openGroupPointer: some View {
+        let d = canvas, o = layout.outerRadius
+        if expanded, let id = submenu?.parentID, let i = actions.firstIndex(where: { $0.id == id }) {
+            let mid = angles(i).mid.degrees
+            let pt = { (deg: Double, r: CGFloat) -> CGPoint in
+                let a = deg * .pi / 180
+                return CGPoint(x: d / 2 + cos(a) * r, y: d / 2 + sin(a) * r)
+            }
+            Path { p in
+                p.move(to: pt(mid, o - 2))           // tip, just inside the rim
+                p.addLine(to: pt(mid - 2.2, o - 7.5))
+                p.addLine(to: pt(mid + 2.2, o - 7.5))
+                p.closeSubpath()
+            }
+            .fill(skin == .liquid ? AnyShapeStyle(brandGradientColors.top) : AnyShapeStyle(Color.accentColor))
+            .frame(width: d, height: d)
+            .transition(.opacity)
         }
     }
 
