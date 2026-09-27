@@ -413,8 +413,28 @@ struct WheelActionsView: View {
             case .classic: classicVisuals
             case .liquid:  liquidVisuals
             }
-            submenuTicks
+            // With labels shown, a group says so with a › after its name (see
+            // `sliceLabel`); only an icons-only ring still needs the rim tick.
+            if !layout.showLabels { submenuTicks }
         }
+    }
+
+    /// A slice's label. A group's name is followed by a ›, the way a macOS menu marks
+    /// an item with a submenu: it reads at a glance, it moves with the text so it can
+    /// never crowd an arc or edge of the ring, and it takes the hover paint with the
+    /// name. The name truncates first; the › always stays.
+    @ViewBuilder
+    private func sliceLabel(_ action: PopBarActionConfig, weight: Font.Weight) -> some View {
+        HStack(spacing: 1) {
+            Text(action.title)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            if action.hasChildren {
+                Text("›").opacity(0.7).layoutPriority(1)
+            }
+        }
+        .font(.system(size: 9, weight: weight))
+        .frame(maxWidth: layout.labelWidth)
     }
 
     /// A short mark at the outer edge of every slice that owns children, so it is
@@ -428,8 +448,10 @@ struct WheelActionsView: View {
                 let hot = expanded && submenu?.parentID == action.id
                 RingSector(startAngle: .degrees(mid - 5.5), endAngle: .degrees(mid + 5.5),
                            innerRadius: layout.outerRadius - 5, outerRadius: layout.outerRadius - 2)
-                    // Lit in the same paint as a hovered glyph on this skin.
-                    .fill(hot ? (skin == .liquid ? AnyShapeStyle(brandGradient) : AnyShapeStyle(Color.accentColor))
+                    // Lit in the brand colour on this skin. Solid, not the gradient: this
+                    // shape is framed to the whole canvas, so a gradient would resolve
+                    // across the wheel and give each tick a different colour by position.
+                    .fill(hot ? (skin == .liquid ? AnyShapeStyle(brandGradientColors.top) : AnyShapeStyle(Color.accentColor))
                               : AnyShapeStyle(tickColor))
                     .frame(width: d, height: d)
             }
@@ -474,11 +496,7 @@ struct WheelActionsView: View {
                             .frame(height: 18)   // fixed slot — same baseline fix as the capsule
                     }
                     if layout.showLabels {
-                        Text(action.title)
-                            .font(.system(size: 9, weight: .medium))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .frame(maxWidth: layout.labelWidth)
+                        sliceLabel(action, weight: .medium)
                     }
                 }
                 .foregroundStyle(hot ? Color.white : Color.primary)
@@ -588,18 +606,16 @@ struct WheelActionsView: View {
                         .frame(height: 18)
                 }
                 if layout.showLabels {
-                    Text(action.title)
-                        // selected = BOLD label (the only text change; non-selected stays medium)
-                        .font(.system(size: 9, weight: hot ? .bold : .medium))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: layout.labelWidth)
+                    // selected = BOLD label (the only text change; non-selected stays medium)
+                    sliceLabel(action, weight: hot ? .bold : .medium)
                 }
             }
             // While the pointer is out on this slice's second ring, the slice is the
             // open parent rather than the thing under the pointer: a softer tint.
-            .foregroundStyle(glyphStyle(hot: hot, dark: dark))
-            .opacity(hot && pointerOnSecondRing(of: action.id) ? 0.55 : 1)
+            // Dim the paint, not the view: a view-level opacity also thins the halo
+            // below and lets it show through the glyphs.
+            .foregroundStyle(glyphStyle(hot: hot, dark: dark)
+                .opacity(hot && pointerOnSecondRing(of: action.id) ? 0.55 : 1))
             // Halo lifts the glyphs off the glass: a white glow on the bright ring,
             // a soft dark glow on the dark ring (mirrors the mockup's per-theme
             // text-shadow — light: white .6, dark: black .55).
@@ -636,10 +652,14 @@ struct WheelActionsView: View {
     /// below, leaning slightly right). Lifted a step in dark mode so it reads on the
     /// dark glass.
     private var brandGradient: LinearGradient {
-        let (top, bottom) = isDark
+        let c = brandGradientColors
+        return LinearGradient(colors: [c.top, c.bottom], startPoint: .top, endPoint: UnitPoint(x: 0.35, y: 1))
+    }
+
+    private var brandGradientColors: (top: Color, bottom: Color) {
+        isDark
             ? (Color(red: 0.376, green: 0.647, blue: 0.980), Color(red: 0.133, green: 0.827, blue: 0.933))   // #60A5FA → #22D3EE
             : (Color(red: 0.145, green: 0.388, blue: 0.922), Color(red: 0.024, green: 0.714, blue: 0.831))   // #2563EB → #06B6D4
-        return LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: UnitPoint(x: 0.35, y: 1))
     }
 
     private var depthGradient: RadialGradient {
