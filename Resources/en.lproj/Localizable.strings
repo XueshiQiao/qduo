@@ -395,4 +395,3 @@
 "menu.pausedTooltip.format" = "%@ is paused";
 "popbar.status.running" = "Running";
 "popbar.status.paused" = "Paused";
-"popbar.status.toggleHelp" = "Show the popup when text is selected";

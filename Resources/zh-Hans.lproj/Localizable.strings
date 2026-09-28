@@ -394,4 +394,3 @@
 "menu.pausedTooltip.format" = "%@ 已暂停";
 "popbar.status.running" = "运行中";
 "popbar.status.paused" = "已暂停";
-"popbar.status.toggleHelp" = "选中文字时弹出";

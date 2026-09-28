@@ -171,16 +171,40 @@ private struct StatusFooter: View {
                 Text(L(store.popupEnabled ? "popbar.status.running" : "popbar.status.paused"))
                     .font(.system(size: 11)).foregroundColor(.secondary)
                 Spacer()
-                Toggle(isOn: Binding(get: { store.popupEnabled },
-                                     set: { store.setPopupEnabled($0) })) { EmptyView() }
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .labelsHidden()
-                    .help(L("popbar.status.toggleHelp"))
-                    .accessibilityLabel(L("popbar.status.toggleHelp"))
-                    .accessibilityIdentifier("status.popupEnabled")
+                PauseButton(paused: !store.popupEnabled) {
+                    store.setPopupEnabled(!store.popupEnabled)
+                }
             }
-            .padding(.horizontal, 16).padding(.vertical, 9)
+            // Trailing inset is smaller so the button's glyph, not its hover box,
+            // lines up with the sidebar rows; vertical is smaller because the
+            // 22pt box is taller than the text.
+            .padding(.leading, 16).padding(.trailing, 11).padding(.vertical, 4)
         }
+    }
+}
+
+/// Borderless pause / play icon button: pause while running, play while paused.
+/// The whole 22pt box is clickable and highlights on hover, not just the glyph.
+private struct PauseButton: View {
+    let paused: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        let label = String(format: L(paused ? "menu.resume.format" : "menu.pause.format"), Brand.name)
+        Button(action: action) {
+            Image(systemName: paused ? "play.fill" : "pause.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.secondary)
+                .frame(width: 22, height: 22)
+                .background(RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(hovering ? 0.08 : 0)))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("status.pauseButton")
     }
 }
