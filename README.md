@@ -26,9 +26,7 @@
   ✨ <a href="https://xueshi.dev">More apps I made → xueshi.dev</a>
 </p>
 
-Select some text — in a browser, a chat, an editor, a PDF — and a small popup appears
-at the cursor with the actions **you** set up. Tap one and it happens right there: no
-copying, no switching apps, no pasting back.
+Select text anywhere—in a browser, a chat, an editor, or a PDF—and a small popup appears at your cursor with the actions you've set up. Tap one, and it happens right there: no copying, no switching apps, no pasting back.
 
 <img src="screenshots/popup-ring-en.jpg" width="800" alt="QDuo's ring popup over selected text, with the Files & Web group opened into a second ring" />
 
