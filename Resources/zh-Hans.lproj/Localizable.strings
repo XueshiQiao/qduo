@@ -385,3 +385,13 @@
 "popbar.excluded.choose" = "从「应用程序」中选择…";
 "popbar.excluded.remove" = "移除";
 "popbar.excluded.footer" = "在这些 app 里选中文字不会弹出弹框。截图 OCR 快捷键在这些 app 里照常可用。";
+
+/* 暂停 */
+"menu.pause.format" = "暂停 %@";
+"menu.resume.format" = "恢复 %@";
+"menu.resume.subtitle" = "选中文字后会重新弹出";
+"menu.titlePaused.format" = "%@ · 已暂停";
+"menu.pausedTooltip.format" = "%@ 已暂停";
+"popbar.status.running" = "运行中";
+"popbar.status.paused" = "已暂停";
+"popbar.status.toggleHelp" = "选中文字时弹出";

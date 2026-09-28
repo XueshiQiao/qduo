@@ -23,6 +23,7 @@ enum PopBarPreferences {
         static let autoExpandHeight   = "popup.autoExpandHeight"
         static let resultFontSize     = "popup.resultFontSize"
         static let style              = "popup.style"
+        static let enabled            = "popup.enabled"
         static let simulateCopy       = "popup.simulateCopy"
         static let excludedApps       = "popup.excludedApps"
         static let wheelOuterRadius   = "wheel.outerRadius"
@@ -151,6 +152,17 @@ enum PopBarPreferences {
                            showIcons: wheelShowIcons, showLabels: wheelShowLabels,
                            submenuSeam: CGFloat(wheelSubSeam),
                            submenuThickness: CGFloat(wheelSubThickness))
+    }
+
+    // MARK: - Paused
+
+    /// Whether selecting text opens the popup at all. Default ON; OFF is "paused"
+    /// from the menu bar or the settings sidebar. Persisted, so a pause survives a
+    /// relaunch — it was switched off by hand and should not switch itself back on.
+    /// The screenshot-OCR hotkey is not affected: it is pressed on purpose.
+    static var popupEnabled: Bool {
+        get { config.bool(P.enabled, default: true) }
+        set { config.set(P.enabled, newValue) }
     }
 
     // MARK: - Where the popup reads

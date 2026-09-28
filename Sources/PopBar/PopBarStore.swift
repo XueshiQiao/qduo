@@ -17,6 +17,8 @@ final class PopBarStore: ObservableObject {
     @Published var wheelSubSeam: Double
     @Published var wheelSubThickness: Double
     @Published private(set) var isTrusted: Bool
+    /// False while paused. See `PopBarPreferences.popupEnabled`.
+    @Published private(set) var popupEnabled: Bool
     @Published private(set) var simulateCopy: Bool
     @Published private(set) var excludedApps: [String]
 
@@ -44,6 +46,7 @@ final class PopBarStore: ObservableObject {
         self.wheelSubSeam = PopBarPreferences.wheelSubSeam
         self.wheelSubThickness = PopBarPreferences.wheelSubThickness
         self.isTrusted = AccessibilityAuthorizer.isTrusted
+        self.popupEnabled = PopBarPreferences.popupEnabled
         self.simulateCopy = PopBarPreferences.simulateCopy
         self.excludedApps = PopBarPreferences.excludedApps
         self.screenOCREnabled = PopBarPreferences.screenOCREnabled
@@ -79,8 +82,7 @@ final class PopBarStore: ObservableObject {
         if trusted != isTrusted { isTrusted = trusted }
         // Granted while we were running: start straight away, so the app works
         // the moment the switch is flipped in System Settings rather than after a
-        // relaunch. There is nothing else to consult — being permitted is the
-        // only condition.
+        // relaunch. `start()` itself declines while paused.
         if trusted && !controller.isRunning {
             controller.start()
         }
@@ -149,6 +151,17 @@ final class PopBarStore: ObservableObject {
     func setWheelAutoHideOnExit(_ on: Bool) {
         wheelAutoHideOnExit = on
         PopBarPreferences.wheelAutoHideOnExit = on
+    }
+
+    // MARK: - Paused
+
+    /// Pause or resume the popup. Takes effect at once: pausing closes anything
+    /// showing and stops listening; resuming starts again if permitted.
+    func setPopupEnabled(_ on: Bool) {
+        guard on != popupEnabled else { return }
+        popupEnabled = on
+        PopBarPreferences.popupEnabled = on
+        if on { controller.start() } else { controller.stop() }
     }
 
     // MARK: - Where the popup reads

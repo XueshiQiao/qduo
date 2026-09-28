@@ -62,12 +62,11 @@ final class PopBarController {
     // MARK: - Lifecycle (call on main)
 
     /// Start monitoring, unless the Accessibility permission is missing — without
-    /// it there is nothing to monitor with.
+    /// it there is nothing to monitor with — or the user paused the popup.
     ///
-    /// There is no "enabled" setting to consult. Reading the selection IS what
-    /// this app is; a switch to turn it off would only be a slower way to quit,
-    /// and it would mean the app could sit in the menu bar doing nothing while
-    /// looking exactly like the app doing something.
+    /// A paused app sits in the menu bar doing nothing, so it must never look like
+    /// the app doing something: the menu bar icon and the settings sidebar both
+    /// say "paused" for as long as it is.
     ///
     /// `prompt: false` skips the system's Accessibility dialog: on a first launch
     /// the onboarding guide explains the permission first and asks from its own
@@ -81,9 +80,15 @@ final class PopBarController {
         start()
     }
 
-    /// Start global monitoring. No-op without the Accessibility permission.
+    /// Start global monitoring. No-op without the Accessibility permission, and
+    /// while paused — every start path comes through here, so this one check is
+    /// what keeps a pause from being undone by a permission refresh.
     func start() {
         guard !running else { return }
+        guard PopBarPreferences.popupEnabled else {
+            Self.log.info("paused — not starting")
+            return
+        }
         guard AccessibilityAuthorizer.isTrusted else {
             Self.log.warn("no Accessibility permission — not starting")
             return

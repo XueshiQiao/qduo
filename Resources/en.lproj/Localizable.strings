@@ -386,3 +386,13 @@
 "popbar.excluded.choose" = "Choose from Applications…";
 "popbar.excluded.remove" = "Remove";
 "popbar.excluded.footer" = "Selecting text in these apps never opens the popup. The screenshot OCR hotkey still works in them.";
+
+/* Pause */
+"menu.pause.format" = "Pause %@";
+"menu.resume.format" = "Resume %@";
+"menu.resume.subtitle" = "Selecting text will show the popup again";
+"menu.titlePaused.format" = "%@ · Paused";
+"menu.pausedTooltip.format" = "%@ is paused";
+"popbar.status.running" = "Running";
+"popbar.status.paused" = "Paused";
+"popbar.status.toggleHelp" = "Show the popup when text is selected";

@@ -23,7 +23,11 @@ final class MenuBarController: NSObject {
 
     private var storeObserver: AnyCancellable?
 
-    private enum Tag: Int { case finishSetup = 100, ocr = 200, update = 600 }
+    private enum Tag: Int { case title = 50, finishSetup = 100, pause = 150, ocr = 200, update = 600 }
+
+    /// The icon as drawn, and the same icon with a pause mark in the ring.
+    private var runningImage: NSImage?
+    private var pausedImage: NSImage?
 
     init(appState: AppState, updateController: UpdateController) {
         self.appState = appState
@@ -46,14 +50,17 @@ final class MenuBarController: NSObject {
             }()
             image?.isTemplate = true
             image?.accessibilityDescription = Brand.name
+            runningImage = image
+            pausedImage = image.map(Self.pausedVariant(of:))
             button.image = image
         }
         // Attached permanently: with no Dock icon there is no second gesture to
         // reserve, so every click should show the menu.
         statusItem.menu = buildMenu()
 
-        // The icon dims when the app cannot work — i.e. Accessibility has not been
-        // granted. It is a warning, not a switch: there is nothing to turn on.
+        // The icon dims when the app cannot work — Accessibility has not been
+        // granted — and shows a pause mark while the user has paused the popup.
+        // Two different looks, because they need two different fixes.
         storeObserver = appState.store.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refreshIcon() }
@@ -61,7 +68,39 @@ final class MenuBarController: NSObject {
     }
 
     private func refreshIcon() {
-        statusItem.button?.appearsDisabled = !appState.store.isTrusted
+        guard let button = statusItem.button else { return }
+        let paused = !appState.store.popupEnabled
+        button.appearsDisabled = !appState.store.isTrusted
+        button.image = paused ? pausedImage : runningImage
+        button.toolTip = paused ? String(format: L("menu.pausedTooltip.format"), Brand.name) : nil
+    }
+
+    /// The ring icon with two short bars in its hole — the pause mark. Drawn at
+    /// render time so it stays sharp at every scale and reuses the one icon asset.
+    /// Still a template: the system tints it like the plain one.
+    private static func pausedVariant(of base: NSImage) -> NSImage {
+        let size = base.size
+        let image = NSImage(size: size, flipped: false) { rect in
+            base.draw(in: rect)
+            // Centre of the ring in menubar.svg: (512, 512) in a viewBox that
+            // starts at (189.3, 199.7) and is 688.5 wide — so 46.9% across and
+            // 45.4% down. The hole is about 56% of the width.
+            let cx = rect.width * 0.469
+            let cy = rect.height * (1 - 0.454)
+            let barW = rect.width * 0.09
+            let barH = rect.height * 0.30
+            let gap = rect.width * 0.08
+            NSColor.black.setFill()
+            for dx in [-(gap / 2 + barW), gap / 2] {
+                let bar = NSRect(x: cx + dx, y: cy - barH / 2, width: barW, height: barH)
+                NSBezierPath(roundedRect: bar, xRadius: barW / 2, yRadius: barW / 2).fill()
+            }
+            return true
+        }
+        image.isTemplate = true
+        // VoiceOver reads this, not the tooltip — so it has to carry the state.
+        image.accessibilityDescription = String(format: L("menu.pausedTooltip.format"), Brand.name)
+        return image
     }
 
     private func buildMenu() -> NSMenu {
@@ -69,6 +108,7 @@ final class MenuBarController: NSObject {
 
         let titleItem = NSMenuItem(title: "\(Brand.name) v\(Brand.version)", action: nil, keyEquivalent: "")
         titleItem.isEnabled = false
+        titleItem.tag = Tag.title.rawValue
         menu.addItem(titleItem)
 
         menu.addItem(.separator())
@@ -82,6 +122,12 @@ final class MenuBarController: NSObject {
         if #available(macOS 14.4, *) { finishItem.subtitle = L("menu.finishSetup.subtitle") }
         finishItem.isHidden = appState.store.isTrusted
         menu.addItem(finishItem)
+
+        // Title and subtitle are set in `menuWillOpen`, from the current state.
+        let pauseItem = NSMenuItem(title: "", action: #selector(togglePaused(_:)), keyEquivalent: "")
+        pauseItem.target = self
+        pauseItem.tag = Tag.pause.rawValue
+        menu.addItem(pauseItem)
 
         let ocrItem = NSMenuItem(title: L("menu.captureText"),
                                  action: #selector(captureText(_:)), keyEquivalent: "")
@@ -141,6 +187,10 @@ final class MenuBarController: NSObject {
         showOnboarding(reason: .manual)
     }
 
+    @objc private func togglePaused(_ sender: NSMenuItem) {
+        appState.store.setPopupEnabled(!appState.store.popupEnabled)
+    }
+
     @objc private func captureText(_ sender: NSMenuItem) {
         appState.controller.triggerScreenOCR()
     }
@@ -182,5 +232,14 @@ extension MenuBarController: NSMenuDelegate {
         }
         appState.store.refreshTrust()
         menu.item(withTag: Tag.finishSetup.rawValue)?.isHidden = appState.store.isTrusted
+
+        let paused = !appState.store.popupEnabled
+        let version = "\(Brand.name) v\(Brand.version)"
+        menu.item(withTag: Tag.title.rawValue)?.title =
+            paused ? String(format: L("menu.titlePaused.format"), version) : version
+        if let item = menu.item(withTag: Tag.pause.rawValue) {
+            item.title = String(format: L(paused ? "menu.resume.format" : "menu.pause.format"), Brand.name)
+            if #available(macOS 14.4, *) { item.subtitle = paused ? L("menu.resume.subtitle") : nil }
+        }
     }
 }

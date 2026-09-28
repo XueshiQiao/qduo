@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>暂停开关放哪儿</title>
+<style>
+  :root {
+    --bg: #f4f3f7; --ink: #1d1d1f; --sub: #6e6e73; --line: #e3e2e8;
+    --card: #ffffff; --blue: #2f7cf6; --green: #34c759; --orange: #ff9f0a; --red: #ff453a;
+    --sidebar: #ecebf0; --win: #f7f6fa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif; }
+  main { max-width: 1240px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 48px 0 6px; }
+  p.lead { color: var(--sub); margin: 0 0 8px; max-width: 820px; }
+  .rec { display: inline-block; background: #e7f6ec; color: #1f7a3a; font-size: 12px; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px; margin-top: 20px; }
+  .opt { background: var(--card); border-radius: 14px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .opt h3 { margin: 0 0 4px; font-size: 16px; }
+  .opt .why { color: var(--sub); font-size: 13px; margin: 0 0 14px; }
+  .opt.best { outline: 2px solid var(--green); }
+
+  /* ---------- mini macOS window ---------- */
+  .win { border-radius: 10px; overflow: hidden; border: 1px solid #d9d8de; background: var(--win);
+    display: grid; grid-template-columns: 128px 1fr; height: 300px; font-size: 11.5px; position: relative; }
+  .sb { background: var(--sidebar); padding: 8px 8px 0; display: flex; flex-direction: column; }
+  .lights { display: flex; gap: 5px; margin: 2px 0 10px 2px; }
+  .lights i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+  .lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+  .brand { display: flex; gap: 6px; align-items: center; margin: 0 2px 8px; }
+  .logo { width: 20px; height: 20px; border-radius: 5px; background: linear-gradient(135deg,#4aa3ff,#2f6ff6); position: relative; }
+  .logo::after { content:""; position:absolute; inset:5px; border:2px solid #fff; border-radius:50%; }
+  .brand b { font-size: 11.5px; display:block; line-height:1.1; } .brand small { color: var(--sub); font-size: 9.5px; }
+  .row { display: flex; align-items: center; gap: 6px; padding: 4px 5px; border-radius: 6px; margin-bottom: 1px; }
+  .row.sel { background: var(--blue); color: #fff; }
+  .ic { width: 15px; height: 15px; border-radius: 4px; flex: none; }
+  .gap { height: 8px; }
+  .sb .spacer { flex: 1; }
+  .detail { padding: 10px 14px; position: relative; background:
+    linear-gradient(135deg, rgba(102,140,255,.08), rgba(255,140,217,.06), rgba(89,217,179,.07)); }
+  .toolbar { display:flex; align-items:center; justify-content:space-between; height: 22px; margin-bottom: 6px; }
+  .tbtn { width: 22px; height: 18px; border-radius: 5px; border: 1px solid #d6d5db; background: #fff; }
+  .ptitle { font-weight: 600; font-size: 13px; margin: 2px 0 8px; }
+  .group { background: #fff; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 8px; }
+  .item { display:flex; align-items:center; gap: 7px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .item:last-child { border-bottom: 0; }
+  .item .grow { flex: 1; } .item small { display:block; color: var(--sub); font-size: 9.5px; line-height: 1.3; }
+  .ghost { height: 7px; background: #e9e8ee; border-radius: 4px; }
+  .sechead { color: var(--sub); font-size: 10px; margin: 0 0 4px 4px; }
+
+  .switch { width: 26px; height: 15px; border-radius: 999px; background: var(--green); position: relative; flex: none; }
+  .switch::after { content:""; position:absolute; top:2px; right:2px; width:11px; height:11px; border-radius:50%; background:#fff; box-shadow:0 1px 1px rgba(0,0,0,.2); }
+  .switch.off { background: #d1d1d6; } .switch.off::after { right:auto; left:2px; }
+
+  .hl { box-shadow: 0 0 0 2px var(--orange), 0 0 0 5px rgba(255,159,10,.22); border-radius: 7px; }
+
+  /* toolbar pill (option A) */
+  .pill { display:flex; align-items:center; gap:5px; padding: 2px 8px; border-radius: 999px; background: #fff;
+    border: 1px solid #d6d5db; font-size: 10.5px; font-weight: 500; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex:none; }
+  .dot.off { background: #c7c7cc; }
+  .dot.warn { background: var(--orange); }
+
+  /* sidebar footer (option C) */
+  .foot { border-top: 1px solid #dcdbe1; margin: 0 -8px; padding: 7px 10px; display:flex; align-items:center; gap:6px; font-size: 10.5px; }
+  .foot .grow { flex: 1; }
+
+  /* ---------- states row ---------- */
+  .states { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .state { font-size: 12px; color: var(--sub); }
+  .state .lbl { font-weight: 600; color: var(--ink); margin-bottom: 4px; display:block; }
+  .mini { border: 1px solid #d9d8de; border-radius: 8px; padding: 8px; background: var(--sidebar); font-size: 10.5px; }
+
+  /* ---------- menu bar mock ---------- */
+  .mb { background: rgba(246,246,248,.9); border: 1px solid #d9d8de; border-radius: 8px 8px 0 0; height: 26px;
+    display:flex; justify-content:flex-end; align-items:center; gap: 14px; padding: 0 12px; font-size: 12px; }
+  .mbicon { width: 16px; height: 16px; border: 2px solid #1d1d1f; border-radius: 50%; position: relative; }
+  .mbicon::after { content:""; position:absolute; right:-4px; bottom:-3px; width:6px; height:2px; background:#1d1d1f; transform: rotate(45deg); }
+  .mbicon.dim { opacity: .35; }
+  .mbicon.pause::before { content:""; position:absolute; left:3px; top:2px; width:2px; height:8px; background:#1d1d1f; box-shadow: 4px 0 0 #1d1d1f; }
+  .mbicon.active { background: rgba(0,0,0,.08); outline: 4px solid rgba(0,0,0,.08); }
+  .menu { width: 250px; margin-left: auto; margin-right: 10px; background: rgba(250,250,252,.97); border: 1px solid #d0cfd6;
+    border-radius: 9px; box-shadow: 0 10px 30px rgba(0,0,0,.14); padding: 5px; font-size: 13px; }
+  .mi { padding: 3px 10px; border-radius: 5px; display:flex; justify-content:space-between; align-items:center; }
+  .mi.dis { color: #a1a1a6; }
+  .mi.hot { background: var(--blue); color: #fff; }
+  .mi small { font-size: 11px; opacity: .75; display:block; line-height: 1.2; }
+  .mi kbd { font: inherit; opacity: .6; }
+  .sep { height: 1px; background: #e0dfe5; margin: 5px 8px; }
+  .menus { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: 24px; margin-top: 18px; }
+  .menuwrap { background: linear-gradient(160deg,#8aa7d8,#c9a6cf); border-radius: 12px; padding: 0 0 18px; overflow: hidden; }
+  .menuwrap .cap { color:#fff; font-weight:600; font-size: 13px; padding: 10px 14px 8px; text-shadow: 0 1px 2px rgba(0,0,0,.2); }
+
+  /* ---------- table ---------- */
+  table { border-collapse: collapse; width: 100%; background: #fff; border-radius: 12px; overflow: hidden; margin-top: 16px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #faf9fc; font-weight: 600; }
+  td.y { color: #1f7a3a; } td.n { color: #b3261e; } td.m { color: #8a5a00; }
+  .note { background: #fff8e6; border: 1px solid #f3dfae; border-radius: 10px; padding: 12px 16px; margin-top: 24px; font-size: 13.5px; }
+  .note b { color: #8a5a00; }
+</style>
+</head>
+<body>
+<main>
+  <h1>「暂停 QDuo」开关放哪儿</h1>
+  <p class="lead">暂停 = 选中文字后不再弹出圆环 / 胶囊条。菜单栏的入口是定的；下面是主窗口里三个候选位置（A / B / C），以及菜单栏菜单和菜单栏图标在「运行中 / 已暂停」两种状态下的样子。橙色描边 = 新加的东西。</p>
+
+  <h2>一、主窗口入口：三个候选</h2>
+  <div class="grid">
+
+    <!-- A: toolbar top-right -->
+    <section class="opt">
+      <h3>A · 右上角工具栏按钮</h3>
+      <p class="why">每一页都看得到。但工具栏右上角在 macOS 上一般放「跟当前页面有关」的操作；一个全局开关放这里，和页面内容挨着，容易被误以为只管这一页。</p>
+      <div class="win">
+        <div class="sb">
+          <div class="lights"><i></i><i></i><i></i></div>
+          <div class="brand"><div class="logo"></div><div><b>QDuo</b><small>v26.09.8</small></div></div>
+          <div class="row sel"><span class="ic" style="background:#8e8e93"></span>通用</div>
+          <div class="row"><span class="ic" style="background:#5856d6"></span>动作</div>
+          <div class="row"><span class="ic" style="background:#af52de"></span>外观</div>
+          <div class="row"><span class="ic" style="background:#30b0c7"></span>截屏取字</div>
+          <div class="gap"></div>
+          <div class="row"><span class="ic" style="background:#2f7cf6"></span>AI 模型</div>
+          <div class="row"><span class="ic" style="background:#ff375f"></span>关于</div>
+        </div>
+        <div class="detail">
+          <div class="toolbar"><span class="tbtn"></span><span class="pill hl"><span class="dot"></span>运行中</span></div>
+          <div class="ptitle">通用</div>
+          <div class="group">
+            <div class="item"><span class="ic" style="background:#ff9f0a"></span><span class="grow">使用引导</span></div>
+            <div class="item"><span class="ic" style="background:#34c759"></span><span class="grow">开机自启</span><span class="switch"></span></div>
+            <div class="item"><span class="ic" style="background:#32ade6"></span><span class="grow">语言</span></div>
+          </div>
+          <div class="group"><div class="item"><div class="grow"><div class="ghost" style="width:70%"></div></div></div></div>
+        </div>
+      </div>
+      <div class="states">
+        <div class="state"><span class="lbl">运行中</span><span class="pill" style="display:inline-flex"><span class="dot"></span>运行中</span></div>
+        <div class="state"><span class="lbl">已暂停</span><span class="pill" style="display:inline-flex"><span class="dot off"></span>已暂停 · 点击恢复</span></div>
+      </div>
+    </section>
+
+    <!-- B: General section -->
+    <section class="opt">
+      <h3>B · 「通用」页最上面单独一组</h3>
+      <p class="why">最「设置」的做法，一个标准 Toggle，零学习成本。缺点：只有打开「通用」页才看得到；如果你上次停在「动作」页，打开窗口时完全看不出现在是暂停着的。</p>
+      <div class="win">
+        <div class="sb">
+          <div class="lights"><i></i><i></i><i></i></div>
+          <div class="brand"><div class="logo"></div><div><b>QDuo</b><small>v26.09.8</small></div></div>
+          <div class="row sel"><span class="ic" style="background:#8e8e93"></span>通用</div>
+          <div class="row"><span class="ic" style="background:#5856d6"></span>动作</div>
+          <div class="row"><span class="ic" style="background:#af52de"></span>外观</div>
+          <div class="row"><span class="ic" style="background:#30b0c7"></span>截屏取字</div>
+          <div class="gap"></div>
+          <div class="row"><span class="ic" style="background:#2f7cf6"></span>AI 模型</div>
+          <div class="row"><span class="ic" style="background:#ff375f"></span>关于</div>
+        </div>
+        <div class="detail">
+          <div class="toolbar"><span class="tbtn"></span></div>
+          <div class="ptitle">通用</div>
+          <div class="group hl">
+            <div class="item"><span class="ic" style="background:#34c759"></span><span class="grow">选中文字时弹出<small>关掉后 QDuo 留在菜单栏，但不再弹出</small></span><span class="switch"></span></div>
+          </div>
+          <div class="group">
+            <div class="item"><span class="ic" style="background:#ff9f0a"></span><span class="grow">使用引导</span></div>
+            <div class="item"><span class="ic" style="background:#34c759"></span><span class="grow">开机自启</span><span class="switch"></span></div>
+            <div class="item"><span class="ic" style="background:#32ade6"></span><span class="grow">语言</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="states">
+        <div class="state"><span class="lbl">运行中</span><div class="mini" style="background:#fff;display:flex;align-items:center;gap:6px">选中文字时弹出<span style="flex:1"></span><span class="switch"></span></div></div>
+        <div class="state"><span class="lbl">已暂停</span><div class="mini" style="background:#fff;display:flex;align-items:center;gap:6px">选中文字时弹出<span style="flex:1"></span><span class="switch off"></span></div></div>
+      </div>
+    </section>
+
+    <!-- C: sidebar footer -->
+    <section class="opt best">
+      <h3>C · 侧边栏左下角<span class="rec">推荐</span></h3>
+      <p class="why">每一页都看得到，而且这一格本来就存在：现在「缺辅助功能权限」的警告就显示在这里。把它变成一条常驻状态栏：状态点 + 文字 + 开关。「全局状态」放在「全局导航」下面，位置上就说明了它不属于某一页。</p>
+      <div class="win">
+        <div class="sb">
+          <div class="lights"><i></i><i></i><i></i></div>
+          <div class="brand"><div class="logo"></div><div><b>QDuo</b><small>v26.09.8</small></div></div>
+          <div class="row sel"><span class="ic" style="background:#8e8e93"></span>通用</div>
+          <div class="row"><span class="ic" style="background:#5856d6"></span>动作</div>
+          <div class="row"><span class="ic" style="background:#af52de"></span>外观</div>
+          <div class="row"><span class="ic" style="background:#30b0c7"></span>截屏取字</div>
+          <div class="gap"></div>
+          <div class="row"><span class="ic" style="background:#2f7cf6"></span>AI 模型</div>
+          <div class="row"><span class="ic" style="background:#ff375f"></span>关于</div>
+          <div class="spacer"></div>
+          <div class="foot hl"><span class="dot"></span><span class="grow">运行中</span><span class="switch"></span></div>
+        </div>
+        <div class="detail">
+          <div class="toolbar"><span class="tbtn"></span></div>
+          <div class="ptitle">通用</div>
+          <div class="group">
+            <div class="item"><span class="ic" style="background:#ff9f0a"></span><span class="grow">使用引导</span></div>
+            <div class="item"><span class="ic" style="background:#34c759"></span><span class="grow">开机自启</span><span class="switch"></span></div>
+            <div class="item"><span class="ic" style="background:#32ade6"></span><span class="grow">语言</span></div>
+          </div>
+          <div class="group"><div class="item"><div class="grow"><div class="ghost" style="width:70%"></div></div></div></div>
+        </div>
+      </div>
+      <div class="states">
+        <div class="state"><span class="lbl">运行中 / 已暂停</span>
+          <div class="mini" style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span class="dot"></span><span style="flex:1">运行中</span><span class="switch"></span></div>
+          <div class="mini" style="display:flex;align-items:center;gap:6px"><span class="dot off"></span><span style="flex:1">已暂停</span><span class="switch off"></span></div>
+        </div>
+        <div class="state"><span class="lbl">缺权限（现有警告，保留）</span>
+          <div class="mini" style="display:flex;align-items:center;gap:6px"><span class="dot warn"></span><span style="flex:1">需要辅助功能权限</span></div>
+          <div style="margin-top:6px;font-size:11px">缺权限时开关没意义，只显示警告</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <table>
+    <tr><th></th><th>A 右上角按钮</th><th>B 通用页一组</th><th>C 侧边栏左下角</th></tr>
+    <tr><td>在哪一页都看得到当前状态</td><td class="y">能</td><td class="n">只在「通用」页</td><td class="y">能</td></tr>
+    <tr><td>一眼看出「这是全局开关」</td><td class="m">一般，像当前页的操作</td><td class="y">能，但藏在一堆设置里</td><td class="y">能，挂在导航下面</td></tr>
+    <tr><td>改动量</td><td class="m">每页都要挂 toolbar item（现在 toolbar 挂在 detail 上）</td><td class="y">最小，一个 Toggle</td><td class="y">小，复用已有的 <code>StatusFooter</code></td></tr>
+    <tr><td>和现有「缺权限」警告怎么相处</td><td class="m">两处各说各的</td><td class="m">两处各说各的</td><td class="y">同一格，按优先级显示一个</td></tr>
+    <tr><td>缺点</td><td>窗口窄时挤；图标按钮状态不直观，得配文字</td><td>停在别的页时看不见；打开窗口不知道暂停着</td><td>侧边栏收起时看不见（但这时菜单栏图标会提示）</td></tr>
+  </table>
+
+  <h2>二、菜单栏入口</h2>
+  <p class="lead">注意：现在 QDuo 的菜单栏图标<b>左键、右键点都是直接弹出同一个菜单</b>（代码里特意这么做的，因为没有 Dock 图标，菜单是唯一入口）。所以「右键才有暂停项」做不到区分——建议暂停项就放在这个菜单里，左右键都能看到。</p>
+  <div class="menus">
+    <div class="menuwrap">
+      <div class="mb"><span>Wi-Fi</span><span class="mbicon active"></span><span>周一 10:24</span></div>
+      <div class="cap">运行中</div>
+      <div class="menu">
+        <div class="mi dis">QDuo v26.09.8</div>
+        <div class="sep"></div>
+        <div class="mi hot hl" style="box-shadow:0 0 0 2px var(--orange)"><span>暂停 QDuo</span></div>
+        <div class="mi"><span>截屏取字</span></div>
+        <div class="sep"></div>
+        <div class="mi"><span>设置…</span><kbd>⌘,</kbd></div>
+        <div class="mi"><span>检查更新…</span></div>
+        <div class="sep"></div>
+        <div class="mi"><span>反馈…</span></div>
+        <div class="mi"><span>作者的更多 App…</span></div>
+        <div class="sep"></div>
+        <div class="mi"><span>退出 QDuo</span><kbd>⌘Q</kbd></div>
+      </div>
+    </div>
+    <div class="menuwrap">
+      <div class="mb"><span>Wi-Fi</span><span class="mbicon pause active"></span><span>周一 10:24</span></div>
+      <div class="cap">已暂停</div>
+      <div class="menu">
+        <div class="mi dis">QDuo v26.09.8 · 已暂停</div>
+        <div class="sep"></div>
+        <div class="mi hot hl" style="box-shadow:0 0 0 2px var(--orange)"><span>恢复 QDuo<small>选中文字后会重新弹出</small></span></div>
+        <div class="mi"><span>截屏取字</span></div>
+        <div class="sep"></div>
+        <div class="mi"><span>设置…</span><kbd>⌘,</kbd></div>
+        <div class="mi"><span>检查更新…</span></div>
+        <div class="sep"></div>
+        <div class="mi"><span>反馈…</span></div>
+        <div class="mi"><span>作者的更多 App…</span></div>
+        <div class="sep"></div>
+        <div class="mi"><span>退出 QDuo</span><kbd>⌘Q</kbd></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>三、菜单栏图标：暂停时长什么样</h2>
+  <p class="lead">现在图标「变灰」已经被用来表示「缺辅助功能权限」。暂停如果也用变灰，两种情况就分不出来了。</p>
+  <table>
+    <tr><th>状态</th><th>方案 1：暂停也变灰</th><th>方案 2：图标里加暂停符号（推荐）</th></tr>
+    <tr><td>运行中</td><td><span class="mbicon" style="display:inline-block"></span></td><td><span class="mbicon" style="display:inline-block"></span></td></tr>
+    <tr><td>已暂停</td><td><span class="mbicon dim" style="display:inline-block"></span></td><td><span class="mbicon pause" style="display:inline-block"></span></td></tr>
+    <tr><td>缺权限</td><td><span class="mbicon dim" style="display:inline-block"></span> ← 和暂停一模一样</td><td><span class="mbicon dim" style="display:inline-block"></span></td></tr>
+  </table>
+
+  <div class="note">
+    <b>要改掉一条旧的设计判断。</b>代码里（<code>PopBarController.startIfPermitted</code> 和 <code>StatusFooter</code> 的注释）明确写着「故意不做开关」，理由是：开关只是更慢的退出，而且 app 会待在菜单栏里什么都不干、看起来却和在干活一样。这次加开关，第二个担心要靠「暂停时图标和侧边栏都明显显示已暂停」来解决——所以上面的图标方案 2 和侧边栏状态栏不是装饰，是这个功能成立的前提。
+  </div>
+</main>
+</body>
+</html>

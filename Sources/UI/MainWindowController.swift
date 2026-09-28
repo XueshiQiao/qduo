@@ -140,13 +140,13 @@ struct MainView: View {
     }
 }
 
-/// Shown under the sidebar ONLY while the app cannot do its job — that is, while
-/// the Accessibility permission is missing.
+/// The line under the sidebar: whether the popup is running, with the switch
+/// that pauses it — or, while the Accessibility permission is missing, only that
+/// warning, since a switch cannot help until it is granted.
 ///
-/// There is deliberately no "running" or "active" line. The app has one job and
-/// does it whenever it is open; a green light saying so would be decoration, and
-/// a light that is sometimes green and sometimes not implies a switch that does
-/// not exist. A warning, on the other hand, is worth seeing from every page.
+/// It sits under the navigation rather than on a page because it is about the
+/// whole app, and because a pause has to be visible from every page: a paused
+/// app looks exactly like a working one otherwise.
 ///
 /// Its own view because it observes the popup's store, which the root view does
 /// not: without that, it would keep whatever it said when the window opened.
@@ -160,6 +160,25 @@ private struct StatusFooter: View {
                 Text(L("popbar.status.needsPermission"))
                     .font(.system(size: 11)).foregroundColor(.secondary)
                 Spacer()
+            }
+            .padding(.horizontal, 16).padding(.vertical, 9)
+        } else {
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(store.popupEnabled ? Color.green : Color(nsColor: .tertiaryLabelColor))
+                    .frame(width: 9, height: 9)
+                    .frame(width: 12, height: 12)
+                Text(L(store.popupEnabled ? "popbar.status.running" : "popbar.status.paused"))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                Spacer()
+                Toggle(isOn: Binding(get: { store.popupEnabled },
+                                     set: { store.setPopupEnabled($0) })) { EmptyView() }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .labelsHidden()
+                    .help(L("popbar.status.toggleHelp"))
+                    .accessibilityLabel(L("popbar.status.toggleHelp"))
+                    .accessibilityIdentifier("status.popupEnabled")
             }
             .padding(.horizontal, 16).padding(.vertical, 9)
         }
