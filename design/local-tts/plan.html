@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QDuo 本地朗读方案</title>
+<style>
+:root{
+  --bg:#faf8f4;--panel:#fff;--ink:#1f1d1a;--muted:#6b665e;--line:#e4dfd6;--accent:#c2551f;
+  --good:#2f7d4a;--warn:#a86a00;--bad:#b3322b;--chip:#f1ece3;--hl:#ffd27a;--hlink:#1f1d1a;
+  --glass:rgba(255,255,255,.86);--glassline:rgba(0,0,0,.12);--shadow:0 12px 36px rgba(0,0,0,.18);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16151a;--panel:#1e1d23;--ink:#ece8e1;--muted:#a29c92;--line:#34323a;--accent:#f08a4b;
+  --good:#6cc38b;--warn:#e3b04b;--bad:#f07a72;--chip:#2a2830;--hl:#f0b24b;--hlink:#16151a;
+  --glass:rgba(40,39,46,.86);--glassline:rgba(255,255,255,.14);--shadow:0 12px 36px rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  --bg:#16151a;--panel:#1e1d23;--ink:#ece8e1;--muted:#a29c92;--line:#34323a;--accent:#f08a4b;
+  --good:#6cc38b;--warn:#e3b04b;--bad:#f07a72;--chip:#2a2830;--hl:#f0b24b;--hlink:#16151a;
+  --glass:rgba(40,39,46,.86);--glassline:rgba(255,255,255,.14);--shadow:0 12px 36px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"PingFang SC",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:32px 16px 90px}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:21px;margin:46px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
+h3{font-size:16px;margin:22px 0 8px}p,li{max-width:880px}.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:14px 0}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--chip);white-space:nowrap}tr:last-child td{border-bottom:none}
+.y{color:var(--good);font-weight:600}.m{color:var(--warn);font-weight:600}.x{color:var(--bad);font-weight:600}
+.tag{display:inline-block;font-size:11px;padding:0 7px;border-radius:5px;background:var(--chip);color:var(--muted);margin-left:4px;white-space:nowrap}
+code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:13px}
+.rec{border-left:4px solid var(--accent)}
+svg text{fill:var(--ink);font:13px -apple-system,"PingFang SC",sans-serif}
+svg .box{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+svg .hot{fill:var(--chip);stroke:var(--accent);stroke-width:1.5}
+svg .arrow{stroke:var(--muted);stroke-width:1.5;fill:none;marker-end:url(#ah)}
+svg .small{font-size:11.5px;fill:var(--muted)}
+/* mockups */
+.mocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin:14px 0}
+.mock{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.mock h4{margin:0 0 4px;font-size:15px}.mock .desc{font-size:13px;color:var(--muted);margin-bottom:10px}
+.desk{position:relative;height:250px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dfe6ee,#eee7df);border:1px solid var(--line)}
+:root[data-theme="dark"] .desk{background:linear-gradient(135deg,#2a3038,#332e2a)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .desk{background:linear-gradient(135deg,#2a3038,#332e2a)}}
+.doc{position:absolute;left:12px;top:12px;right:12px;bottom:12px;background:var(--panel);border-radius:8px;padding:12px 14px;font-size:12.5px;line-height:1.7;color:var(--muted)}
+.doc .sel{background:rgba(66,133,244,.28);color:var(--ink)}
+.hud{position:absolute;overflow:hidden;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--glassline);border-radius:12px;box-shadow:var(--shadow);color:var(--ink)}
+.hud .t{font-size:13px;line-height:1.65}.hud .w{padding:0 1px;border-radius:3px}.hud .w.on{background:var(--hl);color:var(--hlink)}
+.hud .ctl{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-top:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:var(--chip);color:var(--ink);font-size:11px}
+.bar{height:3px;border-radius:2px;background:var(--line);flex:1;position:relative;overflow:hidden}.bar i{position:absolute;left:0;top:0;bottom:0;width:38%;background:var(--accent)}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;background:var(--chip);font-size:11px}
+.docw .w.on{background:var(--hl);color:var(--hlink);border-radius:3px}
+</style>
+</head>
+<body><main>
+<h1>QDuo 本地朗读方案（Kokoro + 逐词高亮）</h1>
+<p class="muted">2026-09-28 · 草案，<b>尚未决定，还在调研</b>（见第十节） · 依据：<code>~/Code/tts-bench</code> 里的实测和演示 App</p>
+
+<div class="card rec">
+<b>一句话方案：</b>QDuo 的「朗读」动作从系统语音换成 Kokoro 本地模型：中文和中英混读走中文模型，英文走英文模型，其他语言继续用系统语音。模型在单独的小进程里运行，第一次用时才下载。朗读时在选中文字附近弹出一个<b>小朗读条</b>，逐词高亮正在念的内容。
+</div>
+
+<h2>一、先回答三个问题</h2>
+<h3>1. Kokoro 英文模型多大</h3>
+<div class="tw"><table>
+<tr><th>组成部分</th><th>大小</th><th>说明</th></tr>
+<tr><td>英文语音模型（Core ML，在 Apple 芯片的神经网络引擎上跑）</td><td>约 80 MB</td><td>自带默认音色 af_heart，实测</td></tr>
+<tr><td>英文注音词典 + 生词注音小模型</td><td>约 20 MB</td><td>美式词典约 16 MB；注音小模型约 1.5 MB；英式词典约 6 MB，只有用英式音色时才需要。实测</td></tr>
+<tr><td>每个额外音色</td><td>约 0.5 MB</td><td>第一次用某个音色时才下载</td></tr>
+<tr><td><b>合计（只要英文）</b></td><td><b>约 100 MB</b></td><td>中文模型另外 311 MB。中文模型念中英混杂时也要用上面这套英文注音，所以两者都装约 410 MB</td></tr>
+</table></div>
+<p class="muted">运行时占内存：中英两个模型都加载时，整个进程约 1.2–1.35 GB（实测）。只加载英文时没单独测，<b>未验证</b>。</p>
+
+<h3>2. Kokoro 支持哪些语言</h3>
+<div class="tw"><table>
+<tr><th>语言</th><th>Kokoro 模型本身</th><th>我们用的 Swift 库（FluidAudio）</th><th>状态</th></tr>
+<tr><td>英语（美式、英式）</td><td>支持，54 个音色（各语言合计）</td><td>支持</td><td class="y">实测可用</td></tr>
+<tr><td>中文（普通话）</td><td>v1.1-zh 版，100 个中文音色</td><td>支持</td><td class="y">实测可用，中英混读是我们自己修的</td></tr>
+<tr><td>日语</td><td>支持</td><td>支持（单独的日语模型）</td><td class="m">没测过</td></tr>
+<tr><td>西班牙语、法语</td><td>支持</td><td>支持（和英文共用一个模型，换注音词典）</td><td class="m">没测过</td></tr>
+<tr><td>印地语、意大利语、葡萄牙语</td><td>有音色</td><td>没有对应的注音处理，会按英文读音去念</td><td class="x">实际不可用</td></tr>
+<tr><td>韩语、德语、俄语等</td><td>不支持</td><td>—</td><td class="x">继续用系统语音</td></tr>
+</table></div>
+
+<h3>3. 怎么融进 QDuo：见下面</h3>
+
+<h2>二、现在 QDuo 的朗读是怎么工作的</h2>
+<p>选中文字 → 弹出操作条 → 点「朗读」→ <code>Speaker.swift</code> 用系统语音（AVSpeechSynthesizer）念。代码会先判断文字是什么语言，再挑对应语言的系统音色；弹窗随即关闭，<b>屏幕上不显示正在念的文字</b>。再点一次「朗读」就停止。</p>
+<p>所以要做逐词高亮，<b>得新加一个地方把文字显示出来</b>：别的 App 里的选中文字我们改不了颜色，只能自己画。这是本方案里唯一需要你挑的界面问题，见第四节。</p>
+
+<h2>三、整体结构</h2>
+<div class="card">
+<svg viewBox="0 0 960 330" width="100%" role="img" aria-label="结构图">
+<defs><marker id="ah" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="currentColor" style="color:var(--muted)"/></marker></defs>
+<rect class="box" x="20" y="30" width="400" height="270" rx="12"/>
+<text x="40" y="58" font-weight="600">QDuo（主程序，照旧同时支持 Intel 和 Apple 芯片）</text>
+<rect class="box" x="40" y="80" width="170" height="54" rx="8"/><text x="55" y="104">弹出操作条</text><text class="small" x="55" y="122">点「朗读」</text>
+<rect class="hot" x="230" y="80" width="170" height="54" rx="8"/><text x="245" y="104">朗读控制（新）</text><text class="small" x="245" y="122">判断语言，选引擎</text>
+<rect class="hot" x="230" y="160" width="170" height="60" rx="8"/><text x="245" y="184">朗读条窗口（新）</text><text class="small" x="245" y="203">显示文字 + 逐词高亮</text>
+<rect class="box" x="40" y="160" width="170" height="60" rx="8"/><text x="55" y="184">系统语音（保留）</text><text class="small" x="55" y="203">兜底：其他语言 / 模型没下好</text>
+<rect class="box" x="40" y="236" width="360" height="46" rx="8"/><text x="55" y="264">设置：引擎、各语言音色、语速、下载地址、删除模型</text>
+<path class="arrow" d="M210,107 L228,107"/>
+<path class="arrow" d="M300,134 L300,158"/>
+<path class="arrow" d="M230,120 L150,158"/>
+
+<rect class="hot" x="540" y="30" width="400" height="200" rx="12"/>
+<text x="560" y="58" font-weight="600">朗读小进程（新，只在 Apple 芯片 + macOS 14 上启用）</text>
+<rect class="box" x="560" y="78" width="170" height="54" rx="8"/><text x="575" y="102">文字预处理</text><text class="small" x="575" y="120">切句、中英分段、数字读法</text>
+<rect class="box" x="750" y="78" width="170" height="54" rx="8"/><text x="765" y="102">Kokoro（FluidAudio）</text><text class="small" x="765" y="120">中文模型 / 英文模型</text>
+<rect class="box" x="560" y="150" width="360" height="60" rx="8"/><text x="575" y="174">一句一句输出：音频 + 每个词的起止时间</text><text class="small" x="575" y="193">闲置约 60 秒自动退出，把 1 GB 多内存还给系统</text>
+<path class="arrow" d="M730,105 L748,105"/><path class="arrow" d="M835,132 L835,148"/>
+<path class="arrow" d="M400,98 C470,98 480,98 538,98"/><text class="small" x="440" y="88">文字</text>
+<path class="arrow" d="M538,185 C480,185 470,190 402,190"/><text class="small" x="440" y="206">音频 + 时间</text>
+<rect class="box" x="540" y="250" width="400" height="50" rx="8"/><text x="555" y="272">模型：第一次用时下载（英文 ~100 MB，中文 ~310 MB）</text><text class="small" x="555" y="290">可在设置里切换下载地址：Hugging Face / 国内镜像 hf-mirror.com</text>
+<path class="arrow" d="M740,250 L740,232"/>
+</svg>
+<p class="muted" style="margin:6px 0 0">为什么要单独一个小进程（Frank 的建议，我同意）：① FluidAudio 自己标注了 macOS 26.4–26.5 有个系统问题，会让 Kokoro 偶尔直接崩溃，放在小进程里崩了也不会带走 QDuo；② 模型占 1 GB 多内存，闲置时小进程退出就能还回去；③ QDuo 主程序可以继续支持 Intel Mac 和老系统，这些机器上自动用系统语音。两个进程之间用 QDuo 现有的「子进程 + 标准输入输出」方式通信，不用 XPC。</p>
+</div>
+
+<h2>四、逐词高亮显示在哪（请你挑一个）</h2>
+<p>三个方案的示意图（静态）：蓝底是用户在别的 App 里选中的文字，黄底是正在念的词。</p>
+<div class="mocks">
+  <div class="mock">
+    <h4>A. 小朗读条 <span class="tag">推荐</span></h4>
+    <div class="desc">在选区下方弹出一个半透明小条，只显示正在念的那一句，逐词高亮；带暂停/停止/进度。念完自动消失，不抢焦点。</div>
+    <div class="desk">
+      <div class="doc">Lorem ipsum dolor sit amet. <span class="sel">The quick brown fox jumps over the lazy dog. Small speech models can run entirely on a laptop.</span> Sed do eiusmod tempor incididunt ut labore.</div>
+      <div class="hud" style="left:40px;right:40px;top:118px;padding:10px 12px">
+        <div class="t"><span class="w">Small</span> <span class="w">speech</span> <span class="w on">models</span> <span class="w">can</span> <span class="w">run</span> <span class="w">entirely</span> <span class="w">on</span> <span class="w">a</span> <span class="w">laptop.</span></div>
+        <div class="ctl"><span class="btn">❚❚</span><span class="btn">■</span><div class="bar"><i></i></div><span>2 / 2 句</span><span class="pill">Kokoro · af_heart</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="mock">
+    <h4>B. 朗读窗口（全文）</h4>
+    <div class="desc">弹出一个稍大的浮动窗口，显示全文并随朗读滚动高亮，可以拖动、钉住。适合长文，但更占地方，也更像「另开了一个程序」。</div>
+    <div class="desk">
+      <div class="doc">Lorem ipsum dolor sit amet. <span class="sel">The quick brown fox jumps over the lazy dog…</span></div>
+      <div class="hud docw" style="left:70px;right:24px;top:60px;bottom:18px;padding:10px 12px">
+        <div class="ctl" style="margin:0 0 6px"><b style="color:var(--ink)">朗读</b><span style="flex:1"></span><span class="btn">❚❚</span><span class="btn">■</span><span class="btn">📌</span></div>
+        <div class="t">The quick brown fox jumps over the lazy dog. <span class="w">Small</span> speech <span class="w on">models</span> can run entirely on a laptop, and they're fast enough to highlight every word as it is spoken. Doesn't that sound like a nice way to read an article?</div>
+      </div>
+    </div>
+  </div>
+  <div class="mock">
+    <h4>C. 不显示，只换声音</h4>
+    <div class="desc">和现在一样点完就消失，只是声音换成 Kokoro。最省事，但逐词高亮就没了，时间戳这套能力先闲置。</div>
+    <div class="desk">
+      <div class="doc">Lorem ipsum dolor sit amet. <span class="sel">The quick brown fox jumps over the lazy dog. Small speech models can run entirely on a laptop.</span> Sed do eiusmod tempor incididunt ut labore.</div>
+      <div class="hud" style="right:18px;bottom:16px;padding:6px 10px;font-size:12px">🔊 正在朗读…</div>
+    </div>
+  </div>
+</div>
+
+<h2>五、按语言选引擎</h2>
+<div class="tw"><table>
+<tr><th>选中的文字</th><th>用什么念</th><th>逐词高亮</th></tr>
+<tr><td>中文，或中英混杂</td><td>Kokoro 中文模型（默认音色 zf_001，可在设置里换）</td><td class="y">有，模型自己给的时间，实测准</td></tr>
+<tr><td>英文</td><td>Kokoro 英文模型（默认 af_heart）</td><td class="y">有</td></tr>
+<tr><td>日语、西班牙语、法语</td><td>第一版先用系统语音；以后实测 Kokoro 再切</td><td class="m">系统语音也能逐词回调，但音质一般</td></tr>
+<tr><td>其他语言 / Intel Mac / macOS 13 / 模型没下好</td><td>系统语音（和现在一样）</td><td class="m">同上</td></tr>
+</table></div>
+
+<h2>六、第一次使用的体验</h2>
+<ol>
+<li>用户第一次对英文点「朗读」：朗读条显示「正在下载英文语音（约 100 MB）」和进度；<b>这一次先用系统语音念</b>，不让用户干等。</li>
+<li>下载完在后台准备模型：第一次约 1 分钟（英文实测 74 秒，含下载；中文约 4 分钟）。之后每次启动小进程约 1–2 秒。</li>
+<li>模型准备好后，下次朗读就用 Kokoro；开始出声约 0.3 秒（实测）。</li>
+<li>设置里可以：换音色（带试听）、调语速、切下载地址、一键删除已下载的模型。</li>
+</ol>
+
+<h2>七、分几步做</h2>
+<div class="tw"><table>
+<tr><th>阶段</th><th>内容</th><th>验证方式</th></tr>
+<tr><td>1</td><td>朗读小进程：Kokoro 英文 + 中文（含中英混读修正），按句输出音频和时间；QDuo 里新的朗读控制，带系统语音兜底</td><td>命令行跑 tts-bench 的测试句子，对比回读错误率和时间戳（沿用现成脚本）</td></tr>
+<tr><td>2</td><td>朗读条窗口（按你选的方案）+ 流式播放 + 逐词高亮</td><td>启动 App 请你实际选几段文字试</td></tr>
+<tr><td>3</td><td>第一次下载的流程、下载地址设置、音色和语速设置</td><td>清掉缓存后从零走一遍</td></tr>
+<tr><td>4</td><td>打包：小进程签名、公证、只给 Apple 芯片编译；更新检查里的最低系统版本</td><td>用发布流程打一个测试包装到干净机器</td></tr>
+</table></div>
+
+<h2>八、风险</h2>
+<ul>
+<li><b>中英混读的修正是我们自己写的</b>，依赖 FluidAudio 的几个接口。FluidAudio 更新很勤，要锁定版本，升级前用 tts-bench 的句子回归一遍。</li>
+<li><b>Kokoro 项目本身已停更</b>（2025 年 8 月以后没有新版本），模型文件是固定的，不影响使用，但不会再有改进。</li>
+<li><b>国内下载</b>：Hugging Face 经常连不上，所以要有镜像选项；镜像也可能不稳定。</li>
+<li><b>内存</b>：模型加载后约 1.2 GB，靠闲置退出控制；8 GB 内存的 Mac 上体验没测过。</li>
+</ul>
+
+<h2>九、需要你拍板的</h2>
+<div class="tw"><table>
+<tr><th>#</th><th>问题</th><th>选项</th><th>我的建议</th></tr>
+<tr><td>1</td><td>最低系统版本</td><td>A 整个 QDuo 提到 macOS 14 ／ B 保持 13，只有朗读小进程要求 14，老系统自动用系统语音</td><td><b>B</b>：有了小进程，这一步不需要牺牲任何用户</td></tr>
+<tr><td>2</td><td>逐词高亮显示在哪</td><td>A 小朗读条 ／ B 全文朗读窗口 ／ C 不显示</td><td><b>A</b></td></tr>
+<tr><td>3</td><td>第一版支持哪些语言用 Kokoro</td><td>A 只英文 ／ B 英文 + 中文（含混读）</td><td><b>B</b>：中文是你的主要场景，混读已修好</td></tr>
+<tr><td>4</td><td>模型怎么给用户</td><td>A 第一次用时下载 ／ B 打进安装包</td><td><b>A</b>：打进安装包会让每次更新多下约 400 MB</td></tr>
+</table></div>
+<p class="muted">Frank 之前的建议是「整个提到 macOS 14」。第 1 题我改成推荐 B，理由是：既然已经决定单独一个小进程，主程序就不必跟着提版本。两种都能做，工作量差别不大。</p>
+<h2>十、还在调研的问题（2026-09-28）</h2>
+<div class="card">
+<p><b>顾虑：</b>Kokoro 原模型一年多没更新（hexgrad/Kokoro-82M 最后更新 2025-04，中文版 2025-03），作者是个人，也没有说明原因。我们实际调用的 FluidAudio 很活跃，它转换的 Kokoro 版本最近一次更新是 2026-09-25，但原模型本身不会再有改进。</p>
+<p><b>FluidAudio 里的其他语音模型</b>（查的，除 Kokoro 外都没实测）：</p>
+<div class="tw"><table>
+<tr><th>模型</th><th>原作者</th><th>原模型最后更新</th><th>中文</th><th>自带逐词时间</th><th>备注</th></tr>
+<tr><td>Kokoro-82M</td><td>hexgrad（个人）</td><td>2025-04</td><td class="y">有</td><td class="y">有</td><td>唯一同时支持中文和逐词时间的</td></tr>
+<tr><td>Pocket TTS</td><td>Kyutai</td><td>2026-09</td><td class="x">无</td><td class="x">无</td><td>英德意葡西法，可克隆</td></tr>
+<tr><td>Supertonic 3</td><td>Supertone</td><td>2026-05</td><td class="x">无</td><td class="x">无</td><td>31 种语言；官方仓库 2026-09 已归档</td></tr>
+<tr><td>Chatterbox 多语言版</td><td>Resemble AI</td><td>2026-06</td><td class="m">原模型有，FluidAudio 未移植</td><td class="x">无</td><td>测试版，macOS 15+</td></tr>
+<tr><td>Chatterbox Nano / StyleTTS 2 / LuxTTS / NeuTTS-2E / Inflect</td><td>—</td><td>—</td><td class="x">无</td><td class="x">无</td><td>都只支持英语</td></tr>
+</table></div>
+<p><b>下一步可做：</b>① 把 Pocket TTS、Chatterbox 多语言版接进演示 App（<code>~/Code/tts-bench/swift-qwen</code>）和 Kokoro、千问对比试听；② 查 FluidAudio 是否计划补上 Chatterbox 的中文；③ 千问 Qwen3-TTS（阿里维护，中文最好）仍是备选，代价是 7–9 GB 内存。</p>
+</div>
+</main></body></html>
