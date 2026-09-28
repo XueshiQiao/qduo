@@ -13,10 +13,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// app needs the Accessibility permission before it can do anything.
     private static let hasLaunchedKey = "hasLaunchedBefore"
 
+    /// ⌘V, ⌘C, ⌘X, ⌘A and ⌘Z in text fields are menu key equivalents: AppKit
+    /// routes them through the main menu's Edit items. A menu-bar-only app has no
+    /// main menu, so without this every text field in Settings — API keys,
+    /// prompts, model names — silently ignores paste. The menu is never shown
+    /// (an accessory app has no menu bar); it only carries the shortcuts.
+    private func installEditMenu() {
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        editItem.submenu = edit
+        let main = NSMenu()
+        main.addItem(NSMenuItem())   // the application menu's slot
+        main.addItem(editItem)
+        NSApp.mainMenu = main
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar only: no Dock icon, not in Cmd-Tab. `Info.plist` already sets
         // LSUIElement; this makes it explicit and covers a direct-binary launch.
         NSApp.setActivationPolicy(.accessory)
+        installEditMenu()
 
         // Load the config file FIRST: every setting below is read out of it,
         // including the language override, which has to be installed before any
