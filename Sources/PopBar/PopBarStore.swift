@@ -54,7 +54,16 @@ final class PopBarStore: ObservableObject {
         self.screenOCRHotKey = PopBarPreferences.screenOCRHotKey
         self.isScreenRecordingAuthorized = ScreenRecordingAuthorizer.isAuthorized
         self.screenOCRRegistered = controller.screenOCRIsRegistered
-
+        // Deferred a turn: pausing closes every popup window, and the request
+        // arrives from inside one of them while it is still handling the tap.
+        // Already paused is possible — the OCR popup and the settings preview
+        // still open while paused — and then the tap must still close them.
+        controller.onPauseRequested = { [weak self] in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if self.popupEnabled { self.setPopupEnabled(false) } else { self.controller.stop() }
+            }
+        }
     }
 
     /// Toggle whether the result panel auto-grows its height to fit content.

@@ -205,6 +205,9 @@ final class PopBarSession {
     /// manager (which owns that window); Finder needs no such hand-off, since it
     /// isn't a window we own.
     var onQuickLook: ((URL) -> Void)?
+    /// Pause the popup (the Pause action). Wired by the manager up to the store,
+    /// which owns the paused state the menu bar and the sidebar show.
+    var onPause: (() -> Void)?
 
     /// Route a presentation to its surface — the single place output types map to UI.
     /// Adding a new `PopBarPresentation` case means adding one branch here.
@@ -224,6 +227,10 @@ final class PopBarSession {
         case .speak(let text):
             Speaker.shared.toggle(text)
             if !isPinned { onDismissOutcome?() }
+        case .pause:
+            // Pausing closes every popup window, this one included, so there is
+            // nothing to dismiss here first.
+            onPause?()
         case .webPreview(let url):
             // Open the mini-browser, then dismiss this popup (the user's attention
             // moves to the preview window, same one-shot feel as Copy) — but NEVER a

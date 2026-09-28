@@ -28,6 +28,8 @@ enum PopBarPresentation {
     case openExternal(URL)
     /// Read the text aloud (or stop reading, if something already is).
     case speak(String)
+    /// Pause the popup, exactly as the menu bar's Pause does.
+    case pause
 }
 
 /// Where an action's produced text goes. Stored as a string on the action (see
@@ -80,6 +82,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case transform      // local: a `TextTransform` named by `op`
         case shortcut       // run the macOS Shortcut named `shortcut` on the selection
         case script         // run the shell command `script` on the selection
+        case pause          // pause the popup, like the menu bar's Pause (the selection is ignored)
         /// A GROUP: runs nothing itself, it only holds `children`. On the wheel it
         /// unfolds a second ring; in the capsule it opens a dropdown.
         case group
@@ -348,6 +351,13 @@ enum DefaultActions {
         PopBarActionConfig(title: L("popbar.action.speak"), iconSymbol: "speaker.wave.2.fill", kind: .speak)
     }
 
+    /// Pause the popup from the popup itself. Not in the seed: it is there for
+    /// whoever wants a one-tap pause on their ring, from the templates.
+    static func pauseAction() -> PopBarActionConfig {
+        PopBarActionConfig(title: String(format: L("menu.pause.format"), Brand.name),
+                           iconSymbol: "pause.circle", kind: .pause)
+    }
+
     // MARK: - Builders
 
     static func openURL(_ title: String, _ icon: String, _ url: String,
@@ -435,6 +445,7 @@ enum ActionTemplates {
                 DefaultActions.speakAction(),
                 shortcutTemplate(),
                 scriptTemplate(),
+                DefaultActions.pauseAction(),
             ]),
         ]
     }

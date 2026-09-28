@@ -38,6 +38,9 @@ final class PopBarController {
     /// Bumped per trigger so a slow/canceled resolve can't act on the panel after
     /// a newer trigger has taken over.
     private var resolveGeneration = 0
+    /// A popup's Pause action was used. The store answers it, because the paused
+    /// state is the store's: it persists it and the menu bar and sidebar show it.
+    var onPauseRequested: (() -> Void)?
 
     init(llm: LLMService, actionStore: ActionStore) {
         self.llm = llm
@@ -53,6 +56,7 @@ final class PopBarController {
             DragSelectGesture(),
             DoubleClickGesture(),
         ])
+        windows.onPause = { [weak self] in self?.onPauseRequested?() }
         monitor.onTrigger = { [weak self] in self?.handleTrigger() }
         monitor.onDismiss = { [weak self] event in self?.handleDismiss(event) }
     }

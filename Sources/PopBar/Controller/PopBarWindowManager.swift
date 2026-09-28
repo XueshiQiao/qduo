@@ -37,6 +37,8 @@ final class PopBarWindowManager {
     /// (removing it from this array, after `teardown` + `panel.hide`) deallocates
     /// its `NSPanel`.
     private var pinned: [PopBarSession] = []
+    /// A window's Pause action was used. Set by the controller.
+    var onPause: (() -> Void)?
 
     /// How far to nudge a new transient when a pinned window already sits at ~the
     /// same anchor, so stacked windows don't perfectly overlap (issue #13).
@@ -147,6 +149,7 @@ final class PopBarWindowManager {
         session.onWebPreview = { [weak self] url in self?.webPreview.open(url) }
         // The Quick Look action opens the shared preview window.
         session.onQuickLook = { [weak self] url in self?.quickLook.open(url) }
+        session.onPause = { [weak self] in self?.onPause?() }
     }
 
     /// Promote the current transient into the pinned set and create a fresh
@@ -194,6 +197,7 @@ final class PopBarWindowManager {
         session.onWebPreview = { [weak self] url in self?.webPreview.open(url) }
         // The Quick Look action opens the shared preview window.
         session.onQuickLook = { [weak self] url in self?.quickLook.open(url) }
+        session.onPause = { [weak self] in self?.onPause?() }
     }
 
     /// Close one pinned window: cancel its stream, hide it, and drop our strong

@@ -180,6 +180,7 @@
 "popbar.actions.addTemplate" = "从模板添加";
 "popbar.editor.kind.openURL" = "打开网址";
 "popbar.editor.kind.speak" = "朗读";
+"popbar.editor.kind.pause" = "暂停";
 "popbar.editor.kind.transform" = "文本处理";
 "popbar.editor.kind.shortcut" = "运行快捷指令";
 "popbar.editor.kind.script" = "运行 Shell 脚本";
@@ -188,6 +189,7 @@
 "popbar.editor.openIn" = "打开方式";
 "popbar.editor.openIn.browser" = "默认浏览器";
 "popbar.editor.openIn.preview" = "预览窗口";
+"popbar.editor.pause.hint.format" = "暂停弹窗，和菜单栏里的「暂停」一样：选中文字不再弹出，直到你从菜单栏或设置侧边栏恢复 %@。截图 OCR 不受影响。";
 "popbar.editor.speak.hint" = "用和文字语言相符的系统声音读出选中的内容。正在朗读时再点一次「朗读」即停止。";
 "popbar.editor.op" = "操作";
 "popbar.editor.output" = "结果";

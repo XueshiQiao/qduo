@@ -181,6 +181,7 @@
 "popbar.actions.addTemplate" = "Add from Template";
 "popbar.editor.kind.openURL" = "Open URL";
 "popbar.editor.kind.speak" = "Speak";
+"popbar.editor.kind.pause" = "Pause";
 "popbar.editor.kind.transform" = "Transform Text";
 "popbar.editor.kind.shortcut" = "Run Shortcut";
 "popbar.editor.kind.script" = "Run Shell Script";
@@ -189,6 +190,7 @@
 "popbar.editor.openIn" = "Open in";
 "popbar.editor.openIn.browser" = "Default browser";
 "popbar.editor.openIn.preview" = "Preview window";
+"popbar.editor.pause.hint.format" = "Pauses the popup, the same as Pause in the menu bar: selecting text no longer shows it until you resume %@ from the menu bar or the settings sidebar. Screenshot OCR keeps working.";
 "popbar.editor.speak.hint" = "Reads the selection aloud with a system voice that matches its language. Choose Speak again while it is reading to stop.";
 "popbar.editor.op" = "Operation";
 "popbar.editor.output" = "Result";

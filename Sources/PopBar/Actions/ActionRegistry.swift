@@ -44,6 +44,9 @@ enum ActionRegistry {
         case .speak:
             return .speak(text)
 
+        case .pause:
+            return .pause
+
         case .transform:
             return transformPresentation(action, text: text)
 

@@ -45,6 +45,7 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.transform")).tag(PopBarActionConfig.Kind.transform)
                         Text(L("popbar.editor.kind.shortcut")).tag(PopBarActionConfig.Kind.shortcut)
                         Text(L("popbar.editor.kind.script")).tag(PopBarActionConfig.Kind.script)
+                        Text(L("popbar.editor.kind.pause")).tag(PopBarActionConfig.Kind.pause)
                     }
                     if draft.isPathAction {
                         Text(L("popbar.editor.kind.pathHint"))
@@ -128,6 +129,12 @@ struct ActionEditorView: View {
         case .speak:
             Section {
                 Text(L("popbar.editor.speak.hint"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .pause:
+            Section {
+                Text(String(format: L("popbar.editor.pause.hint.format"), Brand.name))
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -307,7 +314,7 @@ struct ActionEditorView: View {
                          "paperclip", "archivebox", "tray.and.arrow.down"]),
         ("icons.share", ["square.and.arrow.up", "envelope", "paperplane.fill", "message", "phone", "at",
                          "person.crop.circle.badge.plus", "printer"]),
-        ("icons.media", ["speaker.wave.2.fill", "waveform", "mic.fill", "music.note", "photo", "camera",
+        ("icons.media", ["pause.circle", "speaker.wave.2.fill", "waveform", "mic.fill", "music.note", "photo", "camera",
                          "text.viewfinder", "viewfinder", "qrcode"]),
         ("icons.dev", ["terminal", "chevron.left.forwardslash.chevron.right", "curlybraces", "curlybraces.square",
                        "command", "keyboard", "hammer", "wrench.and.screwdriver", "gearshape",

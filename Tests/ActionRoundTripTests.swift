@@ -60,6 +60,16 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(out.arrayValue?.first?[path: "kind"]?.stringValue, "teleport")
     }
 
+    func testThePauseKindIsKnownAndWrittenBackAsItself() throws {
+        let json = """
+        [{ "id": "p", "title": "Pause", "iconSymbol": "pause.circle", "kind": "pause" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertEqual(action.kind, .pause)
+        XCTAssertFalse(action.isUnsupported)
+        XCTAssertEqual(try roundTrip(json).arrayValue?.first?[path: "kind"]?.stringValue, "pause")
+    }
+
     func testAKnownFieldIsNeverShadowedByAStrayExtra() throws {
         // If a decode ever let a known name into `extra`, encoding it again would
         // write the key twice. Belt and braces: the title must be the real one.
