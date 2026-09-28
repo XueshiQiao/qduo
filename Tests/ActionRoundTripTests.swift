@@ -33,6 +33,16 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(action[path: "futureField.nested"]?.arrayValue?.count, 3)
     }
 
+    func testASpeakActionKeepsItsReader() throws {
+        let out = try roundTrip("""
+        [{ "id": "s1", "title": "Read", "iconSymbol": "speaker.wave.2.fill", "kind": "speak", "reader": "r-42" },
+         { "id": "s2", "title": "Read default", "iconSymbol": "speaker.wave.2.fill", "kind": "speak" }]
+        """)
+        XCTAssertEqual(out.arrayValue?.first?[path: "reader"]?.stringValue, "r-42")
+        // No reader = the default one, and nothing is written for it.
+        XCTAssertNil(out.arrayValue?.last?[path: "reader"])
+    }
+
     func testAnUnknownKeyOnAChildActionSurvivesToo() throws {
         let out = try roundTrip("""
         [{

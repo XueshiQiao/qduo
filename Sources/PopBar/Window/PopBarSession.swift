@@ -80,6 +80,7 @@ final class PopBarSession {
         self.url = url
         self.source = source
         panel.model.canReplace = source?.canReplace ?? false
+        stopReading()
         panelGeneration &+= 1
         actionTask?.cancel()
         actionTask = nil
@@ -91,6 +92,7 @@ final class PopBarSession {
     /// in-flight action result is discarded rather than re-showing a dismissed
     /// popup, and cancels this window's stream.
     func hide() {
+        stopReading()
         panelGeneration &+= 1
         actionTask?.cancel()
         actionTask = nil
@@ -100,10 +102,18 @@ final class PopBarSession {
     /// Cancel any in-flight stream and bump generations so nothing can apply onto
     /// this window after it's released. Used when a pinned window closes.
     func teardown() {
+        stopReading()
         panelGeneration &+= 1
         actionGeneration &+= 1
         actionTask?.cancel()
         actionTask = nil
+    }
+
+    /// Stop this window's read-aloud, if it has one, and drop it from the panel.
+    private func stopReading() {
+        guard let reading = panel.model.reading else { return }
+        SpeechCenter.shared.stop(reading)
+        panel.model.reading = nil
     }
 
     func setAutoExpandHeight(_ on: Bool) {
@@ -137,6 +147,7 @@ final class PopBarSession {
         }
         panel.model.resultIsFinalOutput = false
         panel.model.notice = nil
+        stopReading()
 
         guard action.isAI else {
             // Local actions (copy / web preview) have no loading/result chrome — run
@@ -225,8 +236,11 @@ final class PopBarSession {
             if !isPinned { onDismissOutcome?() }
             NSWorkspace.shared.open(url)
         case .speak(let text):
-            Speaker.shared.toggle(text)
-            if !isPinned { onDismissOutcome?() }
+            // The reading window takes the result panel's place; closing it
+            // (or anything else replacing it) stops the read.
+            let reader = SpeechSettingsStore.shared.resolve(action.reader)
+            panel.model.reading = SpeechCenter.shared.read(text, with: reader)
+            panel.applyPhase(.result(""))
         case .pause:
             // Pausing closes every popup window, this one included, so there is
             // nothing to dismiss here first.

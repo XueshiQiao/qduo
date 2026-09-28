@@ -1,40 +1,13 @@
 import AVFoundation
 import NaturalLanguage
 
-/// Reads text aloud with the system voices — the `speak` kind of action.
-///
-/// `AVSpeechSynthesizer` rather than `NSSpeechSynthesizer`: the latter is
-/// deprecated, and the former is where the system's newer and downloaded voices
-/// show up. Nothing leaves the Mac.
+/// Which system voice fits a piece of text. The reading itself lives in
+/// `SpeechPlayback` (Sources/Core/Speech), which uses this for the system reader.
 ///
 /// The voice follows the text's language, detected on the spot, so English is
 /// read by an English voice and Chinese by a Chinese one without the user having
-/// to choose. One synthesizer for the whole app: tapping Speak while something is
-/// being read stops it, which is also how a long passage is cut short.
-final class Speaker {
-
-    static let shared = Speaker()
-
-    private static let log = FileLog("PopBar.Speak")
-    private let synthesizer = AVSpeechSynthesizer()
-
-    var isSpeaking: Bool { synthesizer.isSpeaking }
-
-    /// Start reading `text`, or stop if something is already being read.
-    /// Main thread only.
-    func toggle(_ text: String) {
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
-            Self.log.debug("stopped")
-            return
-        }
-        let utterance = AVSpeechUtterance(string: text)
-        let language = Self.voiceLanguage(for: text)
-        utterance.voice = language.flatMap(AVSpeechSynthesisVoice.init(language:))
-        synthesizer.speak(utterance)
-        // Privacy: the language and length, never the text.
-        Self.log.debug("speaking \(text.count) char(s), voice language \(language ?? "system default")")
-    }
+/// to choose.
+enum Speaker {
 
     /// A BCP-47 tag a system voice exists for, or nil to use the system default
     /// voice. Kana anywhere means Japanese outright — the recognizer alone

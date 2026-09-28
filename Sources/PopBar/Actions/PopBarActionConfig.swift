@@ -78,7 +78,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case quickLook      // local: Quick Look the selected path (folders open in Finder)
         case revealInFinder // local: show the selected path in Finder
         case openURL        // local: fill `url`'s {text} with the selection and open it
-        case speak          // local: read the selection aloud with a system voice
+        case speak          // read the selection aloud with a reader (system voice or a cloud TTS)
         case transform      // local: a `TextTransform` named by `op`
         case shortcut       // run the macOS Shortcut named `shortcut` on the selection
         case script         // run the shell command `script` on the selection
@@ -117,6 +117,9 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// `script`: a shell command, run by the user's login shell with the
     /// selection on standard input.
     var script: String?
+    /// `speak`: the id of the reader to use (`SpeechSettingsStore`). nil = the
+    /// default reader chosen in settings.
+    var reader: String?
     /// `ai`, `transform`, `shortcut`, `script`: an `ActionOutput` raw value.
     /// nil = the panel.
     var output: String?
@@ -194,7 +197,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, id, title, iconSymbol, kind, prompt, modelOverride, children
-        case url, openIn, op, shortcut, script, output
+        case url, openIn, op, shortcut, script, output, reader
     }
     private static let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
     init(from decoder: Decoder) throws {
@@ -218,6 +221,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         shortcut = try? c.decodeIfPresent(String.self, forKey: .shortcut)
         script = try? c.decodeIfPresent(String.self, forKey: .script)
         output = try? c.decodeIfPresent(String.self, forKey: .output)
+        reader = try? c.decodeIfPresent(String.self, forKey: .reader)
         // Flatten anything deeper than one level (see `children`). Decoding is
         // deliberately lenient here for the same reason every other field is: a
         // malformed children array must not throw away the whole action list.
@@ -268,6 +272,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(shortcut, forKey: key(.shortcut))
         try c.encodeIfPresent(script, forKey: key(.script))
         try c.encodeIfPresent(output, forKey: key(.output))
+        try c.encodeIfPresent(reader, forKey: key(.reader))
         // Only written when there is something to write, so an action that never
         // had children does not grow an empty array.
         if !children.isEmpty { try c.encode(children, forKey: key(.children)) }

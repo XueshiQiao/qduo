@@ -6,6 +6,7 @@ struct ActionEditorView: View {
 
     @State private var draft: PopBarActionConfig
     @ObservedObject private var llm: LLMService
+    @ObservedObject private var speech = SpeechSettingsStore.shared
     let onSave: (PopBarActionConfig) -> Void
     let onCancel: () -> Void
 
@@ -128,8 +129,21 @@ struct ActionEditorView: View {
             }
         case .speak:
             Section {
+                Picker(L("popbar.editor.reader"), selection: Binding(
+                    get: { draft.reader ?? "" },
+                    set: { draft.reader = $0.isEmpty ? nil : $0 })) {
+                    Text(String(format: L("popbar.editor.reader.default"),
+                                speech.resolve(nil).name)).tag("")
+                    Divider()
+                    ForEach(speech.allReaders) { Text($0.name).tag($0.id) }
+                    // A reader this action names that no longer exists: keep
+                    // the choice visible rather than silently switching it.
+                    if let id = draft.reader, !speech.allReaders.contains(where: { $0.id == id }) {
+                        Text(L("popbar.editor.reader.missing")).tag(id)
+                    }
+                }
+            } footer: {
                 Text(L("popbar.editor.speak.hint"))
-                    .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .pause:

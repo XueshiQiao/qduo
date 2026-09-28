@@ -131,6 +131,35 @@ enum ConfigSchema {
           "additionalProperties": true
         },
 
+        "speech": {
+          "type": "object",
+          "description": "Readers for the speak action. API keys are NOT here — they are in the Keychain.",
+          "properties": {
+            "defaultReader": { "type": "string",
+              "description": "The id of the reader speak actions use unless they name one. \"system\" = the macOS system voice." },
+            "readers": {
+              "type": "array",
+              "description": "Cloud voices set up in Settings › AI Models › Speech.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "name": { "type": "string", "description": "What the settings and the reading window show." },
+                  "engine": { "type": "string", "enum": ["qwen-audio"] },
+                  "model": { "type": "string", "description": "e.g. qwen-audio-3.0-tts-flash" },
+                  "voice": { "type": "string", "description": "The provider's voice id, e.g. longanhuan_v3.6" },
+                  "speed": { "type": "number", "minimum": 0.5, "maximum": 2 },
+                  "region": { "type": "string", "enum": ["cn", "intl"],
+                    "description": "cn = mainland China endpoint, intl = international endpoint." }
+                },
+                "required": ["id", "engine"],
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+
         "actions": {
           "type": "array",
           "description": "The actions the popup offers, in order. An action with \\"kind\\": \\"group\\" opens a second ring holding its children.",
@@ -169,6 +198,8 @@ enum ConfigSchema {
               "description": "For \\"script\\": a shell command, run by your login shell. The selection is on standard input and in $QDUO_TEXT; what it prints is the result. Times out after 10 seconds." },
             "output": { "type": "string", "enum": ["panel", "replace", "append", "copy"],
               "description": "For ai, transform, shortcut and script: where the result goes. panel (default) shows it in the popup, which offers a Replace button; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
+            "reader": { "type": "string",
+              "description": "For \"speak\": the id of the reader (see speech.readers, or \"system\"). Absent = speech.defaultReader." },
             "modelOverride": {
               "type": "object",
               "description": "Use a different model for THIS action only.",

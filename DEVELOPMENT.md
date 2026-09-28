@@ -60,8 +60,9 @@ project.yml            ← the name, and only here
 design/icon/           the two 1024 masters
 Sources/
 ├─ App/                main · AppDelegate · MenuBarController · UpdateController
-├─ Core/               Brand · FileLog · Preferences · Analytics · LocalizationOverride · LLM/
+├─ Core/               Brand · FileLog · Preferences · Analytics · LocalizationOverride · LLM/ · Speech/ (TTS provider adapters)
 ├─ UI/                 AppChrome · SettingsPage · AppState · MainWindowController · Pages/
+├─ Speech/             read-aloud: readers, playback, streaming player, audio cache
 └─ PopBar/             the popup itself — trigger, selection, window, actions, OCR
 Resources/             en + zh-Hans strings
 Supporting/            Info.plist · App.entitlements

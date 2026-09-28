@@ -89,6 +89,11 @@ final class PopBarPanelModel: ObservableObject {
     var onClose: (() -> Void)?
     var onTogglePin: (() -> Void)?
 
+    /// The read-aloud shown in the result panel's place (a Speak action), or nil.
+    /// Set together with `.result`, so the window sizes and places exactly as a
+    /// result does.
+    @Published var reading: SpeechPlayback?
+
     /// Push a streaming delta into the live result text (no phase change → no re-fit).
     func updateStreamingText(_ text: String) { streamingText = text }
 }
@@ -141,9 +146,14 @@ struct PopBarContentView: View {
         case .loading:
             loadingBar
         case .result:
-            // Text comes from the live `streamingText`, not the phase payload, so
-            // streaming deltas update in place without re-fitting the window.
-            resultPanel(model.streamingText)
+            if let reading = model.reading {
+                ReadingPanelView(playback: reading, model: model,
+                                 width: resultWidth, fixedHeight: resultFixedHeight)
+            } else {
+                // Text comes from the live `streamingText`, not the phase payload, so
+                // streaming deltas update in place without re-fitting the window.
+                resultPanel(model.streamingText)
+            }
         }
     }
 
@@ -286,7 +296,7 @@ struct PopBarContentView: View {
 /// Reports the result content's natural height up to the parent so the panel can
 /// size to fit it when auto-expand is ON. Takes the max of reported values within
 /// a layout pass (only one probe exists, so this is effectively a pass-through).
-private struct ResultContentHeightKey: PreferenceKey {
+struct ResultContentHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
@@ -466,7 +476,7 @@ private struct CapsuleActionButton: View {
 
 /// The one small icon button used for pin / copy / close, so they all read as a
 /// single family. Whole frame hit-tests; subtle hover + active states.
-private struct ChromeButton: View {
+struct ChromeButton: View {
     let symbol: String
     let help: String
     var active: Bool = false

@@ -16,12 +16,32 @@ struct ModelsPage: View {
         _settings = ObservedObject(wrappedValue: settings)
     }
 
+    /// Language models and speech readers are set up the same way (a provider,
+    /// a model, a key), so they share this page as two tabs.
+    private enum Tab: String { case llm, speech }
+    @State private var tab = Tab.llm
+
     var body: some View {
-        Form {
-            defaultModelSection
-            keySection
+        VStack(spacing: 0) {
+            Picker("", selection: $tab) {
+                Text(L("models.tab.llm")).tag(Tab.llm)
+                Text(L("models.tab.speech")).tag(Tab.speech)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 320)
+            .padding(.top, 14)
+            switch tab {
+            case .llm:
+                Form {
+                    defaultModelSection
+                    keySection
+                }
+                .formStyle(.grouped)
+            case .speech:
+                SpeechSettingsView()
+            }
         }
-        .formStyle(.grouped)
         .navigationTitle(L("models.title"))
     }
 
