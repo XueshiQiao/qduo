@@ -114,6 +114,10 @@ targets:
       - path: Sources/PopBar/Actions/TextTransform.swift
       - path: Sources/UI/Onboarding/OnboardingProgress.swift
       - path: Sources/PopBar/Selection/OwnWindowHit.swift
+      - path: Sources/Core/Speech/TTSEngine.swift
+      - path: Sources/Core/Speech/TTSTransport.swift
+      - path: Sources/Core/Speech/MarkAligner.swift
+      - path: Sources/Core/Speech/TTSRunRecorder.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

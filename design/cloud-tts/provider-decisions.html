@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>朗读服务选型记录</title>
+<style>
+:root{
+  --bg:#faf8f4;--panel:#fff;--ink:#1f1d1a;--muted:#6b665e;--line:#e4dfd6;--accent:#c2551f;
+  --good:#2f7d4a;--warn:#a86a00;--bad:#b3322b;--chip:#f1ece3;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16151a;--panel:#1e1d23;--ink:#ece8e1;--muted:#a29c92;--line:#34323a;--accent:#f08a4b;
+  --good:#6cc38b;--warn:#e3b04b;--bad:#f07a72;--chip:#2a2830;
+}}
+:root[data-theme="dark"]{
+  --bg:#16151a;--panel:#1e1d23;--ink:#ece8e1;--muted:#a29c92;--line:#34323a;--accent:#f08a4b;
+  --good:#6cc38b;--warn:#e3b04b;--bad:#f07a72;--chip:#2a2830;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"PingFang SC",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:32px 16px 90px}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:21px;margin:44px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
+h3{font-size:16px;margin:22px 0 8px}p,li{max-width:880px}.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:14px 0}
+.rec{border-left:4px solid var(--accent)}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--chip);white-space:nowrap}tr:last-child td{border-bottom:none}
+.y{color:var(--good);font-weight:600}.m{color:var(--warn);font-weight:600}.x{color:var(--bad);font-weight:600}
+code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:13px}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+pre code{background:none;padding:0}
+</style>
+</head>
+<body><main>
+<h1>朗读服务选型记录</h1>
+<p class="muted">2026-09-28 · 记录每家朗读服务为什么考虑、为什么用或不用。数字全部来自 <code>scripts/speech-bench.sh</code> 实测（说明见 <code>Tools/SpeechBench/README.md</code>），除非标明「文档」。</p>
+
+<div class="card rec">
+<b>结论：</b>目前只有<b>阿里 Qwen-Audio</b> 同时满足三条硬要求，作为第一个接入的云端朗读员。系统语音保留。豆包、CosyVoice、Gemini、OpenAI 暂不启用，代码保留（豆包、CosyVoice、Gemini 的适配代码在 <code>Sources/Core/Speech/Engines/</code>，在 <code>TTSEngineRegistry.paused</code> 里标为暂停）。ElevenLabs、MiniMax 还没拿到 key，未测。
+</div>
+
+<h2>一、硬要求（不满足就不开启）</h2>
+<div class="tw"><table>
+<tr><th>#</th><th>要求</th><th>怎么判定</th></tr>
+<tr><td>1</td><td><b>流式输出</b></td><td>服务一边合成一边发音频，收到第一段就能播，不用等整段合成完。</td></tr>
+<tr><td>2</td><td><b>足够快</b></td><td>「实际首音」（按下到听见声音，包括为了不卡顿需要多攒的缓冲）≤ 800 毫秒；并且首包之后等 300 毫秒开播，全程不断。</td></tr>
+<tr><td>3</td><td><b>实时字幕</b></td><td>每个字（词）的时间要在它被念出来之前到手，才能逐字高亮。「一句念完才给」「整段合成完才给」都不算。判定：字的时间覆盖原文 ≥ 90%，且没有「念过了时间才到」的字。</td></tr>
+</table></div>
+<p class="muted">不满足的宁愿先不开启，不做「凑合能用」的版本。</p>
+
+<h2>二、总表</h2>
+<div class="tw"><table>
+<tr><th>服务</th><th>为什么考虑</th><th>流式</th><th>快</th><th>实时字幕</th><th>结论</th></tr>
+<tr><td><b>阿里 Qwen-Audio</b><br><span class="muted">qwen-audio-3.0-tts-flash</span></td><td>排行榜第 3；中文、中英混读强；便宜（约 ¥1/万字）</td><td class="y">是</td><td class="y">首音 290–460 ms</td><td class="y">字的时间和音频同时到</td><td class="y">采用</td></tr>
+<tr><td><b>豆包</b><br><span class="muted">seed-tts-2.0</span></td><td>中文最自然；你点名；¥3/万字</td><td class="y">是</td><td class="y">首音 320–530 ms（HTTP）</td><td class="x">一个分句的音频全部发完后才给</td><td class="x">暂停</td></tr>
+<tr><td>阿里 CosyVoice<br><span class="muted">cosyvoice-v3-flash</span></td><td>文档明确支持逐字时间；最便宜（约 ¥0.8/万字）</td><td class="y">是</td><td class="y">首音 350–460 ms</td><td class="x">首包后 0.9–2.6 秒才到</td><td class="x">暂停（试听效果也一般）</td></tr>
+<tr><td>Google Gemini TTS</td><td>排行榜第 2；便宜</td><td class="y">是</td><td class="muted">未测</td><td class="x">任何接口都没有逐字时间（文档）</td><td class="x">暂停</td></tr>
+<tr><td>OpenAI gpt-4o-mini-tts</td><td>接入最简单</td><td class="y">是</td><td class="muted">未测</td><td class="x">没有逐字时间（文档）</td><td class="x">不做</td></tr>
+<tr><td>ElevenLabs</td><td>国际知名度最高；逐字符时间</td><td class="y">是（文档）</td><td class="muted">待测</td><td class="m">文档说随音频一起给，待测</td><td class="m">等 key</td></tr>
+<tr><td>MiniMax</td><td>中英混读口碑顶尖</td><td class="y">是（文档）</td><td class="muted">待测</td><td class="m">文档只提到合成完后给字幕文件，待测</td><td class="m">等 key</td></tr>
+</table></div>
+
+<h2>三、每家的细节</h2>
+
+<h3>阿里 Qwen-Audio：采用</h3>
+<ul>
+<li><b>字的时间怎么来的：</b>它每发一段音频，前面都跟一条消息，里面是「这一句到目前为止已合成的字和时间」，列表越来越长。第一个字的时间和第一段音频相差 0–5 毫秒。官方文档只写了句末那条消息带时间，是抓包才发现的（2026-09-28）。</li>
+<li><b>先给的时间会不会被改：</b>对比每句最后的完整列表，改动 0 毫秒，可以直接用。</li>
+<li><b>必须按句一条条发：</b>整段一次发过去时，长的英文段落有时要整段合成完才给时间（实测晚 1.8 秒）。按句发就没这个问题。</li>
+<li><b>实测（英文和中英混排 7 段 × 3 次）：</b>实际首音 290–460 ms，合成速度 RTF 约 0.1（比念快 10 倍），全程不卡，字 100% 对上原文（数字「2024」念成「二零二四」也能对上）。</li>
+<li><b>小问题：</b>以引号开头的英文句（<code>"We're not there yet,"</code>），第一个字的时间晚到约 0.2–0.4 秒，而且时间是均匀间隔的，看起来像估算值。</li>
+<li><b>协议：</b>阿里百炼 WebSocket（run-task / continue-task / finish-task），key 用百炼的 API Key（<code>sk-</code> 开头），和 QDuo「AI 模型」页里通义千问用的是同一种 key。</li>
+</ul>
+
+<h3>豆包：暂停</h3>
+<p><b>为什么考虑：</b>中文自然度公认最好，国内 AI 应用大量在用；你点名要。</p>
+<p><b>为什么不用：</b>字幕不是实时的。HTTP 和 WebSocket 双向两种接口都实测过，行为一样：一个分句的音频全部发完之后，字幕才到。</p>
+<pre><code> 110 ms  WebSocket 连接建立
+ 142 ms  会话开始
+ 589 ms  第一段音频（开始出声）
+ …       连续 20 段音频，没有任何字幕
+1959 ms  字幕（事件 364）：「打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，」
+2198 ms  字幕：「然后 clean build 一下就好了。」</code></pre>
+<p>官方双向接口文档（volcengine.com/docs/6561/1329505，2.0 音色）也这么写：「在一句音频合成之后，不会立即返回该句的字幕……当一句的字幕识别完成后立即返回。可能一个子句的字幕返回的时候，已经返回下一句的音频帧给调用方了。」字幕里每个字带「可信度」数值，推测是合成后再识别出来的时间，所以必然比音频晚（推测，未证实）。</p>
+<p>开头落后多少：首包后 0.6–1.6 秒才有第一条字幕，第一句开头最多落后约 1.2 秒；从第二句起正常。</p>
+<p><b>试过但没用的办法：</b></p>
+<ul>
+<li>换 WebSocket 双向接口：字幕时机不变，首音反而慢 150–250 ms（每次要多建连接、开会话两个来回）。</li>
+<li>把第一句切短分开发：没用，豆包会把文字合起来，再按自己的规则断句。</li>
+</ul>
+<p><b>什么情况下重新考虑：</b>豆包推出随音频实时返回的字幕；或者我们接受「开头先估算高亮，字幕到了再校正」的做法。</p>
+<p class="muted">代码：<code>VolcengineEngine.swift</code>（HTTP）、<code>VolcengineBidirectional.swift</code>（WebSocket 双向，二进制协议已实现并实测可用）。你配置文件里豆包的 key 没动。</p>
+
+<h3>阿里 CosyVoice：暂停</h3>
+<p><b>为什么考虑：</b>文档明确支持逐字时间；和 Qwen-Audio 同一个 key、同一套协议，接入成本几乎为零；最便宜。</p>
+<p><b>为什么不用：</b>① 你试听后觉得效果一般；② 字的时间来得晚：首包后 0.9–2.6 秒，第一句切短也还落后最多约 2 秒；③ 合成速度只比念快约 3 倍，21 组里有 1 组出现过卡顿。</p>
+
+<h3>Google Gemini TTS：暂停</h3>
+<p><b>为什么考虑：</b>盲听排行榜第 2，便宜。</p>
+<p><b>为什么不用：</b>Gemini API、Live API、Google Cloud TTS（包括 Chirp 3 HD 和云上的 Gemini 音色）都没有自动的逐字时间（2026-09-28 查文档）。不满足硬要求 3。</p>
+
+<h3>OpenAI：不做</h3>
+<p>接口不返回任何时间信息。不满足硬要求 3。没有写适配代码。</p>
+
+<h3>调研阶段就排除的</h3>
+<ul>
+<li>阿里 <b>qwen3-tts-flash-realtime</b>：和 Qwen-Audio 是两条产品线，用于语音对话，文档里没有逐字时间。</li>
+<li>Deepgram、Hume：不支持中文。</li>
+<li>Amazon Polly：只有一个中文音色，逐字时间要另发一次请求。</li>
+<li>Cartesia、Inworld、Azure、腾讯云、讯飞：没有进入第一批，没有测。</li>
+</ul>
+
+<h2>四、怎么重新启用一家</h2>
+<p>把它从 <code>Sources/Core/Speech/TTSEngineRegistry.swift</code> 的 <code>paused</code> 列表里删掉，在测速配置 <code>~/.config/qduo/speech-bench.json</code> 里加回它那一段（模板见 <code>Tools/SpeechBench/Template.swift</code> 的历史版本），重新跑 <code>scripts/speech-bench.sh run</code>。</p>
+</main></body>
+</html>

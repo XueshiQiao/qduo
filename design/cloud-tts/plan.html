@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QDuo 云端朗读方案</title>
+<style>
+:root{
+  --bg:#faf8f4;--panel:#fff;--ink:#1f1d1a;--muted:#6b665e;--line:#e4dfd6;--accent:#c2551f;
+  --good:#2f7d4a;--warn:#a86a00;--bad:#b3322b;--chip:#f1ece3;--hl:#ffd27a;--hlink:#1f1d1a;
+  --win:#ecebe8;--side:#e3e1dd;--sel:#2f6fde;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16151a;--panel:#1e1d23;--ink:#ece8e1;--muted:#a29c92;--line:#34323a;--accent:#f08a4b;
+  --good:#6cc38b;--warn:#e3b04b;--bad:#f07a72;--chip:#2a2830;--hl:#f0b24b;--hlink:#16151a;
+  --win:#232228;--side:#2b2a31;--sel:#3d7cf0;
+}}
+:root[data-theme="dark"]{
+  --bg:#16151a;--panel:#1e1d23;--ink:#ece8e1;--muted:#a29c92;--line:#34323a;--accent:#f08a4b;
+  --good:#6cc38b;--warn:#e3b04b;--bad:#f07a72;--chip:#2a2830;--hl:#f0b24b;--hlink:#16151a;
+  --win:#232228;--side:#2b2a31;--sel:#3d7cf0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"PingFang SC",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:32px 16px 90px}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:21px;margin:46px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
+h3{font-size:16px;margin:22px 0 8px}p,li{max-width:880px}.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:14px 0}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--chip);white-space:nowrap}tr:last-child td{border-bottom:none}
+.y{color:var(--good);font-weight:600}.m{color:var(--warn);font-weight:600}.x{color:var(--bad);font-weight:600}
+.tag{display:inline-block;font-size:11px;padding:0 7px;border-radius:5px;background:var(--chip);color:var(--muted);margin-left:4px;white-space:nowrap}
+.tag.rec{background:var(--accent);color:#fff}
+code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:13px}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+pre code{background:none;padding:0}
+.rec{border-left:4px solid var(--accent)}
+svg text{fill:var(--ink);font:13px -apple-system,"PingFang SC",sans-serif}
+svg .box{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+svg .hot{fill:var(--chip);stroke:var(--accent);stroke-width:1.5}
+svg .arrow{stroke:var(--muted);stroke-width:1.5;fill:none;marker-end:url(#ah)}
+svg .small{font-size:11.5px;fill:var(--muted)}
+svg .grp{fill:none;stroke:var(--line);stroke-dasharray:5 4;stroke-width:1.5}
+/* settings mockup */
+.mocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px;margin:14px 0}
+@media (max-width:520px){.mocks{grid-template-columns:1fr}}
+.mock{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.mock h4{margin:0 0 4px;font-size:15px}.mock .desc{font-size:13px;color:var(--muted);margin-bottom:10px}
+.win{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--win);font-size:12.5px;min-height:330px}
+.win .sb{width:110px;background:var(--side);padding:10px 6px;flex-shrink:0}
+.win .sb div{padding:4px 8px;border-radius:6px;color:var(--muted)}.win .sb .on{background:var(--sel);color:#fff}
+.win .ct{flex:1;padding:12px 14px;min-width:0}
+.grpbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:0 0 10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}.row .l{color:var(--ink)}.row .r{color:var(--muted);white-space:nowrap}
+.pop{display:inline-block;border:1px solid var(--line);border-radius:5px;padding:0 6px;background:var(--chip);color:var(--ink)}
+.sw{display:inline-block;width:26px;height:15px;border-radius:8px;background:var(--good);position:relative;vertical-align:middle}
+.sw::after{content:"";position:absolute;right:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#fff}
+.sw.off{background:var(--line)}.sw.off::after{right:auto;left:2px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--good);margin-right:4px}.dot.no{background:var(--line)}
+.lbl{font-size:11px;color:var(--muted);margin:8px 2px 4px;text-transform:none}
+</style>
+</head>
+<body><main>
+<h1>QDuo 云端朗读方案（接入第三方 TTS）</h1>
+<p class="muted">2026-09-28 · 草案，等你拍板（见第十二节） · 所有厂商信息来自今天查的官方文档和排行榜，<b>一个接口都还没实际调用过</b>，标了「未证实」的更要当心</p>
+
+<div class="card" style="border-left:4px solid var(--good)">
+<b>2026-09-28 更新（你的决定）：</b>逐字高亮是硬要求，不给逐字时间的服务直接排除；OpenAI 不考虑。候选改为：豆包、阿里 Qwen-Audio（外加同一个 key 就能测的 CosyVoice）、ElevenLabs、MiniMax；Gemini 查下来任何接口都不给逐字时间，只做速度对照。架构按本文。先不做界面，先用测速工具 <code>scripts/speech-bench.sh</code>（说明见 <code>Tools/SpeechBench/README.md</code>）实测各家的首音延迟、能否跟上实时、逐字时间是否可用。
+</div>
+
+<div class="card rec">
+<b>一句话方案：</b>在 QDuo 里加一层「朗读引擎」接口，第一批接 <b>豆包（火山引擎）、MiniMax、ElevenLabs、OpenAI</b> 四家；每家只需写一个「适配文件」，把它自己的请求方式翻译成统一的「一段段音频 + 每个字的时间」。播放器边收边播（流式），拿到时间信息的就逐字高亮，拿不到的按句高亮。系统语音保留，作为没配 key、断网、出错时的兜底。设置页根据每家的「配置项清单」自动生成，以后加一家不用改界面代码。
+</div>
+
+<p class="muted">名词说明：<b>TTS</b> = 文字转语音；<b>流式</b> = 服务器一边合成一边往回发，我们收到第一小段就开始播，不用等整段合成完；<b>时间戳</b> = 服务器告诉我们「第几个字从第几毫秒开始念」，逐字高亮全靠它；<b>PCM</b> = 没压缩的原始音频数据，拿到就能直接播，不用解码。</p>
+
+<h2>一、调研：现在哪家火</h2>
+
+<h3>1. 国际排行（Artificial Analysis 语音盲听榜，今天抓取）</h3>
+<p>听众同时听两个声音、选更好的那个，按胜负算分（和国际象棋的 Elo 分一样）。价格是榜单上标的，和厂商官网可能不一致。</p>
+<div class="tw"><table>
+<tr><th>名次</th><th>模型</th><th>分数</th><th>每百万字约</th><th>备注</th></tr>
+<tr><td>1</td><td>Cartesia Sonic 3.6</td><td>1276</td><td>$49</td><td>延迟极低，有逐词时间戳；中文质量未证实</td></tr>
+<tr><td>2</td><td>Google Gemini 3.8 Flash TTS</td><td>1267</td><td>$16.5</td><td>便宜、130+ 语言、能用一句话描述语气；<b>没有时间戳</b></td></tr>
+<tr><td>3</td><td>阿里 Qwen-Audio-3.0-TTS-Plus</td><td>1258</td><td>$19.3</td><td>中文最强一档</td></tr>
+<tr><td>4</td><td>Inworld Realtime TTS-2</td><td>1246</td><td>$20.8</td><td>有逐词时间戳</td></tr>
+<tr><td>12</td><td>ElevenLabs v3 Conversational</td><td>1197</td><td>$50</td><td rowspan="2">名气最大、音色库和声音克隆生态最好，但质量和价格已被反超</td></tr>
+<tr><td>17</td><td>ElevenLabs v3</td><td>1169</td><td>$100</td></tr>
+<tr><td>15</td><td>MiniMax Speech 2.8 HD</td><td>1171</td><td>$100</td><td>中文口碑顶尖</td></tr>
+<tr><td>26</td><td>Azure HD 2.5</td><td>1127</td><td>—</td><td>音色最多（400+），逐词时间只能走它的 SDK</td></tr>
+<tr><td>32</td><td>OpenAI TTS-1 HD</td><td>1104</td><td>—</td><td>gpt-4o-mini-tts 没抓到名次</td></tr>
+</table></div>
+<p class="muted">豆包（Volcengine seed-tts）不在这个榜上。Deepgram 和 Hume 不支持中文，Amazon Polly 只有一个中文音色，这三家直接排除。</p>
+
+<h3>2. 国内厂商</h3>
+<div class="tw"><table>
+<tr><th>厂商 / 模型</th><th>每万字</th><th>流式方式</th><th>逐字时间戳</th><th>口碑</th></tr>
+<tr><td><b>豆包 / 火山引擎</b> seed-tts-2.0</td><td>¥3</td><td>HTTP 分块、SSE、WebSocket（单向 / 双向）</td><td class="y">有（<code>enable_subtitle</code>，按原文分词）</td><td>中文自然度的默认选择，AI 陪聊类 App 大量在用；约 240 个音色</td></tr>
+<tr><td><b>MiniMax</b> speech-2.8-turbo / hd</td><td>¥2 / ¥3.5</td><td>HTTP SSE、WebSocket</td><td class="m">有字幕参数，但流式时怎么返回文档没写清（未证实）</td><td>中英混读质量公认最好一档，偏贵；有国际站</td></tr>
+<tr><td>阿里 百炼 CosyVoice v3.5-flash</td><td>¥0.8</td><td>WebSocket</td><td class="y">有（<code>word_timestamp_enabled</code>）</td><td>最便宜且有时间戳；底层模型开源</td></tr>
+<tr><td>阿里 qwen3-tts-flash-realtime</td><td>¥1</td><td>WebSocket</td><td class="x">文档里没有</td><td>排行榜第 3 名的同家族</td></tr>
+<tr><td>腾讯云 大模型音色</td><td>¥0.4–1.2</td><td>WebSocket</td><td class="y">有（部分音色）</td><td>便宜，但音质口碑偏弱</td></tr>
+<tr><td>讯飞 超拟人合成</td><td>未查到</td><td>WebSocket</td><td class="m">只给拼音级时间，要自己对回原文</td><td>老牌企业厂商</td></tr>
+</table></div>
+
+<h3>3. 第一批接谁（我的推荐）</h3>
+<div class="tw"><table>
+<tr><th>厂商</th><th>为什么</th><th>我们用它的哪条路</th><th>高亮</th><th>折合每万字</th></tr>
+<tr><td><b>豆包</b> <span class="tag rec">第一批</span></td><td>你点名要的；中文自然；有逐字时间</td><td>HTTP 分块流式（先用 curl 确认字幕会在这条路返回，不行再换单向 WebSocket）</td><td class="y">逐字</td><td>¥3</td></tr>
+<tr><td><b>ElevenLabs</b> <span class="tag rec">第一批</span></td><td>你点名要的；国际知名度最高；逐字符时间，接起来最简单</td><td><code>POST /v1/text-to-speech/{音色}/stream/with-timestamps</code>，普通 HTTP，每段 JSON 带音频和每个字的时间</td><td class="y">逐字</td><td>flash ≈ ¥2.8，v3 ≈ ¥5.6（按 1 美元≈7 元粗算）</td></tr>
+<tr><td><b>MiniMax</b> <span class="tag rec">第一批</span></td><td>中英混读质量最好的一档；国内外都能用</td><td>HTTP SSE</td><td class="m">先按句，字幕能拿到再升级</td><td>¥2–3.5</td></tr>
+<tr><td><b>OpenAI（及兼容接口）</b> <span class="tag rec">第一批</span></td><td>接入最简单；很多用户已有 key（和 AI 模型页共用同一个 key）；顺带做成「OpenAI 兼容」通用引擎，填个网址就能接别家兼容服务</td><td><code>POST /v1/audio/speech</code>，要 PCM 原始音频流</td><td class="m">按句（它不给时间）</td><td>约 ¥4（估算，未证实）</td></tr>
+<tr><td>阿里 CosyVoice</td><td>最便宜且有时间戳</td><td>WebSocket</td><td class="y">逐字</td><td>¥0.8–1.5</td></tr>
+<tr><td>Google Gemini TTS</td><td>便宜、排名高</td><td>HTTP 流</td><td class="m">按句</td><td>≈ ¥1.2</td></tr>
+<tr><td>Cartesia</td><td>榜首，延迟低</td><td>WebSocket</td><td class="y">逐词</td><td>≈ ¥2.7</td></tr>
+</table></div>
+<p class="muted">后三家放第二批：它们都要 WebSocket，第一批先把 HTTP 这条路和整个框架跑通，再加 WebSocket 通道。</p>
+
+<h2>二、现在 QDuo 的朗读</h2>
+<p>整个朗读就是 <code>Sources/PopBar/Actions/Speaker.swift</code> 一个 71 行的类：点「朗读」→ 用系统语音（AVSpeechSynthesizer）按语言挑音色念出来；再点一次停止。没有暂停、没有高亮、没有任何设置项，也没有「引擎」这层抽象。唯一的调用点是 <code>PopBarSession.swift:228</code>，所以替换它影响面很小。</p>
+<p>现有可以直接复用的：配置文件 <code>~/.config/qduo/config.json</code>（ConfigStore，认不出的字段会原样保留）、钥匙串存 key（KeychainStore）、AI 模型页的 key 输入方式。</p>
+
+<h2>三、整体结构</h2>
+<svg viewBox="0 0 1000 560" width="100%" role="img" aria-label="架构图">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+<rect class="box" x="360" y="10" width="280" height="46" rx="8"/><text x="500" y="38" text-anchor="middle">弹出操作条点「朗读」</text>
+<path class="arrow" d="M500,56 V84"/>
+<rect class="hot" x="250" y="86" width="500" height="76" rx="10"/>
+<text x="500" y="112" text-anchor="middle" font-weight="600">朗读控制 SpeechController（替换 Speaker）</text>
+<text x="500" y="134" text-anchor="middle" class="small">按语言选配置 · 超长文字按句切块、预取下一块 · 暂停 / 继续 / 停止 · 字数上限 · 出错兜底</text>
+<text x="500" y="152" text-anchor="middle" class="small">对外只发一种进度：「现在念到原文第几个字」</text>
+<path class="arrow" d="M760,124 H820"/>
+<rect class="box" x="822" y="96" width="168" height="56" rx="8"/><text x="906" y="120" text-anchor="middle">朗读条（高亮）</text><text x="906" y="140" text-anchor="middle" class="small">本地方案里已设计</text>
+<path class="arrow" d="M380,162 V196"/><path class="arrow" d="M640,162 V196"/>
+<rect class="box" x="210" y="198" width="260" height="60" rx="8"/><text x="340" y="222" text-anchor="middle">系统语音后端</text><text x="340" y="242" text-anchor="middle" class="small">AVSpeechSynthesizer 自己播，自带逐词进度</text>
+<rect class="hot" x="530" y="198" width="260" height="60" rx="8"/><text x="660" y="222" text-anchor="middle">流式后端</text><text x="660" y="242" text-anchor="middle" class="small">引擎出音频 → 播放器边收边播</text>
+<path class="arrow" d="M600,258 V300"/><path class="arrow" d="M740,258 V480"/>
+<rect class="grp" x="20" y="300" width="700" height="160" rx="12"/>
+<text x="36" y="322" class="small">TTSEngine 接口：每家一个适配文件，统一吐出「PCM 音频块 + 字的时间」</text>
+<rect class="box" x="36" y="334" width="120" height="50" rx="8"/><text x="96" y="364" text-anchor="middle">豆包</text>
+<rect class="box" x="168" y="334" width="120" height="50" rx="8"/><text x="228" y="364" text-anchor="middle">ElevenLabs</text>
+<rect class="box" x="300" y="334" width="120" height="50" rx="8"/><text x="360" y="364" text-anchor="middle">MiniMax</text>
+<rect class="box" x="432" y="334" width="130" height="50" rx="8"/><text x="497" y="356" text-anchor="middle">OpenAI</text><text x="497" y="374" text-anchor="middle" class="small">+ 兼容接口</text>
+<rect class="box" x="574" y="334" width="130" height="50" rx="8" stroke-dasharray="4 3"/><text x="639" y="356" text-anchor="middle">本地 Kokoro</text><text x="639" y="374" text-anchor="middle" class="small">以后，走同一接口</text>
+<rect class="box" x="36" y="398" width="668" height="46" rx="8"/><text x="370" y="420" text-anchor="middle">共用的网络工具：HTTP 分块读取 · SSE / 按行 JSON 解析 · （第二批）WebSocket</text><text x="370" y="437" text-anchor="middle" class="small">每家只写「怎么拼请求」「怎么拆回包」，不重复写网络代码</text>
+<rect class="hot" x="760" y="482" width="230" height="64" rx="8"/><text x="875" y="506" text-anchor="middle">流式播放器</text><text x="875" y="526" text-anchor="middle" class="small">AVAudioEngine 排队播 PCM · 播放位置换算成字</text>
+<rect class="box" x="20" y="482" width="700" height="64" rx="8"/><text x="370" y="506" text-anchor="middle">配置：config.json 里放非机密项（引擎、模型、音色、语速、附加参数）</text><text x="370" y="528" text-anchor="middle" class="small">钥匙串里放 key（每家自己声明要几个 key、叫什么名字，能和 AI 模型页共用的就共用）</text>
+</svg>
+
+<p><b>为什么系统语音单独一条路，不塞进同一个播放器：</b>系统语音自己会播放、会暂停、耳机切换时自己处理，还自带「念到第几个词」的回调。硬把它的音频掏出来走我们的播放器，要处理每个音色格式不同、部分高级音色吐不出音频等麻烦，得不偿失（Frank 的意见，我同意）。所以最外层是「后端」：系统语音一个，流式一个；朗读条只认后端发出的统一进度，不关心背后是谁。</p>
+
+<h2>四、最外层抽象（接口草图）</h2>
+<pre><code>// 每家厂商一个适配器，只负责「把文字变成一段段 PCM + 时间」
+protocol TTSEngine {
+    static var descriptor: TTSEngineDescriptor { get }   // 身份证：id、显示名、能力、配置项清单、钥匙串账号
+    func synthesize(_ request: TTSRequest) throws -> TTSStream
+}
+
+struct TTSRequest {
+    let text: String            // 这一块要念的原文
+    let model, voice: String
+    let speed: Double           // 统一用倍速 1.0；各家自己换算（OpenAI 0.25–4，豆包 −50…100）
+    let extra: JSONValue        // 高级参数，原样合并进请求体
+    let credentials: [String: String]
+}
+
+struct TTSStream {
+    let format: TTSAudioFormat                          // 发请求时就定了，如 PCM 24kHz 16bit 单声道
+    let events: AsyncThrowingStream&lt;TTSEvent, Error&gt;    // 流结束 = 念完；取消 = 立刻断开网络，不再计费
+}
+
+enum TTSEvent {
+    case audio(Data)              // 一小块 PCM
+    case marks([TextMark])        // 若干个字的时间
+}
+
+struct TextMark {
+    let range: NSRange            // 对应原文的哪几个字
+    let startFrame, endFrame: Int // 从这块音频开头算起的第几个采样点（不用秒，暂停/继续不会漂）
+}
+
+struct TTSEngineDescriptor {
+    let id: String                // "volcengine" / "elevenlabs" / "minimax" / "openai" / "openai-compatible"
+    let displayName: String
+    let inputLimit: InputLimit    // 单次上限，单位各家不同：字符 / UTF-8 字节 / token
+    let marks: MarkSupport        // .none（按句高亮） / .inline（随音频到） / .trailing（念完一句才到）
+    let models: [Option]          // 预置模型列表，另可手填
+    let voices: [Option]          // 预置音色列表，另可手填音色 ID（豆包没有「列出音色」的接口）
+    let fields: [SettingField]    // 这家额外要的配置项：地区、接口地址……
+    let secrets: [SecretField]    // 要哪些 key、存在钥匙串哪个账号
+}</code></pre>
+<p class="muted">这是草图，字段名会在写代码时微调。关键约定：① 音频格式在发请求时就定死，第一批四家都要 PCM 原始音频，不需要解码；② 时间一律换成「原文里的第几个字」+「第几个采样点」，各家格式的差异全部关在适配器里；③ 停止朗读时必须立刻断开网络连接，否则后台还在下载、还在扣钱。</p>
+
+<h2>五、流式播放怎么走</h2>
+<ol>
+<li><b>切块</b>：文字没超过这家的单次上限就整段一次发出去（整段念语气最连贯、请求最少）；超了才在句号处切开，每块尽量大。</li>
+<li><b>预取</b>：正在播第 1 块时，就请求第 2 块；同时最多一个请求在路上，避免撞上 ElevenLabs 低档套餐 2–5 个并发的限制。</li>
+<li><b>边收边播</b>：收到的 PCM 直接排进 AVAudioEngine 的播放队列。网络包可能把一个采样点切成两半，适配器负责把半截字节留到下一包拼上。</li>
+<li><b>首音超时</b>：8 秒内没收到第一块音频，就判定失败，改用系统语音念（不是等系统默认的 60 秒）。</li>
+<li><b>中途出错</b>：已经开始出声后再出错，就停下并在朗读条上报错，<b>不</b>悄悄换成系统语音接着念——念到一半换个声音，比直接报错更让人困惑。</li>
+<li><b>耳机切换</b>：念的过程中连上 / 断开 AirPods，播放器要重新接上输出设备（系统语音会自己处理，我们的播放器得自己写）。</li>
+<li><b>字数上限</b>：一次最多念 5000 字（可在设置里改），超出部分不念并在朗读条上说明——防止手滑选了一整篇长文，在 ElevenLabs 上一下花掉几块钱。</li>
+</ol>
+
+<h2>六、逐字高亮：各家差异怎么抹平</h2>
+<div class="tw"><table>
+<tr><th>厂商</th><th>给的是什么</th><th>我们怎么处理</th></tr>
+<tr><td>ElevenLabs</td><td>每个字符的开始 / 结束秒数，另有一份「规范化后」的版本（数字被展开成读法）</td><td>用原文那份，直接对应到字</td></tr>
+<tr><td>豆包</td><td>它自己分好的词 + 起止时间；数字可能被改写（「2024」→「二零二四」）</td><td>在原文里按顺序模糊查找每个词；对不上的那一句退回按句高亮</td></tr>
+<tr><td>MiniMax</td><td>字幕（流式时如何返回，未证实）</td><td>第一版按句高亮，实测拿得到再升级</td></tr>
+<tr><td>OpenAI / 兼容接口</td><td>不给时间</td><td>按句高亮：知道哪一块正在播，就高亮那一块</td></tr>
+</table></div>
+<p>另一个坑：网页里复制来的文字常带零宽字符、多余空格。清理可以，但必须保留「清理后第几个字 ↔ 原文第几个字」的对照表，否则所有高亮位置都会偏。</p>
+
+<h2>七、配置：每家请求方式、参数都不一样怎么办</h2>
+<h3>1. 配置文件长这样（草案）</h3>
+<pre><code>"speech": {
+  "default":    { "engine": "volcengine", "model": "seed-tts-2.0", "voice": "zh_female_vv_uranus_bigtts", "speed": 1.0 },
+  "byLanguage": {                                   // 可选：某种语言单独用一套
+    "en": { "engine": "elevenlabs", "model": "eleven_flash_v2_5", "voice": "21m00Tcm4TlvDq8ikWAM", "speed": 1.0,
+            "extra": { "voice_settings": { "stability": 0.4 } } }   // 高级参数，原样并进请求
+  },
+  "engines": {                                      // 每家自己的非机密设置
+    "minimax":           { "region": "cn" },        // cn = api.minimax.cn，intl = api.minimax.io
+    "openai-compatible": { "baseURL": "https://example.com/v1" }
+  },
+  "maxChars": 5000,
+  "fallbackToSystem": true
+}</code></pre>
+<p>Frank 建议<b>不要</b>做「命名预设 + 路由表」（给每套配置起 id、再用 id 做语言映射），那是多一层间接却没有第二个用处；直接在 <code>byLanguage</code> 里按语言写完整一套就够了。语言在每次朗读开始时判断一次（沿用现在 <code>Speaker.voiceLanguage</code> 的判断），整段用同一个声音，<b>不</b>按句切换——一段话中间换声音听起来像坏了，还会多一次等待。</p>
+
+<h3>2. key 放哪</h3>
+<div class="tw"><table>
+<tr><th>引擎</th><th>要几个 key</th><th>钥匙串账号</th></tr>
+<tr><td>OpenAI</td><td>1</td><td><code>llm-key-openai</code>，<b>和 AI 模型页共用</b>，不用填两遍</td></tr>
+<tr><td>豆包语音</td><td>新控制台 1 个 API Key（老控制台是 AppID + Access Token 两个）</td><td><code>tts-volcengine-*</code>。注意：这<b>不是</b> AI 模型页里那个豆包（方舟）的 key，是火山引擎「语音」产品单独的凭证，所以引擎名叫 volcengine，免得用户以为能共用</td></tr>
+<tr><td>ElevenLabs</td><td>1</td><td><code>tts-elevenlabs-key</code></td></tr>
+<tr><td>MiniMax</td><td>1</td><td><code>tts-minimax-key</code></td></tr>
+</table></div>
+<p>每家在自己的「身份证」（descriptor）里声明要哪些 key、存哪个账号；设置页照着清单画输入框。key 永远不进配置文件（配置文件可能被提交到 dotfiles 仓库）。</p>
+
+<h2>八、以后怎么扩展</h2>
+<div class="tw"><table>
+<tr><th>情况</th><th>要做什么</th><th>要不要发新版</th></tr>
+<tr><td>某家出了新模型、新音色</td><td>在设置里手填模型名 / 音色 ID（下拉框之外永远留一个「自定义」）</td><td class="y">不用</td></tr>
+<tr><td>某家加了新参数（情绪、口音…）</td><td>写进 <code>extra</code>，原样并进请求体</td><td class="y">不用</td></tr>
+<tr><td>新厂商，接口和 OpenAI 一样</td><td>选「OpenAI 兼容」，填网址、key、模型名</td><td class="y">不用</td></tr>
+<tr><td>新厂商，接口自成一套</td><td>写一个适配文件（通常 150–300 行）+ 在引擎清单里加一行；设置页自动出现</td><td class="m">要</td></tr>
+<tr><td>新厂商只有 WebSocket</td><td>第一次需要把 WebSocket 通道做进共用网络工具，之后同上</td><td class="m">要</td></tr>
+</table></div>
+
+<h2>九、设置页示意（请你挑一个）</h2>
+<p class="muted">静态示意，不是真实界面。在左侧栏加一个「朗读」页。</p>
+<div class="mocks">
+<div class="mock">
+<h4>A. 一个默认引擎 + 可选按语言覆盖 <span class="tag rec">推荐</span></h4>
+<div class="desc">大多数人只选一家；想中文用豆包、英文用 ElevenLabs 的，打开「按语言分别设置」再加一行。</div>
+<div class="win"><div class="sb"><div>通用</div><div>操作</div><div>外观</div><div>文字识别</div><div>AI 模型</div><div class="on">朗读</div><div>关于</div></div>
+<div class="ct">
+<div class="lbl">默认朗读</div>
+<div class="grpbox">
+<div class="row"><span class="l">引擎</span><span class="pop">豆包语音 ▾</span></div>
+<div class="row"><span class="l">模型</span><span class="pop">seed-tts-2.0 ▾</span></div>
+<div class="row"><span class="l">音色</span><span><span class="pop">vv 女声 ▾</span> <span class="pop">▶ 试听</span></span></div>
+<div class="row"><span class="l">语速</span><span class="r">──●──── 1.0×</span></div>
+</div>
+<div class="lbl">按语言分别设置 <span class="sw"></span></div>
+<div class="grpbox">
+<div class="row"><span class="l">英文</span><span class="r">ElevenLabs · flash v2.5 · Rachel</span></div>
+<div class="row"><span class="l" style="color:var(--accent)">＋ 添加语言</span><span></span></div>
+</div>
+<div class="lbl">Key</div>
+<div class="grpbox">
+<div class="row"><span class="l"><span class="dot"></span>豆包语音</span><span class="r">已保存 · 修改</span></div>
+<div class="row"><span class="l"><span class="dot"></span>ElevenLabs</span><span class="r">已保存 · 修改</span></div>
+<div class="row"><span class="l"><span class="dot no"></span>MiniMax</span><span class="r">填写</span></div>
+<div class="row"><span class="l"><span class="dot"></span>OpenAI</span><span class="r">与 AI 模型共用</span></div>
+</div>
+<div class="grpbox"><div class="row"><span class="l">单次最多念</span><span class="r">5000 字</span></div><div class="row"><span class="l">出错时改用系统语音</span><span class="sw"></span></div></div>
+</div></div>
+</div>
+<div class="mock">
+<h4>B. 每家一张卡片，打勾选默认</h4>
+<div class="desc">所有引擎平铺，每张卡片里填 key、选模型音色；看得全，但页面长，「中文用谁英文用谁」不直观。</div>
+<div class="win"><div class="sb"><div>通用</div><div>操作</div><div>外观</div><div>文字识别</div><div>AI 模型</div><div class="on">朗读</div><div>关于</div></div>
+<div class="ct">
+<div class="grpbox">
+<div class="row"><span class="l"><b>◉ 豆包语音</b></span><span class="r">默认</span></div>
+<div class="row"><span class="l">Key</span><span class="r">●●●●●● 已保存</span></div>
+<div class="row"><span class="l">模型 / 音色</span><span class="r">seed-tts-2.0 · vv 女声</span></div>
+</div>
+<div class="grpbox">
+<div class="row"><span class="l"><b>○ ElevenLabs</b></span><span class="r">设为默认</span></div>
+<div class="row"><span class="l">Key</span><span class="r">●●●●●● 已保存</span></div>
+<div class="row"><span class="l">模型 / 音色</span><span class="r">flash v2.5 · Rachel</span></div>
+</div>
+<div class="grpbox">
+<div class="row"><span class="l"><b>○ MiniMax</b></span><span class="r">设为默认</span></div>
+<div class="row"><span class="l">Key</span><span class="r">未填写</span></div>
+</div>
+<div class="grpbox">
+<div class="row"><span class="l"><b>○ OpenAI</b></span><span class="r">设为默认</span></div>
+</div>
+<div class="grpbox">
+<div class="row"><span class="l"><b>○ 系统语音</b></span><span class="r">设为默认</span></div>
+</div>
+</div></div>
+</div>
+</div>
+
+<h2>十、分几步做，每步怎么验证</h2>
+<div class="tw"><table>
+<tr><th>步骤</th><th>内容</th><th>怎么算做完</th></tr>
+<tr><td>0. 摸底</td><td>用 curl 对四家各打两个请求：确认流式能出声、确认时间戳在哪条路上返回、格式长什么样（尤其豆包 HTTP 路是否带字幕、MiniMax 流式字幕）</td><td>拿到真实回包存档，据此定死接口字段。<b>需要你的 key</b></td></tr>
+<tr><td>1. 框架</td><td>SpeechController + 两个后端 + 流式播放器 + 系统语音后端；朗读行为和现在完全一样</td><td>单元测试 + 实际点「朗读」能念、能停</td></tr>
+<tr><td>2. 第一家</td><td>ElevenLabs（最简单，普通 HTTP + 逐字时间）打通全链路，先在日志里看高亮位置</td><td>真实请求出声，首音延迟实测记录</td></tr>
+<tr><td>3. 其余三家</td><td>豆包、MiniMax、OpenAI（及兼容）</td><td>每家真实请求出声；中英混读各试一段</td></tr>
+<tr><td>4. 设置页</td><td>按你选的 A / B 做；试听按钮；key 输入</td><td>启动 App 给你看，附检查清单</td></tr>
+<tr><td>5. 朗读条</td><td>和本地方案共用的朗读条（逐字 / 按句高亮、暂停、停止）</td><td>启动 App 给你看</td></tr>
+<tr><td>第二批</td><td>WebSocket 通道 → CosyVoice、Cartesia；Gemini；本地 Kokoro 接到同一接口</td><td>另行排期</td></tr>
+</table></div>
+<p class="muted">朗读条（高亮显示在哪）在 <code>design/local-tts/plan.html</code> 第四节已经画过三个方案，那边你还没拍板；云端和本地共用同一个朗读条，选一次两边都生效。</p>
+
+<h2>十一、风险</h2>
+<ul>
+<li><b>隐私说法要改</b>：现在代码注释和设置说明写着「朗读不出 Mac」。选了云端引擎后，选中的文字会发给厂商，操作说明和设置页要明确写出来。</li>
+<li><b>时间戳对齐</b>是最容易出细碎问题的地方（数字、英文缩写、标点被厂商改写）。对不上时退回按句高亮，不会念错，只是高亮变粗。</li>
+<li><b>国内外可用性</b>：豆包语音国内账号需实名认证；海外用户要走 BytePlus（国际版，接口地址、价格未证实）。MiniMax 有国内 / 国际两个站，设置里要能切。ElevenLabs、OpenAI 在国内网络可能不通——这时首音超时后会退回系统语音。</li>
+<li><b>费用</b>：由用户自己的 key 付费；字数上限是唯一的保险。</li>
+<li><b>厂商接口会变</b>：各家文档里有的字段本身就没写清（上面标了「未证实」）。第 0 步实测前，接口草图里和时间戳相关的部分都不算定稿。</li>
+</ul>
+
+<h2>十二、需要你拍板的</h2>
+<div class="tw"><table>
+<tr><th>#</th><th>问题</th><th>我的建议</th></tr>
+<tr><td>1</td><td>第一批接哪几家</td><td>豆包、ElevenLabs、MiniMax、OpenAI（含兼容接口）</td></tr>
+<tr><td>2</td><td>设置页 A 还是 B</td><td>A</td></tr>
+<tr><td>3</td><td>云端方案和本地 Kokoro 方案的关系</td><td>先做云端；本地方案以后作为同一接口下的另一个引擎，不单独再搭一套</td></tr>
+<tr><td>4</td><td>朗读条这次一起做，还是先只换声音、不做高亮</td><td>先换声音（步骤 1–4），朗读条紧接着做（步骤 5）</td></tr>
+<tr><td>5</td><td>测试用的 key：你手上有哪几家的？放在 VaultPaw 里叫什么名字？</td><td>没有 key 的那家，我只能写到「编译通过、未实测」</td></tr>
+</table></div>
+</main></body>
+</html>
