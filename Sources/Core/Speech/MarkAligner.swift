@@ -23,6 +23,30 @@ struct MarkAligner {
 
     init(text: String) { self.text = text as NSString }
 
+    /// `mark` grown to the whole Latin word around it: ASCII letters and digits,
+    /// with apostrophes between them ("We're"). For providers that time pieces
+    /// of a word ("cus", "to", "mer" — MiniMax does), so the highlight covers
+    /// the word, not half of it. Marks on anything else (Chinese, punctuation,
+    /// unplaced) come back unchanged.
+    func widenedToWord(_ mark: TextMark) -> TextMark {
+        guard let location = mark.location, mark.length > 0 else { return mark }
+        func isWord(_ i: Int) -> Bool {
+            guard i >= 0, i < text.length, let scalar = Unicode.Scalar(text.character(at: i)) else { return false }
+            return scalar.isASCII && CharacterSet.alphanumerics.contains(scalar)
+        }
+        func isApostrophe(_ i: Int) -> Bool {
+            guard i >= 0, i < text.length else { return false }
+            let c = text.character(at: i)
+            return c == 0x27 || c == 0x2019
+        }
+        guard (location..<location + mark.length).contains(where: isWord) else { return mark }
+        var start = location, end = location + mark.length
+        while isWord(start - 1) || (isApostrophe(start - 1) && isWord(start - 2)) { start -= 1 }
+        while isWord(end) || (isApostrophe(end) && isWord(end + 1)) { end += 1 }
+        return TextMark(location: start, length: end - start, spoken: mark.spoken,
+                        startFrame: mark.startFrame, endFrame: mark.endFrame)
+    }
+
     mutating func place(_ spoken: String, startFrame: Int, endFrame: Int) -> TextMark {
         let needle = Self.fold(spoken)
         guard !needle.isEmpty else {

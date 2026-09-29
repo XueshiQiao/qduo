@@ -139,4 +139,21 @@ final class NumberAlignmentTests: XCTestCase {
     func testDigitsTheProviderKeptAreMatchedDirectly() {
         XCTAssertEqual(located("版本 v2.8.1 发布", ["版本", "v2.8.1", "发布"]), ["版本", "v2.8.1", "发布"])
     }
+
+    /// MiniMax times pieces of English words; each piece is widened to its word.
+    func testWordPiecesWidenToTheWholeWord() {
+        func widened(_ text: String, _ pieces: [String]) -> [String] {
+            var aligner = MarkAligner(text: text)
+            return pieces.map { piece in
+                let mark = aligner.widenedToWord(aligner.place(piece, startFrame: 0, endFrame: 0))
+                return mark.location.map { (text as NSString).substring(with: NSRange(location: $0, length: mark.length)) } ?? "✗"
+            }
+        }
+        XCTAssertEqual(widened("to your customer portal.", ["to", "your", "cus", "to", "mer", "portal"]),
+                       ["to", "your", "customer", "customer", "customer", "portal"])
+        XCTAssertEqual(widened("\"We're on 7 of 10 benchmarks,", ["We", "re", "7", "10", "ben", "ch", "mar", "ks"]),
+                       ["We're", "We're", "7", "10", "benchmarks", "benchmarks", "benchmarks", "benchmarks"])
+        XCTAssertEqual(widened("打开 Build Settings，然后", ["打", "开", "Sett", "ings", "然"]),
+                       ["打", "开", "Settings", "Settings", "然"])
+    }
 }

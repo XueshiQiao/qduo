@@ -399,6 +399,7 @@
 "popbar.status.paused" = "Paused";
 "speech.reader.system" = "System voice";
 "speech.key.hint.qwen" = "An Alibaba Cloud Model Studio (百炼) API key, starting with sk-. Kept in the Keychain; the same key serves every Qwen-Audio reader.";
+"speech.key.hint.minimax" = "A MiniMax API key (mainland site platform.minimax.cn → Account → API Keys). Kept in the Keychain; the same key serves every MiniMax reader. Billed per character: turbo ¥2.0 and hd ¥3.5 per 10,000 characters; a Chinese character counts as 2.";
 "speech.error.noKey" = "No API key for this reader. Add it in Settings › AI Models › Speech.";
 "speech.error.unavailable" = "This reader's service is not available in this version.";
 "speech.error.noAudio" = "The service returned no audio.";

@@ -81,6 +81,8 @@ struct SpeechProvider {
     struct Voice: Identifiable { let id: String; let label: String }
     let id: String
     let displayName: String
+    /// Name given to a new reader: "Qwen", then "Qwen 2", …
+    let shortName: String
     let models: [String]
     let defaultModel: String
     let voices: [String: [Voice]]   // by model
@@ -94,6 +96,7 @@ enum SpeechProviders {
     static let qwenAudio = SpeechProvider(
         id: "qwen-audio",
         displayName: "Qwen-Audio (Alibaba)",
+        shortName: "Qwen",
         models: ["qwen-audio-3.0-tts-flash", "qwen-audio-3.0-tts-plus"],
         defaultModel: "qwen-audio-3.0-tts-flash",
         voices: [
@@ -119,7 +122,41 @@ enum SpeechProviders {
         defaultVoice: "longanhuan_v3.6",
         keyHint: L("speech.key.hint.qwen"))
 
-    static let all = [qwenAudio]
+    /// MiniMax Speech 2.8. turbo is the default: first sound and word timings
+    /// measured the same as hd (2026-09-29), at ¥2.0 instead of ¥3.5 per 10k
+    /// characters. Every voice works with both models. The English voices are
+    /// from the international site's list; the mainland endpoint accepts them
+    /// too (checked 2026-09-29), it just does not list them.
+    private static let miniMaxVoices: [SpeechProvider.Voice] = [
+        .init(id: "English_radiant_girl", label: "Radiant Girl · Female (English)"),
+        .init(id: "English_CalmWoman", label: "Calm Woman · Female (English)"),
+        .init(id: "English_ConfidentWoman", label: "Confident Woman · Female (English)"),
+        .init(id: "English_Upbeat_Woman", label: "Upbeat Woman · Female (English)"),
+        .init(id: "English_captivating_female1", label: "Captivating Female · Female (English)"),
+        .init(id: "English_Wiselady", label: "Wise Lady · Female (English)"),
+        .init(id: "English_Soft-spokenGirl", label: "Soft-Spoken Girl · Female (English)"),
+        .init(id: "English_expressive_narrator", label: "Expressive Narrator (English)"),
+        .init(id: "English_Trustworthy_Man", label: "Trustworthy Man · Male · US (English)"),
+        .init(id: "English_Gentle-voiced_man", label: "Gentle-voiced Man · Male · US (English)"),
+        .init(id: "Chinese (Mandarin)_News_Anchor", label: "新闻女声 · 女"),
+        .init(id: "Chinese (Mandarin)_Warm_Bestie", label: "温暖闺蜜 · 女"),
+        .init(id: "Chinese (Mandarin)_Sweet_Lady", label: "甜美女声 · 女"),
+        .init(id: "Chinese (Mandarin)_Gentle_Senior", label: "温柔学姐 · 女"),
+        .init(id: "Chinese (Mandarin)_Male_Announcer", label: "播报男声 · 男"),
+        .init(id: "Chinese (Mandarin)_Gentleman", label: "温润男声 · 男"),
+    ]
+
+    static let miniMax = SpeechProvider(
+        id: "minimax",
+        displayName: "MiniMax",
+        shortName: "MiniMax",
+        models: ["speech-2.8-turbo", "speech-2.8-hd"],
+        defaultModel: "speech-2.8-turbo",
+        voices: ["speech-2.8-turbo": miniMaxVoices, "speech-2.8-hd": miniMaxVoices],
+        defaultVoice: "English_radiant_girl",
+        keyHint: L("speech.key.hint.minimax"))
+
+    static let all = [qwenAudio, miniMax]
 
     static func find(_ id: String) -> SpeechProvider? { all.first { $0.id == id } }
 }
@@ -200,7 +237,7 @@ final class SpeechSettingsStore: ObservableObject {
     @discardableResult
     func addReader(provider: SpeechProvider) -> SpeechReader {
         let count = readers.filter { $0.engine == provider.id }.count
-        let reader = SpeechReader(id: UUID().uuidString, name: count == 0 ? "Qwen" : "Qwen \(count + 1)",
+        let reader = SpeechReader(id: UUID().uuidString, name: count == 0 ? provider.shortName : "\(provider.shortName) \(count + 1)",
                                   engine: provider.id, model: provider.defaultModel, voice: provider.defaultVoice,
                                   speed: 1, region: "cn")
         readers.append(reader)

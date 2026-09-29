@@ -149,8 +149,8 @@ enum ConfigSchema {
                 "properties": {
                   "id": { "type": "string" },
                   "name": { "type": "string", "description": "What the settings and the reading window show." },
-                  "engine": { "type": "string", "enum": ["qwen-audio"] },
-                  "model": { "type": "string", "description": "e.g. qwen-audio-3.0-tts-flash" },
+                  "engine": { "type": "string", "enum": ["qwen-audio", "minimax"] },
+                  "model": { "type": "string", "description": "e.g. qwen-audio-3.0-tts-flash, speech-2.8-turbo" },
                   "voice": { "type": "string", "description": "The provider's voice id, e.g. longanhuan_v3.6" },
                   "speed": { "type": "number", "minimum": 0.5, "maximum": 2 },
                   "region": { "type": "string", "enum": ["cn", "intl"],

@@ -398,6 +398,7 @@
 "popbar.status.paused" = "已暂停";
 "speech.reader.system" = "系统语音";
 "speech.key.hint.qwen" = "阿里云百炼的 API Key，以 sk- 开头。存在钥匙串里；所有 Qwen-Audio 朗读员共用这一个 key。";
+"speech.key.hint.minimax" = "MiniMax 开放平台的 API Key（国内站 platform.minimax.cn → 账户管理 → 接口密钥）。存在钥匙串里；所有 MiniMax 朗读员共用这一个 key。按字符计费：turbo ¥2.0 / 万字符，hd ¥3.5 / 万字符，1 个汉字算 2 个字符。";
 "speech.error.noKey" = "这个朗读员还没有 API Key。请到 设置 › AI 模型 › 朗读 里填写。";
 "speech.error.unavailable" = "这个朗读员用的服务在当前版本里不可用。";
 "speech.error.noAudio" = "服务没有返回音频。";

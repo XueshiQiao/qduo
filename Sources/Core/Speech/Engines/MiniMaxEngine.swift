@@ -1,6 +1,8 @@
 import Foundation
 
-/// MiniMax T2A v2 over HTTP SSE (platform.minimax.io/docs/api-reference/speech-t2a-http).
+/// MiniMax T2A v2. Default transport is the bidirectional WebSocket
+/// (`MiniMaxBidirectional`); `"transport": "http"` selects HTTP SSE
+/// (platform.minimax.io/docs/api-reference/speech-t2a-http), described below.
 ///
 /// Audio arrives hex-encoded in `data.audio`, `data.status` 2 marks the end.
 /// Word timings are the open question: the docs only describe a subtitle FILE
@@ -10,10 +12,13 @@ import Foundation
 /// the benchmark then reports those marks as late, which is the honest answer.
 struct MiniMaxEngine: TTSEngine {
     static let descriptor = TTSEngineDescriptor(id: "minimax", displayName: "MiniMax Speech",
-                                                marks: .word, transport: "HTTP SSE")
+                                                marks: .word, transport: "WebSocket")
     let settings: TTSSettings
 
     func synthesize(_ request: TTSRequest) throws -> TTSStream {
+        if settings.string("transport", "websocket") != "http" {
+            return try MiniMaxBidirectional(settings: settings).synthesize(request)
+        }
         let key = settings.string("apiKey")
         guard !key.isEmpty else { throw TTSError.missingSetting("apiKey") }
         let host = settings.string("baseURL", settings.string("region", "cn") == "intl"
