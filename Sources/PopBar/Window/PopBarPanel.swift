@@ -138,8 +138,10 @@ final class PopBarPanel {
     /// Auto-expand (issue #12) bounds for the result scroll area. The content
     /// grows within `[min, max]`; beyond `max` it scrolls. `max` is further capped
     /// at run time to ~60% of the popup's own screen so a tall result can't exceed
-    /// a small display.
-    private let resultMinHeight: CGFloat = 120
+    /// a small display. `min` is one line tall (plus room for the loading spinner),
+    /// so a one- or two-line result gets a window that hugs it instead of a
+    /// 120pt box with empty rows under the text.
+    private let resultMinHeight: CGFloat = 28
     private let resultMaxHeight: CGFloat = 560
     private let resultScreenFraction: CGFloat = 0.6
     /// Latest natural content height SwiftUI reported, cached regardless of the
