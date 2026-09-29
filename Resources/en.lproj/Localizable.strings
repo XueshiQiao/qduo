@@ -464,3 +464,5 @@
 "popbar.readingHighlight.label" = "Reading highlight";
 "popbar.readingHighlight.pill" = "Pill";
 "popbar.readingHighlight.marker" = "Highlighter";
+"popbar.readingHighlight.solid" = "Solid pill";
+"popbar.readingHighlight.karaoke" = "Karaoke";

@@ -463,3 +463,5 @@
 "popbar.readingHighlight.label" = "朗读高亮";
 "popbar.readingHighlight.pill" = "圆角胶囊";
 "popbar.readingHighlight.marker" = "荧光笔";
+"popbar.readingHighlight.solid" = "实心胶囊";
+"popbar.readingHighlight.karaoke" = "卡拉 OK";

@@ -275,4 +275,9 @@ enum ReadingHighlightStyle: String, CaseIterable {
     case pill
     /// A highlighter stroke across the lower half of the word.
     case marker
+    /// A solid accent-colour pill with the word in white.
+    case solid
+    /// Karaoke: text not yet read is faded, read text is normal, and the word
+    /// being spoken is in the accent colour.
+    case karaoke
 }

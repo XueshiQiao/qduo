@@ -59,8 +59,8 @@ enum ConfigSchema {
               "description": "Base font size of the rendered result."
             },
             "readingHighlight": {
-              "type": "string", "enum": ["pill", "marker"],
-              "description": "How the reading window marks the word being spoken: pill = a rounded pill behind the word, marker = a highlighter stroke across its lower half."
+              "type": "string", "enum": ["pill", "marker", "solid", "karaoke"],
+              "description": "How the reading window marks the word being spoken: pill = a rounded pill behind the word, marker = a highlighter stroke across its lower half, solid = an accent-colour pill with the word in white, karaoke = unread text faded and the spoken word in the accent colour."
             },
             "simulateCopy": {
               "type": "boolean",

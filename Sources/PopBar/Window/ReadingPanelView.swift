@@ -156,21 +156,33 @@ struct ReadingPanelView: View {
     @ViewBuilder
     private func sentenceText(_ sentence: SpeechPlayback.Sentence) -> some View {
         let piece = sentence.text
-        if let hit = local(playback.highlight, in: sentence),
-           let r = Range(hit, in: piece) {
-            if #available(macOS 15, *) {
+        let style = model.readingHighlight
+        if #available(macOS 15, *) {
+            if let hit = local(playback.highlight, in: sentence), let r = Range(hit, in: piece) {
                 marked(piece, current: r,
                        previous: local(previousHighlight, in: sentence).flatMap { Range($0, in: piece) })
-                    .textRenderer(WordHighlight.Renderer(style: model.readingHighlight,
-                                                         step: highlightStep, target: highlightStep.rounded(.up)))
+                    .textRenderer(renderer(style, .current))
+            } else if style == .karaoke, let hit = playback.highlight {
+                // Karaoke also shades the sentences around the current one.
+                Text(verbatim: piece)
+                    .textRenderer(renderer(style, sentence.range.location < hit.location ? .read : .unread))
             } else {
-                // macOS 13–14 have no text renderer: fall back to a plain
-                // background on the word's own glyphs (no margin, no corners).
-                Text(fallbackAttributed(piece, r))
+                Text(verbatim: piece)
             }
+        } else if let hit = local(playback.highlight, in: sentence), let r = Range(hit, in: piece) {
+            // macOS 13–14 have no text renderer: fall back to a plain
+            // background on the word's own glyphs (no margin, no corners).
+            Text(fallbackAttributed(piece, r))
         } else {
             Text(verbatim: piece)
         }
+    }
+
+    @available(macOS 15, *)
+    private func renderer(_ style: ReadingHighlightStyle,
+                          _ place: WordHighlight.Place) -> WordHighlight.Renderer {
+        WordHighlight.Renderer(style: style, place: place,
+                               step: highlightStep, target: highlightStep.rounded(.up))
     }
 
     private func local(_ hit: NSRange?, in sentence: SpeechPlayback.Sentence) -> NSRange? {
@@ -227,7 +239,12 @@ enum WordHighlight {
     static let padX: CGFloat = 3
     static let padY: CGFloat = 1.5
     static let radius: CGFloat = 5
-    static let fill = Color.accentColor.opacity(0.22)
+    /// The pill: the accent colour at 30% in light mode and 40% in dark, where a
+    /// fainter tint sinks into the dark glass and the pill's edge disappears.
+    static let fill = Color(nsColor: NSColor(name: nil) { appearance in
+        let dark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return NSColor.controlAccentColor.withAlphaComponent(dark ? 0.40 : 0.30)
+    })
     /// Highlighter yellow: stronger on light backgrounds, softer on dark ones so
     /// white text on top stays readable.
     static let marker = Color(nsColor: NSColor(name: nil) { appearance in
@@ -246,14 +263,23 @@ enum WordHighlight {
     @available(macOS 15, *)
     struct PreviousMark: TextAttribute {}
 
-    /// Draws the pill behind the current word, then the text on top exactly as
-    /// SwiftUI laid it out. While `step` animates up to `target`, the pill is
-    /// interpolated from the previous word's box to the current one's, so it
-    /// slides along the line instead of jumping. On a new line, or when the
-    /// previous word is in another sentence, the pill simply appears there.
+    /// Where a sentence stands relative to the word being spoken (karaoke shades
+    /// whole sentences by it).
+    enum Place { case read, current, unread }
+
+    /// How faded karaoke's not-yet-read text is.
+    static let unreadOpacity = 0.4
+
+    /// Draws the mark for the current word, then the text on top exactly as
+    /// SwiftUI laid it out — the text is never restyled, so nothing re-flows.
+    /// While `step` animates up to `target`, the mark is interpolated from the
+    /// previous word's box to the current one's, so it slides along the line
+    /// instead of jumping. On a new line, or when the previous word is in another
+    /// sentence, it simply appears there.
     @available(macOS 15, *)
     struct Renderer: TextRenderer {
         var style: ReadingHighlightStyle
+        var place: Place
         var step: Double
         var target: Double
         var animatableData: Double {
@@ -262,7 +288,15 @@ enum WordHighlight {
         }
 
         func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
-            var current: [CGRect] = []   // one box per line the word sits on
+            if style == .karaoke && place != .current {
+                var c = ctx
+                if place == .unread { c.opacity = unreadOpacity }
+                for line in layout { c.draw(line) }
+                return
+            }
+            // The current word's box per line it sits on, the line each is on,
+            // and the previous word's box.
+            var current: [(box: CGRect, line: CGRect)] = []
             var previous: CGRect?
             for line in layout {
                 var cur: CGRect?
@@ -271,19 +305,95 @@ enum WordHighlight {
                     if run[Mark.self] != nil { cur = cur.map { $0.union(r) } ?? r }
                     if run[PreviousMark.self] != nil { previous = previous.map { $0.union(r) } ?? r }
                 }
-                if let cur { current.append(cur) }
+                if let cur { current.append((cur, line.typographicBounds.rect)) }
             }
             let t = min(max(step - (target - 1), 0), 1)
-            for (i, box) in current.enumerated() {
-                var shown = box
-                // Slide only along a line: a hop to the next line would cut
-                // diagonally across the text, so there the pill just appears.
-                if i == 0, let previous, t < 1, abs(previous.midY - box.midY) < box.height / 2 {
-                    shown = lerp(previous, box, t)
+            // The mark's box right now: mid-slide on the first line of the word.
+            let shown: [CGRect] = current.enumerated().map { i, item in
+                if i == 0, let previous, t < 1, abs(previous.midY - item.box.midY) < item.box.height / 2 {
+                    return lerp(previous, item.box, t)
                 }
-                ctx.fill(shape(for: shown), with: .color(style == .marker ? marker : fill))
+                return item.box
             }
-            for line in layout { ctx.draw(line) }
+
+            switch style {
+            case .karaoke:
+                drawKaraoke(layout, in: &ctx, shown: shown, lines: current.map(\.line))
+            case .pill, .marker, .solid:
+                let shapes = shown.map(shape(for:))
+                for path in shapes { ctx.fill(path, with: .color(color)) }
+                var normal = ctx
+                if style == .solid {
+                    // Keep the dark text out of the pill entirely, so its glyph
+                    // edges can't show through the white copy drawn there.
+                    var outside = Path(CGRect(x: -100_000, y: -100_000, width: 200_000, height: 200_000))
+                    for path in shapes { outside.addPath(path) }
+                    normal.clip(to: outside, style: FillStyle(eoFill: true))
+                }
+                for line in layout { normal.draw(line) }
+                // Solid: redraw the text in white, clipped to the pill, so whatever
+                // it covers — even half a word mid-slide — shows white.
+                if style == .solid {
+                    for path in shapes {
+                        var inside = ctx
+                        inside.clip(to: path)
+                        // Full white: the text is drawn at `inkOpacity`, so lift
+                        // its alpha back to 1, or the word reads greyish on blue.
+                        inside.addFilter(.colorMatrix(Self.tint(.white, alphaScale: 1 / ResultTextStyle.inkOpacity)))
+                        for line in layout { inside.draw(line) }
+                    }
+                }
+            }
+        }
+
+        /// Karaoke: all text faded, then full strength over everything before the
+        /// sliding window (lines above it, and its own line up to its left edge),
+        /// then the accent colour inside the window. The window slides like the
+        /// pill, so the colour sweeps across and read text fills in behind it.
+        private func drawKaraoke(_ layout: Text.Layout, in ctx: inout GraphicsContext,
+                                 shown: [CGRect], lines: [CGRect]) {
+            var faded = ctx
+            faded.opacity = unreadOpacity
+            for line in layout { faded.draw(line) }
+            guard let first = shown.first, let firstLine = lines.first else { return }
+
+            var read = Path()
+            let far: CGFloat = 100_000
+            // Every line above the window's line is read.
+            read.addRect(CGRect(x: -far, y: -far, width: 2 * far, height: firstLine.minY + far))
+            // Its own line, up to where the window starts.
+            read.addRect(CGRect(x: -far, y: firstLine.minY, width: first.minX + far, height: firstLine.height))
+            var done = ctx
+            done.clip(to: read)
+            for line in layout { done.draw(line) }
+
+            let accent = NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? .systemBlue
+            for box in shown {
+                var inside = ctx
+                inside.clip(to: Path(box.insetBy(dx: -1, dy: -padY)))
+                inside.addFilter(.colorMatrix(Self.tint(accent)))
+                for line in layout { inside.draw(line) }
+            }
+        }
+
+        private var color: Color {
+            switch style {
+            case .pill: return fill
+            case .marker: return marker
+            case .solid, .karaoke: return .accentColor
+            }
+        }
+
+        /// Maps every pixel to one colour, keeping its alpha (so glyph edges stay
+        /// smooth), optionally scaled up.
+        private static func tint(_ color: NSColor, alphaScale: Double = 1) -> ColorMatrix {
+            let c = color.usingColorSpace(.sRGB) ?? color
+            var m = ColorMatrix()
+            m.r1 = 0; m.r2 = 0; m.r3 = 0; m.r4 = 0; m.r5 = Float(c.redComponent)
+            m.g1 = 0; m.g2 = 0; m.g3 = 0; m.g4 = 0; m.g5 = Float(c.greenComponent)
+            m.b1 = 0; m.b2 = 0; m.b3 = 0; m.b4 = 0; m.b5 = Float(c.blueComponent)
+            m.a1 = 0; m.a2 = 0; m.a3 = 0; m.a4 = Float(alphaScale); m.a5 = 0
+            return m
         }
 
         /// The mark around a word's typographic box (ascent to descent). The pill
@@ -292,7 +402,7 @@ enum WordHighlight {
         /// like a pen stroke — slightly wider than the word, nearly square ends.
         private func shape(for box: CGRect) -> Path {
             switch style {
-            case .pill:
+            case .pill, .solid, .karaoke:
                 return Path(roundedRect: box.insetBy(dx: -padX, dy: -padY),
                             cornerRadius: radius, style: .continuous)
             case .marker:

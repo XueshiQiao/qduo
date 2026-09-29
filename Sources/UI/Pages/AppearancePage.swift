@@ -131,6 +131,8 @@ struct AppearancePage: View {
                                       set: { store.setReadingHighlight($0) })) {
                 Text(L("popbar.readingHighlight.pill")).tag(ReadingHighlightStyle.pill)
                 Text(L("popbar.readingHighlight.marker")).tag(ReadingHighlightStyle.marker)
+                Text(L("popbar.readingHighlight.solid")).tag(ReadingHighlightStyle.solid)
+                Text(L("popbar.readingHighlight.karaoke")).tag(ReadingHighlightStyle.karaoke)
             } label: {
                 iconLabel("highlighter", .indigo, L("popbar.readingHighlight.label"))
             }
