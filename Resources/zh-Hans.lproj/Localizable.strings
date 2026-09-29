@@ -413,7 +413,7 @@
 "speech.preparing" = "正在准备语音…";
 "speech.retry" = "重试";
 "speech.truncated" = "只朗读前 %ld 个字。";
-"speech.fromCache" = "从本地缓存播放。";
+"speech.fromCache" = "本地缓存";
 "speech.default" = "默认朗读员";
 "speech.default.footer" = "朗读动作没有单独指定时用这个朗读员。云端朗读员会把选中的文字发给服务商；系统语音只在本机处理。";
 "speech.key.header" = "%@ API Key";

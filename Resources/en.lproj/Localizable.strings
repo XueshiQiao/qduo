@@ -414,7 +414,7 @@
 "speech.preparing" = "Preparing audio…";
 "speech.retry" = "Retry";
 "speech.truncated" = "Only the first %ld characters are read.";
-"speech.fromCache" = "Played from the local cache.";
+"speech.fromCache" = "cached";
 "speech.default" = "Default reader";
 "speech.default.footer" = "Speak actions use this reader unless they choose another. Cloud readers send the selected text to the provider; the system voice stays on this Mac.";
 "speech.key.header" = "%@ API key";

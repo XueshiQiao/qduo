@@ -50,6 +50,7 @@ struct ReadingPanelView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .padding(.leading, 4)
+            toolbarStatus
             Spacer()
             switch playback.state {
             case .playing:
@@ -65,15 +66,32 @@ struct ReadingPanelView: View {
         }
     }
 
+    /// Short, passing states sit in the toolbar next to the reader's name, so
+    /// the text below never moves when they come and go.
     @ViewBuilder
-    private var status: some View {
+    private var toolbarStatus: some View {
         switch playback.state {
         case .preparing:
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.small)
-                Text(L("speech.preparing")).font(.system(size: 11)).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                ProgressView().controlSize(.mini)
+                Text(L("speech.preparing"))
             }
-        case .failed(let message):
+            .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+        case .playing, .paused, .finished:
+            if playback.fromCache {
+                Text("· " + L("speech.fromCache"))
+                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    /// What stays for the whole read: a failure (with Retry) or the text being
+    /// cut short — known from the start, so it does not appear mid-read.
+    @ViewBuilder
+    private var status: some View {
+        if case .failed(let message) = playback.state {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
@@ -84,12 +102,8 @@ struct ReadingPanelView: View {
                     .controlSize(.small)
             }
             .frame(width: width)
-        default:
-            if playback.wasTruncated {
-                note(String(format: L("speech.truncated"), SpeechPlayback.maxCharacters))
-            } else if playback.fromCache {
-                note(L("speech.fromCache"))
-            }
+        } else if playback.wasTruncated {
+            note(String(format: L("speech.truncated"), SpeechPlayback.maxCharacters))
         }
     }
 

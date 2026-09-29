@@ -62,6 +62,7 @@ final class SpeechPlayback: ObservableObject, Identifiable {
     func start() {
         backend?.stop()
         highlight = nil
+        fromCache = false   // set again by the backend when the cache answers
         state = .preparing
         let backend: SpeechBackend = reader.isSystem ? SystemSpeechBackend(owner: self) : StreamingSpeechBackend(owner: self)
         self.backend = backend
@@ -83,6 +84,7 @@ final class SpeechPlayback: ObservableObject, Identifiable {
     func replay() {
         if state == .finished, let backend, backend.canReplayLocally {
             highlight = nil
+            fromCache = true   // replayed from memory: no network either
             state = .playing
             backend.replay()
         } else {
