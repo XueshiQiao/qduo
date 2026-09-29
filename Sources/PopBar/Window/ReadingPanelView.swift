@@ -35,7 +35,7 @@ struct ReadingPanelView: View {
                 }
             }
         }
-        .padding(10)
+        .padding(ResultTextStyle.insets)
     }
 
     // MARK: - Pieces
@@ -120,7 +120,8 @@ struct ReadingPanelView: View {
             ForEach(sentences, id: \.id) { sentence in
                 Text(attributed(sentence.text, range: sentence.range))
                     .font(.system(size: model.resultFontSize))
-                    .lineSpacing(3)
+                    .foregroundStyle(Color.primary.opacity(ResultTextStyle.inkOpacity))
+                    .lineSpacing(model.resultFontSize * ResultTextStyle.lineSpacingEm)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)

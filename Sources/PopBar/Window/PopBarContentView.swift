@@ -131,11 +131,22 @@ struct PopBarContentView: View {
                 }
             } else {
                 content
-                    .background(VisualEffectBlur(cornerRadius: cornerRadius))
+                    .background(panelBackground)
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             }
         }
         .fixedSize()
+    }
+
+    /// Loading and results (text and the reading window) sit on Liquid Glass,
+    /// like the wheel; the capsule's action bar keeps the menu material.
+    @ViewBuilder
+    private var panelBackground: some View {
+        if case .actions = model.phase {
+            VisualEffectBlur(cornerRadius: cornerRadius)
+        } else {
+            GlassPanelBackground(cornerRadius: cornerRadius)
+        }
     }
 
     @ViewBuilder
@@ -276,7 +287,7 @@ struct PopBarContentView: View {
                 }
             }
         }
-        .padding(10)
+        .padding(ResultTextStyle.insets)
     }
 
     /// The result scroll area's height. OFF (default): exactly today's fixed
@@ -324,6 +335,7 @@ private extension Theme {
         Theme()
         .text {
             FontSize(baseSize)
+            ForegroundColor(Color.primary.opacity(ResultTextStyle.inkOpacity))
         }
         .code {
             FontFamilyVariant(.monospaced)
@@ -341,7 +353,7 @@ private extension Theme {
         }
         .paragraph { configuration in
             configuration.label
-                .relativeLineSpacing(.em(0.18))
+                .relativeLineSpacing(.em(ResultTextStyle.lineSpacingEm))
                 .markdownMargin(top: 0, bottom: 6)
         }
         .heading1 { configuration in
@@ -514,6 +526,68 @@ struct ChromeButton: View {
         .help(help)
     }
 }
+
+/// How result text is set, shared by the text result and the reading window so
+/// the two stay alike: ink a little softer than pure black/white, and roomier
+/// lines — about 1.45× the font size, the usual range for short UI reading
+/// (articles run 1.6–1.8×; system UI text ~1.25×). Dense black text on glass
+/// read as bold; 1.6× (tried first) looked too loose for a popup.
+enum ResultTextStyle {
+    static let inkOpacity = 0.88
+    /// Extra space between lines, as a fraction of the font size (the fonts'
+    /// own line height is about 1.18×).
+    static let lineSpacingEm = 0.27
+    /// Space around the panel's content. The toolbar buttons are 24×22 with an
+    /// ~11 pt glyph, so they already sit ~6 pt inside this.
+    static let insets = EdgeInsets(top: 6, leading: 8, bottom: 10, trailing: 8)
+}
+
+/// The result panel's backdrop: macOS 26 Liquid Glass (the same material as
+/// the wheel), or the frosted blur on older systems and toolchains.
+///
+/// AppKit's `NSGlassEffectView` rather than SwiftUI's `.glassEffect`: the panel
+/// is dragged by its background, which only works when the view under the
+/// mouse says `mouseDownCanMoveWindow`. SwiftUI's glass puts in a view that
+/// refuses, and the panel stopped moving (2026-09-29).
+struct GlassPanelBackground: View {
+    var cornerRadius: CGFloat
+
+    var body: some View {
+        // `NSGlassEffectView` only exists in the macOS 26 SDK, so it is gated at
+        // compile time as well as at run time (see WheelActionsView).
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            DraggableGlass(cornerRadius: cornerRadius)
+        } else {
+            VisualEffectBlur(cornerRadius: cornerRadius)
+        }
+        #else
+        VisualEffectBlur(cornerRadius: cornerRadius)
+        #endif
+    }
+}
+
+#if compiler(>=6.2)
+@available(macOS 26.0, *)
+private struct DraggableGlass: NSViewRepresentable {
+    var cornerRadius: CGFloat
+
+    final class GlassView: NSGlassEffectView {
+        override var mouseDownCanMoveWindow: Bool { true }
+    }
+
+    func makeNSView(context: Context) -> GlassView {
+        let view = GlassView()
+        view.style = .regular
+        view.cornerRadius = cornerRadius
+        return view
+    }
+
+    func updateNSView(_ view: GlassView, context: Context) {
+        view.cornerRadius = cornerRadius
+    }
+}
+#endif
 
 /// `NSVisualEffectView` blur, with rounded corners + a hairline border masked at
 /// the layer level so the edge is crisp (no SwiftUI-shadow feathering). Reused by

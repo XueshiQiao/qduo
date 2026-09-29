@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结果窗口外观方案</title>
+<style>
+:root{--page:#e9e8ee;--text:#1d1d1f;--sub:#6e6e73;--line:rgba(0,0,0,.1);--card:#fff}
+:root[data-theme="dark"]{--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--line:rgba(255,255,255,.12);--card:#232326}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--line:rgba(255,255,255,.12);--card:#232326}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;padding:28px 16px 60px}
+.wrap{max-width:1240px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+h1{font-size:22px;margin:0 0 4px} header p{margin:0;color:var(--sub);max-width:860px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap}
+.toggle{display:flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px}
+.toggle button{border:0;background:none;color:var(--text);font:inherit;padding:5px 12px;border-radius:6px;cursor:pointer}
+.toggle button.on{background:rgba(127,127,127,.2);font-weight:600}
+.facts{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0 22px}
+.facts b{font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:22px}
+.opt h2{font-size:15px;margin:0 0 2px}.opt p{color:var(--sub);margin:0 0 8px}
+.tag{font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(52,199,89,.18);color:#248a3d;margin-left:6px;font-weight:500}
+
+/* busy backdrop: a fake document behind the panel, so translucency shows */
+.stage{position:relative;border-radius:14px;overflow:hidden;height:330px;border:1px solid var(--line)}
+.bd{position:absolute;inset:0;padding:18px 22px;font:14px/1.6 -apple-system,"PingFang SC",sans-serif;color:#222;
+  background:
+   radial-gradient(circle at 18% 30%, #ffd36b 0 70px, transparent 71px),
+   radial-gradient(circle at 78% 70%, #6fb6ff 0 90px, transparent 91px),
+   radial-gradient(circle at 55% 20%, #ff8fb1 0 50px, transparent 51px),
+   linear-gradient(135deg,#fafafa,#eef3f8)}
+:root[data-theme="dark"] .bd{color:#ddd;background:
+   radial-gradient(circle at 18% 30%, #b8860b 0 70px, transparent 71px),
+   radial-gradient(circle at 78% 70%, #1f5fa8 0 90px, transparent 91px),
+   radial-gradient(circle at 55% 20%, #9c2f5a 0 50px, transparent 51px),
+   linear-gradient(135deg,#1e1e22,#15171c)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bd{color:#ddd;background:
+   radial-gradient(circle at 18% 30%, #b8860b 0 70px, transparent 71px),
+   radial-gradient(circle at 78% 70%, #1f5fa8 0 90px, transparent 91px),
+   radial-gradient(circle at 55% 20%, #9c2f5a 0 50px, transparent 51px),
+   linear-gradient(135deg,#1e1e22,#15171c)}}
+.bd h3{margin:0 0 6px;font-size:20px}
+.panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:470px;border-radius:14px;padding:10px 12px 14px}
+.bar{display:flex;align-items:center;gap:10px;font-size:11.5px;margin-bottom:8px;opacity:.75}
+.bar .sp{flex:1}.bar i{font-style:normal;width:16px;text-align:center}
+.body p{margin:0 0 6px}
+mark{border-radius:3px;padding:0 1px}
+
+/* ---------- materials ---------- */
+/* current: .menu material = almost opaque grey */
+.m-menu{background:rgba(236,236,236,.93);backdrop-filter:blur(30px) saturate(1.2);-webkit-backdrop-filter:blur(30px) saturate(1.2);box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 12px 30px rgba(0,0,0,.18)}
+:root[data-theme="dark"] .m-menu{background:rgba(44,44,46,.94);box-shadow:0 0 0 .5px rgba(255,255,255,.14),0 12px 30px rgba(0,0,0,.5)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .m-menu{background:rgba(44,44,46,.94);box-shadow:0 0 0 .5px rgba(255,255,255,.14),0 12px 30px rgba(0,0,0,.5)}}
+/* liquid glass, like the wheel */
+.m-glass{background:linear-gradient(180deg,rgba(255,255,255,.52),rgba(255,255,255,.34));backdrop-filter:blur(22px) saturate(1.8);-webkit-backdrop-filter:blur(22px) saturate(1.8);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),inset 0 0 0 .5px rgba(255,255,255,.55),0 0 0 .5px rgba(0,0,0,.10),0 16px 40px rgba(0,0,0,.16)}
+:root[data-theme="dark"] .m-glass{background:linear-gradient(180deg,rgba(40,40,44,.55),rgba(28,28,30,.45));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 .5px rgba(255,255,255,.12),0 16px 40px rgba(0,0,0,.55)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .m-glass{background:linear-gradient(180deg,rgba(40,40,44,.55),rgba(28,28,30,.45));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 .5px rgba(255,255,255,.12),0 16px 40px rgba(0,0,0,.55)}}
+/* thin frost: more see-through, softer */
+.m-frost{background:rgba(250,250,252,.62);backdrop-filter:blur(40px) saturate(1.5);-webkit-backdrop-filter:blur(40px) saturate(1.5);box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 10px 28px rgba(0,0,0,.14)}
+:root[data-theme="dark"] .m-frost{background:rgba(30,30,32,.66);box-shadow:0 0 0 .5px rgba(255,255,255,.12),0 10px 28px rgba(0,0,0,.5)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .m-frost{background:rgba(30,30,32,.66);box-shadow:0 0 0 .5px rgba(255,255,255,.12),0 10px 28px rgba(0,0,0,.5)}}
+
+.panel{color:#1d1d1f}
+:root[data-theme="dark"] .panel{color:#f2f2f4}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .panel{color:#f2f2f4}}
+mark{background:rgba(10,132,255,.22);color:inherit}
+
+/* ---------- type ---------- */
+.f-now{font:15px/1.45 system-ui,-apple-system,"PingFang SC",sans-serif;font-weight:400}
+.f-sf{font:15px/1.62 system-ui,-apple-system,"PingFang SC",sans-serif;font-weight:400;letter-spacing:.005em}
+.f-sf .body{opacity:.88}
+.f-serif{font:16px/1.6 ui-serif,"New York","Iowan Old Style",Charter,Georgia,"Songti SC",serif;font-weight:400}
+.f-serif .zh{font-family:ui-serif,"Songti SC","STSong",serif}
+.f-charter{font:15.5px/1.6 Charter,"Iowan Old Style",Georgia,"PingFang SC",serif}
+.f-light{font:15px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif;font-weight:300;letter-spacing:.01em}
+.f-round{font:15px/1.6 ui-rounded,"SF Pro Rounded",system-ui,"PingFang SC",sans-serif}
+.note{color:var(--sub);font-size:12px;margin-top:6px}
+</style>
+</head>
+<body><div class="wrap">
+<header><div>
+<h1>结果窗口：材质 + 字体，5 个版本</h1>
+<p>每个版本放在同一个「花哨」的背景上，好看出通透感。两段示例：你截图里那句英文（高亮在 models 上），和一段中英混排的翻译结果。<b>请用 Safari 打开</b>——New York 字体只有 Safari 能在网页里显示。</p>
+</div>
+<div class="ctl"><div class="toggle"><button id="lt" class="on">浅色</button><button id="dk">深色</button></div></div></header>
+
+<div class="facts">
+<b>现在是什么：</b>背景是 macOS 的「菜单」材质（<code>NSVisualEffectView .menu</code>），几乎不透明，所以显得灰、单调；轮盘用的是 macOS 26 的 Liquid Glass（<code>.glassEffect</code>），所以通透。字体是系统字体——英文 SF Pro、中文苹方，<b>常规字重，没有加粗</b>，默认 13 号（你截图里调大到了约 15 号）。看着「粗」，主要是纯黑字压在不透明的浅灰底上对比很强，加上行距偏紧（1.45 倍）。
+</div>
+
+<div class="grid">
+<div class="opt"><h2>0 · 现在</h2><p>菜单材质 + SF Pro 常规，行距 1.45。</p>
+<div class="stage"><div class="bd"><h3>A long web page behind the popup</h3>Some article text, images and links sit under the result window so you can see how much of it shows through. 背景里是随便一页网页内容。</div>
+<div class="panel m-menu f-now"><div class="bar"><i>📌</i><i>🔈</i>MiniMax<span class="sp"></span><i>⏸</i><i>↺</i><i>⧉</i><i>✕</i></div>
+<div class="body"><p>MiniMax has independently developed a series of multimodal foundation <mark>models</mark> with powerful code and Agent capabilities.</p><p class="zh">打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。</p></div></div></div></div>
+
+<div class="opt"><h2>1 · 液态玻璃 + SF Pro 放松排版<span class="tag">推荐</span></h2><p>和轮盘同一种 Liquid Glass；字体不变，但字色稍淡（88%）、行距 1.6，读起来轻很多。</p>
+<div class="stage"><div class="bd"><h3>A long web page behind the popup</h3>Some article text, images and links sit under the result window so you can see how much of it shows through. 背景里是随便一页网页内容。</div>
+<div class="panel m-glass f-sf"><div class="bar"><i>📌</i><i>🔈</i>MiniMax<span class="sp"></span><i>⏸</i><i>↺</i><i>⧉</i><i>✕</i></div>
+<div class="body"><p>MiniMax has independently developed a series of multimodal foundation <mark>models</mark> with powerful code and Agent capabilities.</p><p class="zh">打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。</p></div></div></div></div>
+
+<div class="opt"><h2>2 · 液态玻璃 + New York 衬线（阅读感）</h2><p>苹果自带的衬线体 New York，像「图书」App；中文配宋体。适合读长段译文，但按钮栏等界面字仍用 SF。</p>
+<div class="stage"><div class="bd"><h3>A long web page behind the popup</h3>Some article text, images and links sit under the result window so you can see how much of it shows through. 背景里是随便一页网页内容。</div>
+<div class="panel m-glass f-serif"><div class="bar" style="font-family:system-ui"><i>📌</i><i>🔈</i>MiniMax<span class="sp"></span><i>⏸</i><i>↺</i><i>⧉</i><i>✕</i></div>
+<div class="body"><p>MiniMax has independently developed a series of multimodal foundation <mark>models</mark> with powerful code and Agent capabilities.</p><p class="zh">打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。</p></div></div></div></div>
+
+<div class="opt"><h2>3 · 薄雾磨砂 + SF Pro 细体</h2><p>比玻璃更柔的半透明磨砂，背景颜色隐约透出；正文用 SF Pro Light（细一档），最「轻」的一版。</p>
+<div class="stage"><div class="bd"><h3>A long web page behind the popup</h3>Some article text, images and links sit under the result window so you can see how much of it shows through. 背景里是随便一页网页内容。</div>
+<div class="panel m-frost f-light"><div class="bar"><i>📌</i><i>🔈</i>MiniMax<span class="sp"></span><i>⏸</i><i>↺</i><i>⧉</i><i>✕</i></div>
+<div class="body"><p>MiniMax has independently developed a series of multimodal foundation <mark>models</mark> with powerful code and Agent capabilities.</p><p class="zh">打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。</p></div></div></div></div>
+
+<div class="opt"><h2>4 · 液态玻璃 + Charter</h2><p>Charter 是 macOS 自带的书报衬线体，比 New York 更朴素、更紧凑；中文仍是苹方。</p>
+<div class="stage"><div class="bd"><h3>A long web page behind the popup</h3>Some article text, images and links sit under the result window so you can see how much of it shows through. 背景里是随便一页网页内容。</div>
+<div class="panel m-glass f-charter"><div class="bar" style="font-family:system-ui"><i>📌</i><i>🔈</i>MiniMax<span class="sp"></span><i>⏸</i><i>↺</i><i>⧉</i><i>✕</i></div>
+<div class="body"><p>MiniMax has independently developed a series of multimodal foundation <mark>models</mark> with powerful code and Agent capabilities.</p><p class="zh">打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。</p></div></div></div></div>
+
+<div class="opt"><h2>5 · 液态玻璃 + SF Rounded</h2><p>系统圆体，笔画末端是圆的，更亲和；和轮盘的圆润感呼应。</p>
+<div class="stage"><div class="bd"><h3>A long web page behind the popup</h3>Some article text, images and links sit under the result window so you can see how much of it shows through. 背景里是随便一页网页内容。</div>
+<div class="panel m-glass f-round"><div class="bar"><i>📌</i><i>🔈</i>MiniMax<span class="sp"></span><i>⏸</i><i>↺</i><i>⧉</i><i>✕</i></div>
+<div class="body"><p>MiniMax has independently developed a series of multimodal foundation <mark>models</mark> with powerful code and Agent capabilities.</p><p class="zh">打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。</p></div></div></div></div>
+</div>
+
+<p class="note">网页模拟：真正的 Liquid Glass 会折射和高光，比这里更好看；字体在 App 里由系统绘制，细节以实物截图为准。选定后我可以把「材质」和「字体」做成设置里的两个选项，也可以直接定一个。</p>
+</div>
+<script>const set=d=>{document.documentElement.dataset.theme=d?"dark":"light";lt.classList.toggle("on",!d);dk.classList.toggle("on",d)};lt.onclick=()=>set(false);dk.onclick=()=>set(true);</script>
+</body></html>
