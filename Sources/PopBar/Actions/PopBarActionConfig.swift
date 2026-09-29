@@ -32,6 +32,8 @@ enum PopBarPresentation {
     case pause
     /// Show what the selection's element is to the accessibility API.
     case inspect
+    /// Open the app's settings window.
+    case openSettings
 }
 
 /// Where an action's produced text goes. Stored as a string on the action (see
@@ -86,6 +88,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case script         // run the shell command `script` on the selection
         case pause          // pause the popup, like the menu bar's Pause (the selection is ignored)
         case inspect        // debug: show the selection's accessibility element and its path
+        case settings       // open the app's settings window (the selection is ignored)
         /// A GROUP: runs nothing itself, it only holds `children`. On the wheel it
         /// unfolds a second ring; in the capsule it opens a dropdown.
         case group
@@ -372,6 +375,11 @@ enum DefaultActions {
         PopBarActionConfig(title: L("template.inspect"), iconSymbol: "scope", kind: .inspect)
     }
 
+    /// Open the settings window from the ring or capsule. From the templates.
+    static func settingsAction() -> PopBarActionConfig {
+        PopBarActionConfig(title: L("template.settings"), iconSymbol: "gearshape", kind: .settings)
+    }
+
     // MARK: - Builders
 
     static func openURL(_ title: String, _ icon: String, _ url: String,
@@ -461,6 +469,7 @@ enum ActionTemplates {
                 scriptTemplate(),
                 DefaultActions.pauseAction(),
                 DefaultActions.inspectAction(),
+                DefaultActions.settingsAction(),
             ]),
         ]
     }

@@ -47,6 +47,9 @@ enum ActionRegistry {
         case .pause:
             return .pause
 
+        case .settings:
+            return .openSettings
+
         case .inspect:
             return .inspect
 

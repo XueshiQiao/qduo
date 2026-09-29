@@ -43,6 +43,8 @@ final class PopBarWindowManager {
     private var loose: [PopBarSession] = []
     /// A window's Pause action was used. Set by the controller.
     var onPause: (() -> Void)?
+    /// A window's Settings action was used. Set by the controller.
+    var onOpenSettings: (() -> Void)?
 
     /// How far to nudge a new transient when a pinned window already sits at ~the
     /// same anchor, so stacked windows don't perfectly overlap (issue #13).
@@ -167,6 +169,7 @@ final class PopBarWindowManager {
         // The Quick Look action opens the shared preview window.
         session.onQuickLook = { [weak self] url in self?.quickLook.open(url) }
         session.onPause = { [weak self] in self?.onPause?() }
+        session.onOpenSettings = { [weak self] in self?.onOpenSettings?() }
     }
 
     /// Promote the current transient into the pinned set and create a fresh
@@ -211,6 +214,7 @@ final class PopBarWindowManager {
         // The Quick Look action opens the shared preview window.
         session.onQuickLook = { [weak self] url in self?.quickLook.open(url) }
         session.onPause = { [weak self] in self?.onPause?() }
+        session.onOpenSettings = { [weak self] in self?.onOpenSettings?() }
     }
 
     /// Drop a pinned window's pin without closing it.

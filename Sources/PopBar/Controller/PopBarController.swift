@@ -41,6 +41,9 @@ final class PopBarController {
     /// A popup's Pause action was used. The store answers it, because the paused
     /// state is the store's: it persists it and the menu bar and sidebar show it.
     var onPauseRequested: (() -> Void)?
+    /// A popup's Settings action was used. The menu bar controller answers it,
+    /// since it owns the settings window.
+    var onSettingsRequested: (() -> Void)?
 
     init(llm: LLMService, actionStore: ActionStore) {
         self.llm = llm
@@ -57,6 +60,7 @@ final class PopBarController {
             DoubleClickGesture(),
         ])
         windows.onPause = { [weak self] in self?.onPauseRequested?() }
+        windows.onOpenSettings = { [weak self] in self?.onSettingsRequested?() }
         monitor.onTrigger = { [weak self] in self?.handleTrigger() }
         monitor.onDismiss = { [weak self] event in self?.handleDismiss(event) }
     }

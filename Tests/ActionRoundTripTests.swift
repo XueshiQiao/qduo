@@ -70,6 +70,16 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(out.arrayValue?.first?[path: "kind"]?.stringValue, "teleport")
     }
 
+    func testTheSettingsKindIsKnownAndWrittenBackAsItself() throws {
+        let json = """
+        [{ "id": "s", "title": "Settings", "iconSymbol": "gearshape", "kind": "settings" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertEqual(action.kind, .settings)
+        XCTAssertFalse(action.isUnsupported)
+        XCTAssertEqual(try roundTrip(json).arrayValue?.first?[path: "kind"]?.stringValue, "settings")
+    }
+
     func testThePauseKindIsKnownAndWrittenBackAsItself() throws {
         let json = """
         [{ "id": "p", "title": "Pause", "iconSymbol": "pause.circle", "kind": "pause" }]

@@ -48,6 +48,7 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.script")).tag(PopBarActionConfig.Kind.script)
                         Text(L("popbar.editor.kind.pause")).tag(PopBarActionConfig.Kind.pause)
                         Text(L("popbar.editor.kind.inspect")).tag(PopBarActionConfig.Kind.inspect)
+                        Text(L("popbar.editor.kind.settings")).tag(PopBarActionConfig.Kind.settings)
                     }
                     if draft.isPathAction {
                         Text(L("popbar.editor.kind.pathHint"))
@@ -145,6 +146,12 @@ struct ActionEditorView: View {
                 }
             } footer: {
                 Text(L("popbar.editor.speak.hint"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .settings:
+            Section {
+                Text(String(format: L("popbar.editor.settings.hint.format"), Brand.name))
+                    .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .pause:

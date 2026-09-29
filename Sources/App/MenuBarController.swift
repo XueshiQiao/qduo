@@ -35,6 +35,11 @@ final class MenuBarController: NSObject {
         super.init()
         setupStatusItem()
         appState.showOnboarding = { [weak self] in self?.showOnboarding(reason: .manual) }
+        // The popup's Settings action. Deferred a turn: it arrives from inside the
+        // popup while it is still handling the tap.
+        appState.controller.onSettingsRequested = { [weak self] in
+            DispatchQueue.main.async { self?.showMainWindow() }
+        }
     }
 
     // MARK: - Setup

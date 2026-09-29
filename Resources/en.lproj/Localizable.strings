@@ -466,3 +466,6 @@
 "popbar.readingHighlight.marker" = "Highlighter";
 "popbar.readingHighlight.solid" = "Solid pill";
 "popbar.readingHighlight.karaoke" = "Karaoke";
+"template.settings" = "Settings";
+"popbar.editor.kind.settings" = "Open settings";
+"popbar.editor.settings.hint.format" = "Opens the %@ settings window. The selected text is not used.";

@@ -465,3 +465,6 @@
 "popbar.readingHighlight.marker" = "荧光笔";
 "popbar.readingHighlight.solid" = "实心胶囊";
 "popbar.readingHighlight.karaoke" = "卡拉 OK";
+"template.settings" = "设置";
+"popbar.editor.kind.settings" = "打开设置";
+"popbar.editor.settings.hint.format" = "打开 %@ 的设置窗口，不使用选中的文字。";

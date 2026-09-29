@@ -227,6 +227,9 @@ final class PopBarSession {
     /// Pause the popup (the Pause action). Wired by the manager up to the store,
     /// which owns the paused state the menu bar and the sidebar show.
     var onPause: (() -> Void)?
+    /// Open the settings window (the Settings action). Wired by the manager up
+    /// to the menu bar controller, which owns that window.
+    var onOpenSettings: (() -> Void)?
 
     /// Route a presentation to its surface — the single place output types map to UI.
     /// Adding a new `PopBarPresentation` case means adding one branch here.
@@ -269,6 +272,11 @@ final class PopBarSession {
             // Pausing closes every popup window, this one included, so there is
             // nothing to dismiss here first.
             onPause?()
+        case .openSettings:
+            // Attention moves to the settings window: close a transient popup,
+            // leave a pinned one where it is.
+            onOpenSettings?()
+            if !isPinned { onDismissOutcome?() }
         case .webPreview(let url):
             // Open the mini-browser, then dismiss this popup (the user's attention
             // moves to the preview window, same one-shot feel as Copy) — but NEVER a

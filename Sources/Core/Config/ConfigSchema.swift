@@ -186,8 +186,8 @@ enum ConfigSchema {
             "kind": {
               "type": "string",
               "enum": ["ai", "copy", "webPreview", "quickLook", "revealInFinder", "openURL", "speak",
-                       "transform", "shortcut", "script", "pause", "inspect", "group"],
-              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). group = hold children. The rest act on links and paths."
+                       "transform", "shortcut", "script", "pause", "inspect", "settings", "group"],
+              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). settings = open the app's settings window. group = hold children. The rest act on links and paths."
             },
             "prompt": { "type": "string",
               "description": "For \\"ai\\": the instruction sent with the selection." },
