@@ -50,6 +50,10 @@ enum Bench {
                     // Attempt 1 opens a fresh connection (what the first read
                     // after launch costs); later attempts reuse it.
                     if attempt == 1 { TTSNetwork.resetSession() }
+                    // "pauseMs" spaces requests out for providers with a low
+                    // requests-per-minute cap (a new MiniMax account hits it).
+                    let pause = settings.double("pauseMs", 0)
+                    if pause > 0 { try? await Task.sleep(nanoseconds: UInt64(pause * 1_000_000)) }
                     let m = await measure(engine: engine, provider: id, text: text, attempt: attempt,
                                           budget: budget, saveTo: attempt == 1 ? outDir : nil)
                     all.append(m)

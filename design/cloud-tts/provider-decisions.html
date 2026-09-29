@@ -38,7 +38,7 @@ pre code{background:none;padding:0}
 <p class="muted">2026-09-28，2026-09-29 更新 · 记录每家朗读服务为什么考虑、为什么用或不用。数字全部来自 <code>scripts/speech-bench.sh</code> 实测（说明见 <code>Tools/SpeechBench/README.md</code>），除非标明「文档」。</p>
 
 <div class="card rec">
-<b>结论：</b>目前只有<b>阿里 Qwen-Audio</b> 同时满足三条硬要求，作为第一个接入的云端朗读员。系统语音保留。豆包、CosyVoice、Gemini、OpenAI 暂不启用，代码保留（豆包、CosyVoice、Gemini 的适配代码在 <code>Sources/Core/Speech/Engines/</code>，在 <code>TTSEngineRegistry.paused</code> 里标为暂停）。ElevenLabs 已测（2026-09-29）：流式和逐字时间都满足，但首音 1.2–2.4 秒、价格约为 Qwen 的 5 倍，暂不采用。MiniMax 等 key。
+<b>结论：</b><b>阿里 Qwen-Audio</b> 和 <b>MiniMax</b>（speech-2.8-turbo，2026-09-29 实测）同时满足三条硬要求，都已接入为云端朗读员。系统语音保留。豆包、CosyVoice、Gemini、OpenAI 暂不启用，代码保留（豆包、CosyVoice、Gemini 的适配代码在 <code>Sources/Core/Speech/Engines/</code>，在 <code>TTSEngineRegistry.paused</code> 里标为暂停）。ElevenLabs 已测（2026-09-29）：流式和逐字时间都满足，但首音 1.2–2.4 秒、价格约为 Qwen 的 5 倍，暂不采用。MiniMax 等 key。
 </div>
 
 <h2>一、硬要求（不满足就不开启）</h2>
@@ -59,7 +59,7 @@ pre code{background:none;padding:0}
 <tr><td>Google Gemini TTS</td><td>排行榜第 2；便宜</td><td class="y">是</td><td class="muted">未测</td><td class="x">任何接口都没有逐字时间（文档）</td><td class="x">暂停</td></tr>
 <tr><td>OpenAI gpt-4o-mini-tts</td><td>接入最简单</td><td class="y">是</td><td class="muted">未测</td><td class="x">没有逐字时间（文档）</td><td class="x">不做</td></tr>
 <tr><td>ElevenLabs<br><span class="muted">eleven_v3</span></td><td>国际知名度最高；逐字符时间</td><td class="y">是</td><td class="x">首音 1.2–2.4 s</td><td class="y">字的时间和音频同时到</td><td class="x">暂不采用（慢、贵：约 $80/百万字符）</td></tr>
-<tr><td>MiniMax</td><td>中英混读口碑顶尖</td><td class="y">是（文档）</td><td class="muted">待测</td><td class="m">文档只提到合成完后给字幕文件，待测</td><td class="m">等 key</td></tr>
+<tr><td><b>MiniMax</b><br><span class="muted">speech-2.8-turbo</span></td><td>中英混读口碑顶尖；英文音色多</td><td class="y">是</td><td class="y">首音 320–520 ms</td><td class="y">字的时间和音频同时到（晚约 30 ms）</td><td class="y">采用（¥2.0/万字符）</td></tr>
 </table></div>
 
 <h2>三、每家的细节</h2>
@@ -73,6 +73,23 @@ pre code{background:none;padding:0}
 <li><b>小问题：</b>以引号开头的英文句（<code>"We're not there yet,"</code>），第一个字的时间晚到约 0.2–0.4 秒，而且时间是均匀间隔的，看起来像估算值。</li>
 <li><b>协议：</b>阿里百炼 WebSocket（run-task / continue-task / finish-task），key 用百炼的 API Key（<code>sk-</code> 开头），和 QDuo「AI 模型」页里通义千问用的是同一种 key。</li>
 </ul>
+
+<h3>MiniMax：采用（speech-2.8-turbo）</h3>
+<ul>
+<li><b>接口：</b>双向 WebSocket <code>wss://api.minimax.cn/ws/v1/t2a_v2_bidi</code>（文档 platform.minimax.cn/docs/api-reference/speech-t2a-websocket-bidi）。<code>task_start</code> 里开 <code>subtitle_enable</code>、<code>subtitle_type: word_streaming</code>，全文一条 <code>task_continue</code> 发过去，服务器自己分句。代码：<code>MiniMaxBidirectional.swift</code>。</li>
+<li><b>字的时间在哪（文档没写，抓包得出）：</b>每条音频消息 <code>data.subtitle.timestamped_words</code>，是「这一句到目前为止的词」，列表越来越长；时间从每句开头算起；空格也作为单独的词给出；<code>text_begin</code> 每句都从 0 开始，所以新句子要靠句子文字变了来判断。有些英文词按音节给（bench / mar / ks）。</li>
+<li><b>实测（9 段测试文字 × 2 次，hd 和 turbo 各一轮）：</b>首音 hd 356–477 ms、turbo 319–482 ms；RTF 0.08–0.18；全程不卡；字 100% 对上原文，没有晚到的；第一个字的时间比第一段音频晚约 30 ms。hd 和 turbo 速度、字幕一样，差在音质和价格，你试听后选 turbo。</li>
+<li><b>音色：</b>国内站账号的音色列表里英文只有 6 个；国际站文档列了 45 个英文音色，<b>国内站 key 直接可用</b>（实测 20 个都能合成）。App 里预置了 10 个英文（8 女 2 男）和 6 个中文，其他音色可以手填 ID。</li>
+<li><b>价格（官方价格页，2026-09-29 查）：</b></li>
+</ul>
+<div class="tw"><table>
+<tr><th>项目</th><th>国内站</th><th>国际站</th></tr>
+<tr><td>speech-2.8-turbo（旧的 2.6 / 02 turbo 同价）</td><td>¥2.0 / 万字符</td><td>$60 / 百万字符（约为国内 2 倍）</td></tr>
+<tr><td>speech-2.8-hd（旧的 2.6 / 02 hd 同价）</td><td>¥3.5 / 万字符</td><td>$100 / 百万字符</td></tr>
+<tr><td>声音复刻 / 音色设计</td><td>¥9.9 / 个</td><td>$1.5 / 个（复刻）</td></tr>
+</table></div>
+<p>计费：1 个汉字算 2 个字符，英文字母、标点、空格各算 1 个。异步长文本合成同价，但不能边合成边播，不适合朗读。</p>
+<p><b>要注意：</b>新账号每分钟请求数很低，连着测会报 <code>1002 rate limit exceeded(RPM)</code>，正常朗读不会碰到；测速工具加了 <code>pauseMs</code> 选项。余额不足报 <code>1008 insufficient balance</code>。key 无效时 WebSocket 握手直接返回 HTTP 200 加 JSON 错误，不是 101。</p>
 
 <h3>豆包：暂停</h3>
 <p><b>为什么考虑：</b>中文自然度公认最好，国内 AI 应用大量在用；你点名要。</p>

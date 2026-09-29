@@ -48,7 +48,7 @@ enum BenchTemplate {
     },
     "minimax": {
       "enabled": false,
-      "_说明": "MiniMax 开放平台 → 账户管理 → API Keys。region: cn = api.minimax.cn（国内账号），intl = api.minimax.io（国际账号）。它的逐字时间可能只在全部合成完之后给，这正是要测的。",
+      "_说明": "MiniMax 开放平台 → 账户管理 → API Keys。region: cn = api.minimax.cn（国内账号），intl = api.minimax.io（国际账号）。默认走双向 WebSocket（transport 写 http 改走 HTTP SSE）。文档没写逐字时间放在哪个字段、什么时候到，这正是要测的。",
       "apiKey": "",
       "region": "cn",
       "model": "speech-2.8-turbo",

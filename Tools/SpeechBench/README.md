@@ -60,7 +60,7 @@ scripts/speech-bench.sh run --only volcengine,qwen-audio --text mixed,en-long --
 | `qwen-audio` | 阿里 Qwen-Audio TTS | WebSocket | 文档没说清系统音色有没有，靠实测 |
 | `cosyvoice` | 阿里 CosyVoice | WebSocket | 有，但到得晚（首包后 1–2.6 秒）。**已暂停**：试听效果一般，代码保留，工具不再测它 |
 | `elevenlabs` | ElevenLabs | HTTP 分块 | 有，逐字符 |
-| `minimax` | MiniMax | HTTP SSE | 文档只提到「合成完后给字幕文件」，靠实测 |
+| `minimax` | MiniMax | 双向 WebSocket（`"transport": "http"` 改走 HTTP SSE） | 文档没写逐字时间在哪个字段、何时到，靠实测；前几条非音频消息会原样记进 notes |
 | `gemini` | Google Gemini TTS | HTTP SSE | 没有。**已暂停**：代码保留，工具不再测它 |
 | `system` | macOS 系统语音 | 本机 | 有，作为基线 |
 
@@ -71,4 +71,5 @@ scripts/speech-bench.sh run --only volcengine,qwen-audio --text mixed,en-long --
 Qwen-Audio 是一边发音频、一边发字的时间：每个音频包前面的消息里带着这一句「目前已知的字」，列表越来越长（2026-09-28 抓包确认，官方文档只写了句末那一次）。所以第一个字的时间和第一段音频几乎同时到，早给的时间后来也没有被改过（实测改动 0 毫秒）。
 
 - `splitSentences`（默认开）：按句子一条条发。不开的话，长的英文段落有时会整段合成完才给时间（实测晚 1.8 秒）。
+- `pauseMs`（任何服务都可用，默认 0）：每次请求前先等这么多毫秒。MiniMax 新账号每分钟请求数很低，连着测会报 `1002 rate limit exceeded(RPM)`，设成 `4000` 左右就不会撞上。
 - `quickStart`（默认关）：把第一句在第一个逗号处再切开。字的时间已经跟着音频来了，不再需要；留着只为对比。
