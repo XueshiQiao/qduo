@@ -327,7 +327,7 @@
 "onboarding.ax.help.title" = "列表里没有 %@？开关开了也没反应？";
 "onboarding.ax.help1" = "没有 %1$@：点列表下面的「＋」，在「应用程序」里选 %1$@。";
 "onboarding.ax.help2" = "开了没反应：选中 %1$@ 点「−」删掉，再用「＋」加回来——升级或换了安装位置后，旧的授权有时会失效。";
-"onboarding.ax.granted" = "已授权。现在在任何 app 里选中文字，都会弹出动作条。";
+"onboarding.ax.granted" = "已授权。现在在任何 app 里选中文字，都会弹出你的动作。";
 "onboarding.ax.howToRevoke" = "以后想关掉：系统设置 → 隐私与安全性 → 辅助功能，关掉 %@ 的开关即可。";
 "onboarding.sr.title" = "截屏取字要用「屏幕录制」";
 "onboarding.sr.why1.b" = "这个权限只给「截屏取字」用";
@@ -366,7 +366,7 @@
 "onboarding.ai.tpl.analyze" = "拆开长难句，讲清结构和意思（学外语时好用）";
 "onboarding.ai.tpl.explainCode" = "说明选中的代码在做什么";
 "onboarding.try.title" = "试一试";
-"onboarding.try.lead" = "用鼠标选中下面任意一段文字，松开鼠标，动作条就会出现在旁边。";
+"onboarding.try.lead" = "用鼠标选中下面任意一段文字，松开鼠标，动作就会在那里弹出来。";
 "onboarding.try.needsAX" = "还没授权辅助功能，弹窗不会出现。";
 "onboarding.try.grantFirst" = "先去授权";
 "onboarding.try.sample1" = "Serendipity means finding something good without looking for it.";

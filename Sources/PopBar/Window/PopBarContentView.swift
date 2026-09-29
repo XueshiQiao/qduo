@@ -53,7 +53,7 @@ final class PopBarPanelModel: ObservableObject {
     /// Which presentation the action row uses (capsule bar vs radial wheel). Seeded
     /// from `PopBarPreferences` on each show; only the `.actions` phase differs —
     /// loading/result chrome is shared. `@Published` so flipping it re-renders.
-    @Published var style: PopBarStyle = .capsule
+    @Published var style: PopBarStyle = .liquidGlass
     /// Geometry for the wheel presentation (ignored by the capsule). `@Published` so a
     /// live settings change (dragging the radius sliders) re-renders the showing wheel.
     @Published var wheelLayout = WheelLayout()

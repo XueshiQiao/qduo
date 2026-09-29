@@ -72,11 +72,13 @@ enum PopBarPreferences {
         set { config.set(P.autoExpandHeight, newValue) }
     }
 
-    /// Which presentation the popup uses. An unrecognized value falls back to the
-    /// capsule rather than refusing to start — this is a hand-editable file, and a
-    /// typo in one setting must not take the popup down with it.
+    /// Which presentation the popup uses. A missing or unrecognized value falls
+    /// back to the default, Liquid Glass, rather than refusing to start — this is
+    /// a hand-editable file, and a typo in one setting must not take the popup
+    /// down with it. (Every seeded file writes the style out, so only a
+    /// hand-trimmed file ever reaches this fallback.)
     static var style: PopBarStyle {
-        get { PopBarStyle(rawValue: config.string(P.style, default: "")) ?? .capsule }
+        get { PopBarStyle(rawValue: config.string(P.style, default: "")) ?? .liquidGlass }
         set { config.set(P.style, newValue.rawValue) }
     }
 

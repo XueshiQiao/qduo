@@ -44,7 +44,13 @@ enum ConfigSeed {
 
         // ── Popup ─────────────────────────────────────────────────────────────
         // No `enabled`: the popup IS the app, and it runs whenever the app does.
-        string("popup.style", "popbar.style", default: PopBarStyle.capsule.rawValue)
+        // A new install gets Liquid Glass. An upgrade from before the config file
+        // keeps the default it has been using — the capsule — when it never picked
+        // a style, so updating does not swap the popup out from under anyone.
+        let isUpgrade = d.object(forKey: Preferences.Key.lastSeenVersion) != nil
+            || d.dictionaryRepresentation().keys.contains { $0.hasPrefix("popbar.") }
+        string("popup.style", "popbar.style",
+               default: (isUpgrade ? PopBarStyle.capsule : PopBarStyle.liquidGlass).rawValue)
         bool("popup.autoExpandHeight", "popbar.autoExpandHeight", default: true)
         number("popup.resultFontSize", "popbar.resultFontSize",
                default: PopBarPreferences.resultFontSizeDefault)

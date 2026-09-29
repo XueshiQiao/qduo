@@ -178,8 +178,16 @@ final class ConfigStore: ObservableObject {
 
     // MARK: - Loading
 
+    /// Whether a config file was already on disk when the app started, as opposed
+    /// to one seeded from defaults just now. The first-run check needs this: by
+    /// the time it runs, a seeded file already holds the default actions, so
+    /// "the config has actions" alone cannot tell a new install from one whose
+    /// config was brought from another Mac.
+    private(set) var fileExistedAtLaunch = false
+
     private func load() {
         let url = resolvedFileURL
+        fileExistedAtLaunch = FileManager.default.fileExists(atPath: url.path)
         guard let data = try? Data(contentsOf: url) else {
             // No file yet: build one from the defaults plus whatever the app has
             // already stored in UserDefaults, so nothing is lost on the way over.

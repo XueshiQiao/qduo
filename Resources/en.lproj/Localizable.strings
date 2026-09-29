@@ -328,7 +328,7 @@
 "onboarding.ax.help.title" = "%@ not in the list? Switched on but nothing happens?";
 "onboarding.ax.help1" = "%1$@ not listed: click “+” below the list and choose %1$@ in Applications.";
 "onboarding.ax.help2" = "Switched on but nothing happens: select %1$@, click “−”, then add it back with “+” — an old grant can go stale after an update or a move.";
-"onboarding.ax.granted" = "Granted. Select text in any app and the action bar will pop up.";
+"onboarding.ax.granted" = "Granted. Select text in any app and your actions will pop up.";
 "onboarding.ax.howToRevoke" = "To turn it off later: System Settings → Privacy & Security → Accessibility, and switch %@ off.";
 "onboarding.sr.title" = "Screenshot Text needs Screen Recording";
 "onboarding.sr.why1.b" = "This is only for Screenshot Text";
@@ -367,11 +367,11 @@
 "onboarding.ai.tpl.analyze" = "Break down a hard sentence — structure and meaning (handy for learning a language)";
 "onboarding.ai.tpl.explainCode" = "Say what the selected code does";
 "onboarding.try.title" = "Try it";
-"onboarding.try.lead" = "Select any of the text below with your mouse and let go — the action bar appears right beside it.";
+"onboarding.try.lead" = "Select any of the text below with your mouse and let go — your actions pop up right there.";
 "onboarding.try.needsAX" = "Accessibility isn’t granted yet, so the popup won’t appear.";
 "onboarding.try.grantFirst" = "Grant it first";
 "onboarding.try.sample1" = "Serendipity means finding something good without looking for it.";
-"onboarding.try.sample2" = "Select this line too — when the bar appears, click Explain.";
+"onboarding.try.sample2" = "Select this line too — when the actions appear, click Explain.";
 "onboarding.try.success" = "There it is! It works the same in every app.";
 "onboarding.try.waiting" = "Waiting for you to select some text…";
 "onboarding.try.ocr" = "Now try Screenshot Text: press %@ and drag a box around the “picture” on the left.";

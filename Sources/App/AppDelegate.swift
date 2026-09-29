@@ -53,12 +53,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         Self.log.info("launch — \(Brand.name) v\(Brand.version) (\(Brand.build)), id \(Brand.bundleID)")
 
-        // Read BEFORE `AppState` exists: building it seeds the default actions
-        // into a config file that has none, and after that every install looks
-        // like an existing one.
+        // Read BEFORE `AppState` exists, and only from a config file that was on
+        // disk before this launch: a missing file is seeded with the default
+        // actions as soon as it is loaded, and after that every install would
+        // look like an existing one.
         let defaults = UserDefaults.standard
         let neverLaunched = !defaults.bool(forKey: Self.hasLaunchedKey)
-        let configHasActions = ConfigStore.shared.value("actions") != nil
+        // Only a config file that was ALREADY there counts: when there was none,
+        // loading it above just seeded one with the default actions.
+        let configHasActions = ConfigStore.shared.fileExistedAtLaunch
+            && ConfigStore.shared.value("actions") != nil
         if neverLaunched { defaults.set(true, forKey: Self.hasLaunchedKey) }
 
         // The onboarding guide opens on a genuinely new install only — never
