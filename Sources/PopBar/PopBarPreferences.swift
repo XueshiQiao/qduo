@@ -26,6 +26,7 @@ enum PopBarPreferences {
         static let enabled            = "popup.enabled"
         static let simulateCopy       = "popup.simulateCopy"
         static let excludedApps       = "popup.excludedApps"
+        static let ignoreAddressBars  = "popup.ignoreAddressBars"
         static let wheelOuterRadius   = "wheel.outerRadius"
         static let wheelInnerRadius   = "wheel.innerRadius"
         static let wheelShowIcons     = "wheel.showIcons"
@@ -174,6 +175,18 @@ enum PopBarPreferences {
     static var simulateCopy: Bool {
         get { config.bool(P.simulateCopy, default: true) }
         set { config.set(P.simulateCopy, newValue) }
+    }
+
+    /// Selecting in a browser's address bar does not open the popup (issue #6).
+    static var ignoreAddressBars: Bool {
+        get { config.bool(P.ignoreAddressBars, default: true) }
+        set { config.set(P.ignoreAddressBars, newValue) }
+    }
+
+    /// The ignore rules in force now (built in; see `SelectionIgnoreRules`).
+    /// Main thread (reads the config).
+    static var activeIgnoreRules: [SelectionIgnoreRules.Rule] {
+        SelectionIgnoreRules.enabled(in: ["ignoreAddressBars": ignoreAddressBars])
     }
 
     /// Bundle IDs of apps where selecting never opens the popup. The screenshot-OCR

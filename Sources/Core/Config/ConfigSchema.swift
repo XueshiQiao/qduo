@@ -62,6 +62,10 @@ enum ConfigSchema {
               "type": "boolean",
               "description": "When an app does not hand over the selection directly, press Cmd+C for you and read the clipboard (restored afterwards). Needed for most browsers and Electron apps. Default true."
             },
+            "ignoreAddressBars": {
+              "type": "boolean",
+              "description": "Selecting text in a browser's address bar (Chrome and other Chromium browsers, Safari) does not open the popup. Default true."
+            },
             "excludedApps": {
               "type": "array", "items": { "type": "string" },
               "description": "Bundle IDs of apps where selecting text never opens the popup, e.g. \\"com.microsoft.Excel\\". The screenshot-OCR hotkey still works in them."
@@ -178,8 +182,8 @@ enum ConfigSchema {
             "kind": {
               "type": "string",
               "enum": ["ai", "copy", "webPreview", "quickLook", "revealInFinder", "openURL", "speak",
-                       "transform", "shortcut", "script", "pause", "group"],
-              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). group = hold children. The rest act on links and paths."
+                       "transform", "shortcut", "script", "pause", "inspect", "group"],
+              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). group = hold children. The rest act on links and paths."
             },
             "prompt": { "type": "string",
               "description": "For \\"ai\\": the instruction sent with the selection." },

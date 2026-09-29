@@ -203,9 +203,7 @@ struct PopBarContentView: View {
                         model.onReplaceResult?(text)
                     }
                 }
-                ChromeButton(symbol: "doc.on.doc", help: L("popbar.copy.result")) {
-                    model.onCopyResult?(text)
-                }
+                CopyButton { model.onCopyResult?(text) }
                 ChromeButton(symbol: "xmark", help: L("popbar.close")) {
                     model.onClose?()
                 }
@@ -471,6 +469,21 @@ private struct CapsuleActionButton: View {
         // A group's name is on the button already, and a tooltip would sit on
         // top of its dropdown.
         .help(isGroup ? "" : action.title)
+    }
+}
+
+/// Copy, shared by the result panel and the reading window: copies, shows a
+/// check for a moment, and leaves the window open.
+struct CopyButton: View {
+    let copy: () -> Void
+    @State private var copied = false
+
+    var body: some View {
+        ChromeButton(symbol: copied ? "checkmark" : "doc.on.doc", help: L("popbar.copy.result")) {
+            copy()
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
+        }
     }
 }
 

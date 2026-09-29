@@ -64,6 +64,14 @@ struct GeneralPage: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            Toggle(isOn: Binding(get: { store.ignoreAddressBars }, set: { store.setIgnoreAddressBars($0) })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    iconLabel("link", .blue, L("popbar.ignoreAddressBars.title"))
+                    Text(L("popbar.ignoreAddressBars.body"))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         } header: {
             Text(L("popbar.reading.header"))
         }

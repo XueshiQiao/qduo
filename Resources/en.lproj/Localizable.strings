@@ -440,3 +440,12 @@
 "popbar.editor.reader" = "Reader";
 "popbar.editor.reader.default" = "Default (%@)";
 "popbar.editor.reader.missing" = "A removed reader";
+"popbar.ignoreAddressBars.title" = "Not in the browser's address bar";
+"popbar.ignoreAddressBars.body" = "Selecting in Chrome's or Safari's address bar is usually to change the address, so the popup stays away there. Also Edge, Brave, Arc and other Chrome-based browsers.";
+"template.inspect" = "Inspect Element";
+"popbar.editor.kind.inspect" = "Inspect element (debug)";
+"inspect.app" = "App";
+"inspect.noElement" = "This app did not hand over an accessibility element for the selection.";
+"inspect.rule" = "Matches ignore rule:";
+"inspect.element" = "Element";
+"inspect.path" = "Path, from the element up to its window";

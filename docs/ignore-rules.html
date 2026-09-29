@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QDuo 忽略规则</title>
+<style>
+  :root {
+    --bg: #faf9f5; --surface: #ffffff; --ink: #1f1e1c; --ink-soft: #5a5751;
+    --ink-faint: #8a857c; --rule: #e6e2d4; --code-bg: #f3f0e6;
+    --accent: #d97757; --good: #4f8a5c; --warn: #b6711c; --bad: #b14338;
+    --serif: "Tiempos", "Source Serif Pro", "Iowan Old Style", Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b1a18; --surface: #242320; --ink: #ece8df; --ink-soft: #b9b3a6;
+            --ink-faint: #8f897d; --rule: #3a3833; --code-bg: #2e2c28; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+         font-size: 16px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 880px; margin: 0 auto; padding: 72px 24px 120px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; text-transform: uppercase;
+             letter-spacing: 0.08em; color: var(--accent); margin-bottom: 18px; }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: 42px; line-height: 1.15; margin: 0 0 18px; }
+  .lede { font-family: var(--serif); font-size: 20px; line-height: 1.55; color: var(--ink-soft); margin: 0; }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin: 60px 0 14px; }
+  h3 { font-size: 17px; font-weight: 600; margin: 32px 0 10px; }
+  p { margin: 0 0 16px; }
+  li { margin-bottom: 8px; }
+  code { font-family: var(--mono); background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 0.88em; }
+  pre { background: #1f1e1c; color: #f6f3eb; padding: 18px 22px; border-radius: 8px;
+        overflow-x: auto; line-height: 1.6; font-size: 13px; margin: 18px 0 26px; }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 16px 0 26px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); }
+  .note { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+          border-radius: 6px; padding: 14px 18px; margin: 20px 0; }
+  .muted { color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="eyebrow">内部文档 · 2026-09-29</div>
+<h1>忽略规则：哪些地方选中文字不弹出</h1>
+<p class="lede">有些地方选中文字不是为了翻译或提问，比如浏览器地址栏——选中只是为了改网址。忽略规则用「选中文字所在的界面元素长什么样」来认出这些地方，认出来就不弹出。规则只在 App 内部维护，用户看不到、也改不了；用户只有一个总开关。</p>
+
+<h2>一、它在哪、怎么生效</h2>
+<ul>
+<li>规则写在 <code>Sources/PopBar/Selection/SelectionIgnoreRules.swift</code> 的 <code>builtInJSON</code> 里，是一段 JSON。</li>
+<li>每次选中文字、准备弹出时，QDuo 在后台线程拿到<b>当前获得焦点的界面元素</b>（键盘输入会进的那个元素），从上到下逐条比对规则；命中第一条就不弹出，并在日志里记一行 <code>trigger ignored — &lt;规则名&gt;</code>。</li>
+<li>带 <code>"setting"</code> 的规则跟着对应的设置开关走。现在只有一个开关：「通用 › 浏览器地址栏里不弹出」（配置文件里是 <code>popup.ignoreAddressBars</code>，默认开）。不带 <code>"setting"</code> 的规则始终生效。</li>
+<li>比对只读取几个属性，通常几毫秒；带「上级」条件的规则要往上查最多 40 层，也在十毫秒量级。</li>
+</ul>
+
+<h2>二、一条规则的写法</h2>
+<pre><code>{
+  "name":     "Safari address bar",          // 必填。日志和「检查元素」里显示的名字
+  "setting":  "ignoreAddressBars",           // 可选。跟哪个设置开关走；不写 = 始终生效
+  "apps":     ["com.apple.Safari"],          // 可选。只在这些 App 里生效（Bundle ID，不分大小写）；不写 = 所有 App
+  "element":  { "AXIdentifier": "WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD" },   // 必填。元素本身要满足的条件
+  "ancestor": { "AXRole": "AXToolbar" },     // 可选。它的某一级上级（一直到窗口）要满足的条件
+  "enabled":  false                          // 可选。写 false 暂时停用这条
+}</code></pre>
+
+<table>
+<tr><th>字段</th><th>必填</th><th>含义</th></tr>
+<tr><td><code>name</code></td><td>是</td><td>规则名。命中时写进日志，「检查元素」报告里也会显示「命中忽略规则：名字」。</td></tr>
+<tr><td><code>element</code></td><td>是</td><td>条件表：属性名 → 匹配方式。<b>全部</b>满足才算这个元素命中。至少要有一个条件——空条件会匹配一切，所以会被直接丢弃。</td></tr>
+<tr><td><code>ancestor</code></td><td>否</td><td>同样是条件表。从元素的父级开始往上找，<b>只要有一级</b>同时满足这里的全部条件就算命中；找到窗口（或 App）为止。</td></tr>
+<tr><td><code>apps</code></td><td>否</td><td>Bundle ID 列表（也可以写单个 <code>"app": "…"</code>）。写了就只在这些 App 里比对。</td></tr>
+<tr><td><code>setting</code></td><td>否</td><td>设置开关的名字。开关关掉时这条不生效。新增开关要在 <code>PopBarPreferences.activeIgnoreRules</code> 里把它传进去。</td></tr>
+<tr><td><code>enabled</code></td><td>否</td><td><code>false</code> = 停用。</td></tr>
+</table>
+
+<h3>匹配方式</h3>
+<table>
+<tr><th>写法</th><th>意思</th><th>例子</th></tr>
+<tr><td><code>"值"</code></td><td>完全相等（区分大小写）</td><td><code>"AXRole": "AXTextField"</code></td></tr>
+<tr><td><code>{ "equals": "值" }</code></td><td>同上，显式写法</td><td><code>"AXSubrole": { "equals": "AXSearchField" }</code></td></tr>
+<tr><td><code>{ "contains": "片段" }</code></td><td>包含这段文字，不分大小写、不分全角半角</td><td><code>"AXDescription": { "contains": "search" }</code></td></tr>
+<tr><td><code>{ "regex": "表达式" }</code></td><td>正则表达式，找到一处匹配即可（要整串匹配请加 <code>^…$</code>）</td><td><code>"AXIdentifier": { "regex": "^search" }</code></td></tr>
+</table>
+<ul>
+<li><b>列表型属性</b>（比如 <code>AXDOMClassList</code>，一个元素可以有好几个类名）：列表里<b>任意一项</b>满足就算满足。所以 <code>"AXDOMClassList": "OmniboxViewViews"</code> 的意思是「类名里有 OmniboxViewViews」。</li>
+<li>数字和真假值会先转成文字再比，例如 <code>"AXEnabled": "true"</code>。</li>
+<li>元素没有这个属性 = 不满足。</li>
+<li>写错的规则（没有 <code>element</code>、匹配方式拼错、正则写错、值写成了列表或对象）会被整条丢弃并在日志里警告，<b>不会</b>变成「匹配一切」。</li>
+</ul>
+
+<h2>三、能用来判断的属性</h2>
+<p>任何值是文字、文字列表、数字或真假值的辅助功能属性都能用。最常用的是下面这些——也正是「检查元素」报告里列出的：</p>
+<table>
+<tr><th>属性</th><th>是什么</th><th>稳定性</th><th>例子</th></tr>
+<tr><td><code>AXRole</code></td><td>元素的种类</td><td>稳定，和语言无关</td><td><code>AXTextField</code> 输入框、<code>AXTextArea</code> 多行输入、<code>AXStaticText</code> 文字、<code>AXWebArea</code> 网页、<code>AXToolbar</code> 工具栏、<code>AXGroup</code> 分组、<code>AXWindow</code> 窗口</td></tr>
+<tr><td><code>AXSubrole</code></td><td>种类的细分</td><td>稳定</td><td><code>AXSearchField</code> 搜索框、<code>AXSecureTextField</code> 密码框、<code>AXStandardWindow</code></td></tr>
+<tr><td><code>AXIdentifier</code></td><td>开发者给元素起的固定标识</td><td><b>最好用</b>：和语言无关，版本间一般不变</td><td>Safari 地址栏 <code>WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD</code></td></tr>
+<tr><td><code>AXDOMClassList</code></td><td>类名列表。Chrome 系浏览器的界面、网页里的元素都有</td><td>浏览器界面的类名稳定；网页里的类名常被网站改版或打包工具改掉，慎用</td><td>Chrome 地址栏 <code>OmniboxViewViews</code></td></tr>
+<tr><td><code>AXDOMIdentifier</code></td><td>网页元素的 id / 浏览器界面的内部 id</td><td>浏览器界面的常是临时编号（如 <code>view_1012</code>），不要用；网页里的 id 视网站而定</td><td></td></tr>
+<tr><td><code>AXDescription</code>、<code>AXTitle</code></td><td>给读屏软件念的描述、标题</td><td><b>跟界面语言变</b>，同一个 Chrome 地址栏在日文界面是「アドレス検索バー」。只在别无选择时用，并配合 <code>contains</code></td><td></td></tr>
+<tr><td><code>AXRoleDescription</code></td><td>种类的本地化名字</td><td>跟语言变，不要用</td><td>「テキストフィールド」</td></tr>
+<tr><td><code>AXPlaceholderValue</code></td><td>输入框里的灰色提示文字</td><td>跟语言、版本变</td><td></td></tr>
+<tr><td><code>AXHelp</code></td><td>鼠标悬停提示</td><td>跟语言变</td><td></td></tr>
+</table>
+<div class="note"><b>挑属性的顺序：</b><code>AXIdentifier</code> &gt; 浏览器界面的 <code>AXDOMClassList</code> &gt; <code>AXRole</code>/<code>AXSubrole</code> 加上级条件 &gt; 描述类文字（最后手段）。尽量用和界面语言无关的属性——QDuo 的用户用各种语言的系统。</div>
+
+<h2>四、加一条规则的步骤</h2>
+<ol>
+<li>在「设置 › 操作 › 从模板添加 › 自动化」里添加「检查元素」动作。</li>
+<li>到想屏蔽的地方选中文字，点「检查元素」。报告里有：所在 App 和 Bundle ID；元素的各项属性；从元素一层层往上到窗口的路径，每层写成 <code>AXRole(AXSubrole) #标识 .类名 "描述"</code>。如果这里已经被某条规则挡住、弹不出来，先在设置里关掉对应开关再检查。</li>
+<li>从报告里挑一个稳定、唯一的属性（见上一节的顺序），写进 <code>builtInJSON</code>。只靠元素本身分不开时，再加 <code>ancestor</code> 条件或 <code>apps</code> 限制。</li>
+<li>自测两件事：该挡的地方不弹出（日志里有 <code>trigger ignored — 规则名</code>），<b>正常的地方照样弹出</b>（网页正文、普通输入框）。</li>
+<li><code>SelectionIgnoreRulesTests</code> 会检查 <code>builtInJSON</code> 里每一条都能解析——写错会让测试失败，而不是悄悄少一条规则。</li>
+</ol>
+
+<h2>五、例子</h2>
+<h3>现有规则：浏览器地址栏</h3>
+<pre><code>{ "name": "Chromium address bar", "setting": "ignoreAddressBars",
+  "element": { "AXDOMClassList": "OmniboxViewViews" } },
+{ "name": "Safari address bar", "setting": "ignoreAddressBars",
+  "element": { "AXIdentifier": "WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD" } }</code></pre>
+<p class="muted">实测：Chrome、Safari 都生效（2026-09-29）。Edge、Brave、Arc 用的是和 Chrome 同一套代码，按道理同一个类名也能认出，未实测。</p>
+
+<h3>写法示例（没有启用）</h3>
+<pre><code>// 所有窗口工具栏里的输入框（地址栏、Finder/邮件顶部的搜索框…）
+{ "name": "Toolbar text fields",
+  "element":  { "AXRole": "AXTextField" },
+  "ancestor": { "AXRole": "AXToolbar" } }
+
+// 任何 App 里的搜索框（系统搜索框的子类型）
+{ "name": "Search fields", "element": { "AXSubrole": "AXSearchField" } }
+
+// 只在某个 App 里、描述里带 search 的输入框
+{ "name": "Example search box", "apps": ["com.example.app"],
+  "element": { "AXRole": "AXTextField", "AXDescription": { "contains": "search" } } }</code></pre>
+
+<h2>六、局限</h2>
+<ul>
+<li><b>比的是「获得焦点的元素」。</b>在输入框里选中文字，它就是那个输入框；在网页正文里选中时，焦点常常是整张网页（<code>AXWebArea</code>）或网页里的某个链接，不一定精确到那段文字。所以规则最适合认「输入框、地址栏、搜索框」这类可聚焦的控件。</li>
+<li><b>不提供辅助功能信息的 App 认不出。</b>有的 App 自己画界面、没给系统描述元素（部分游戏、个别 Electron 应用），这时规则不会命中，照常弹出——宁可弹出，也不误挡。</li>
+<li>网页里的类名、id 会随网站改版变化，针对网页内容的规则要预期会失效。</li>
+</ul>
+</div>
+</body>
+</html>

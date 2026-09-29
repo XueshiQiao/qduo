@@ -20,6 +20,7 @@ final class PopBarStore: ObservableObject {
     /// False while paused. See `PopBarPreferences.popupEnabled`.
     @Published private(set) var popupEnabled: Bool
     @Published private(set) var simulateCopy: Bool
+    @Published private(set) var ignoreAddressBars: Bool
     @Published private(set) var excludedApps: [String]
 
     // Screenshot OCR
@@ -48,6 +49,7 @@ final class PopBarStore: ObservableObject {
         self.isTrusted = AccessibilityAuthorizer.isTrusted
         self.popupEnabled = PopBarPreferences.popupEnabled
         self.simulateCopy = PopBarPreferences.simulateCopy
+        self.ignoreAddressBars = PopBarPreferences.ignoreAddressBars
         self.excludedApps = PopBarPreferences.excludedApps
         self.screenOCREnabled = PopBarPreferences.screenOCREnabled
         self.screenOCRAutoCopy = PopBarPreferences.screenOCRAutoCopy
@@ -179,6 +181,11 @@ final class PopBarStore: ObservableObject {
     func setSimulateCopy(_ on: Bool) {
         simulateCopy = on
         PopBarPreferences.simulateCopy = on
+    }
+
+    func setIgnoreAddressBars(_ on: Bool) {
+        ignoreAddressBars = on
+        PopBarPreferences.ignoreAddressBars = on
     }
 
     func excludeApp(_ bundleID: String) {

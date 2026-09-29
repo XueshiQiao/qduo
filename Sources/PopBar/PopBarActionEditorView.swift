@@ -47,6 +47,7 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.shortcut")).tag(PopBarActionConfig.Kind.shortcut)
                         Text(L("popbar.editor.kind.script")).tag(PopBarActionConfig.Kind.script)
                         Text(L("popbar.editor.kind.pause")).tag(PopBarActionConfig.Kind.pause)
+                        Text(L("popbar.editor.kind.inspect")).tag(PopBarActionConfig.Kind.inspect)
                     }
                     if draft.isPathAction {
                         Text(L("popbar.editor.kind.pathHint"))

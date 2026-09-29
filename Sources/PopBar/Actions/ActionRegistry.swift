@@ -47,6 +47,9 @@ enum ActionRegistry {
         case .pause:
             return .pause
 
+        case .inspect:
+            return .inspect
+
         case .transform:
             return transformPresentation(action, text: text)
 

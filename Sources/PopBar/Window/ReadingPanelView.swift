@@ -60,6 +60,7 @@ struct ReadingPanelView: View {
                 EmptyView()
             }
             ChromeButton(symbol: "arrow.counterclockwise", help: L("speech.replay")) { playback.replay() }
+            CopyButton { model.onCopyResult?(playback.text) }
             ChromeButton(symbol: "xmark", help: L("popbar.close")) { model.onClose?() }
         }
     }

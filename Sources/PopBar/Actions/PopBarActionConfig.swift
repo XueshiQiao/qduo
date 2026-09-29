@@ -30,6 +30,8 @@ enum PopBarPresentation {
     case speak(String)
     /// Pause the popup, exactly as the menu bar's Pause does.
     case pause
+    /// Show what the selection's element is to the accessibility API.
+    case inspect
 }
 
 /// Where an action's produced text goes. Stored as a string on the action (see
@@ -83,6 +85,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case shortcut       // run the macOS Shortcut named `shortcut` on the selection
         case script         // run the shell command `script` on the selection
         case pause          // pause the popup, like the menu bar's Pause (the selection is ignored)
+        case inspect        // debug: show the selection's accessibility element and its path
         /// A GROUP: runs nothing itself, it only holds `children`. On the wheel it
         /// unfolds a second ring; in the capsule it opens a dropdown.
         case group
@@ -363,6 +366,12 @@ enum DefaultActions {
                            iconSymbol: "pause.circle", kind: .pause)
     }
 
+    /// A debugging aid, from the templates: what the element holding the
+    /// selection is and where it sits — what an ignore rule would match on.
+    static func inspectAction() -> PopBarActionConfig {
+        PopBarActionConfig(title: L("template.inspect"), iconSymbol: "scope", kind: .inspect)
+    }
+
     // MARK: - Builders
 
     static func openURL(_ title: String, _ icon: String, _ url: String,
@@ -451,6 +460,7 @@ enum ActionTemplates {
                 shortcutTemplate(),
                 scriptTemplate(),
                 DefaultActions.pauseAction(),
+                DefaultActions.inspectAction(),
             ]),
         ]
     }

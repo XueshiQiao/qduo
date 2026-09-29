@@ -33,6 +33,10 @@ final class PopBarSession {
     /// Where this window's selection came from — what a result is put back into
     /// by Replace. nil for the settings preview's sample text.
     private(set) var source: SelectionSource?
+    /// The focused element when the selection was made, for the Inspect action.
+    /// Unlike `source.element`, captured whatever strategy read the text.
+    private(set) var element: AXUIElement?
+    private var elementPID: pid_t?
 
     /// Bumped on every show/recycle of THIS window so a slow AI action can't apply
     /// its result onto a capsule that has since been replaced or dismissed.
@@ -63,10 +67,12 @@ final class PopBarSession {
     /// Update the captured selection text in place WITHOUT a hide/reposition —
     /// used for an in-place refresh (double→triple-click growing the same
     /// selection). The window doesn't move, so its placement is untouched.
-    func refreshSelection(text: String, url: URL?, source: SelectionSource?) {
+    func refreshSelection(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil) {
         self.text = text
         self.url = url
         self.source = source
+        self.element = element
+        self.elementPID = element.flatMap { var pid: pid_t = 0; return AXUIElementGetPid($0, &pid) == .success ? pid : nil }
         panel.model.canReplace = source?.canReplace ?? false
     }
 
@@ -74,11 +80,13 @@ final class PopBarSession {
     /// `anchor`, acting on `text`. Bumps the panel generation and cancels any prior
     /// in-flight action in THIS window so its stale tokens can't bleed into the new
     /// popup.
-    func show(text: String, url: URL?, source: SelectionSource?, anchor: CGPoint,
+    func show(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil, anchor: CGPoint,
               actions: [PopBarActionConfig]) {
         self.text = text
         self.url = url
         self.source = source
+        self.element = element
+        self.elementPID = element.flatMap { var pid: pid_t = 0; return AXUIElementGetPid($0, &pid) == .success ? pid : nil }
         panel.model.canReplace = source?.canReplace ?? false
         stopReading()
         panelGeneration &+= 1
@@ -241,6 +249,22 @@ final class PopBarSession {
             let reader = SpeechSettingsStore.shared.resolve(action.reader)
             panel.model.reading = SpeechCenter.shared.read(text, with: reader)
             panel.applyPhase(.result(""))
+        case .inspect:
+            // Dozens of calls into the other app: off the main thread, so a slow
+            // or hung app cannot freeze ours.
+            panel.model.resultIsFinalOutput = false
+            panel.applyPhase(.result(""))
+            let element = self.element ?? source?.element
+            let pid = elementPID ?? source?.pid
+            let rules = PopBarPreferences.activeIgnoreRules
+            let panelGen = panelGeneration, actionGen = actionGeneration
+            Task.detached { [weak self] in
+                let report = AXInspector.report(element: element, pid: pid, rules: rules)
+                await MainActor.run {
+                    guard let self, panelGen == self.panelGeneration, actionGen == self.actionGeneration else { return }
+                    self.panel.applyPhase(.result(report))
+                }
+            }
         case .pause:
             // Pausing closes every popup window, this one included, so there is
             // nothing to dismiss here first.

@@ -37,6 +37,10 @@ final class PopBarWindowManager {
     /// (removing it from this array, after `teardown` + `panel.hide`) deallocates
     /// its `NSPanel`.
     private var pinned: [PopBarSession] = []
+    /// Windows that were pinned and then un-pinned. Un-pinning only drops the pin:
+    /// the window stays up, and from then on closes like the transient does — an
+    /// outside click or its close button.
+    private var loose: [PopBarSession] = []
     /// A window's Pause action was used. Set by the controller.
     var onPause: (() -> Void)?
 
@@ -65,28 +69,38 @@ final class PopBarWindowManager {
         transient.isVisible && !transient.isPinned
     }
 
+    /// Something an outside click should close: the transient, or an un-pinned window.
+    var hasDismissableWindow: Bool { transientIsVisibleUnpinned || !loose.isEmpty }
+
     // MARK: - Selection → show (transient)
 
     /// Refresh the transient window's captured selection in place (double→triple-
     /// click growing the same selection). No hide/reposition → no flicker, so the
     /// window's anchor is left untouched (it stays where it was placed).
-    func refreshTransientSelection(text: String, url: URL?, source: SelectionSource?) {
+    func refreshTransientSelection(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil) {
         guard transient.isShowingActions else { return }
-        transient.refreshSelection(text: text, url: url, source: source)
+        transient.refreshSelection(text: text, url: url, source: source, element: element)
     }
 
     /// Show (or recycle) the transient window for a new selection. Works regardless
     /// of how many pinned windows exist.
-    func showTransient(text: String, url: URL?, source: SelectionSource? = nil, anchor: CGPoint,
-                       actions: [PopBarActionConfig]) {
+    func showTransient(text: String, url: URL?, source: SelectionSource? = nil, element: AXUIElement? = nil,
+                       anchor: CGPoint, actions: [PopBarActionConfig]) {
         let placed = offsetAwayFromPinned(anchor)
-        transient.show(text: text, url: url, source: source, anchor: placed, actions: actions)
+        transient.show(text: text, url: url, source: source, element: element, anchor: placed, actions: actions)
     }
 
     /// Dismiss the transient window (outside click / auto-dismiss). Pinned windows
     /// are untouched.
     func dismissTransient() {
         transient.hide()
+    }
+
+    /// A click outside every popup: the transient goes, and so does every
+    /// un-pinned window. Pinned ones stay.
+    func dismissOnOutsideClick() {
+        transient.hide()
+        for session in loose { closeLoose(session) }
     }
 
     // MARK: - Broadcast (settings live updates)
@@ -116,6 +130,11 @@ final class PopBarWindowManager {
             session.panel.hide()
         }
         pinned.removeAll()
+        for session in loose {
+            session.teardown()
+            session.panel.hide()
+        }
+        loose.removeAll()
         webPreview.close()
         quickLook.close()
     }
@@ -136,10 +155,8 @@ final class PopBarWindowManager {
             guard let session, session.isShowingActions else { return }
             self?.dismissTransient()
         }
-        session.panel.model.onCopyResult = { [weak self, weak session] text in
-            session?.copyResult(text)
-            self?.dismissTransient()
-        }
+        // Copying never closes a window — pinned, un-pinned or transient.
+        session.panel.model.onCopyResult = { [weak session] text in session?.copyResult(text) }
         session.panel.model.onReplaceResult = { [weak session] text in session?.replaceResult(text) }
         session.panel.model.onClose = { [weak self] in self?.dismissTransient() }
         session.panel.model.onTogglePin = { [weak self] in self?.pinTransient() }
@@ -172,9 +189,7 @@ final class PopBarWindowManager {
     /// / copy act on THIS window only and never on the (new) transient.
     private func rewireAsPinned(_ session: PopBarSession) {
         session.panel.model.onAction = { [weak session] action in session?.runAction(action) }
-        // Copying from a PINNED window keeps it open — the user pinned it precisely
-        // to keep the result around. (The transient window, by contrast, dismisses
-        // on copy.) It closes only via its own close / unpin button.
+        // Copying keeps the window open, as it does everywhere.
         session.panel.model.onCopyResult = { [weak session] text in
             session?.copyResult(text)
         }
@@ -183,12 +198,10 @@ final class PopBarWindowManager {
             guard let session else { return }
             self?.closePinned(session)
         }
-        // Un-pinning a graduated window closes it (it has no transient semantics, so
-        // nothing else would ever dismiss it — leaving an orphan undismissable
-        // window). Closing is the single, predictable outcome.
+        // Un-pinning only drops the pin; the window stays where it is (see `loose`).
         session.panel.model.onTogglePin = { [weak self, weak session] in
             guard let session else { return }
-            self?.closePinned(session)
+            self?.unpin(session)
         }
         session.onDismissOutcome = { [weak self, weak session] in
             guard let session else { return }
@@ -198,6 +211,37 @@ final class PopBarWindowManager {
         // The Quick Look action opens the shared preview window.
         session.onQuickLook = { [weak self] url in self?.quickLook.open(url) }
         session.onPause = { [weak self] in self?.onPause?() }
+    }
+
+    /// Drop a pinned window's pin without closing it.
+    private func unpin(_ session: PopBarSession) {
+        guard let index = pinned.firstIndex(where: { $0 === session }) else { return }
+        pinned.remove(at: index)
+        session.panel.setPinned(false)
+        loose.append(session)
+        session.panel.model.onClose = { [weak self, weak session] in
+            guard let session else { return }
+            self?.closeLoose(session)
+        }
+        session.panel.model.onTogglePin = { [weak self, weak session] in
+            guard let self, let session, let i = self.loose.firstIndex(where: { $0 === session }) else { return }
+            self.loose.remove(at: i)
+            session.panel.setPinned(true)
+            self.rewireAsPinned(session)
+            self.pinned.append(session)
+        }
+        session.onDismissOutcome = { [weak self, weak session] in
+            guard let session else { return }
+            self?.closeLoose(session)
+        }
+        Self.log.info("unpinned a window — \(self.pinned.count) pinned, \(self.loose.count) unpinned open")
+    }
+
+    private func closeLoose(_ session: PopBarSession) {
+        guard let index = loose.firstIndex(where: { $0 === session }) else { return }
+        session.teardown()
+        session.panel.hide()
+        loose.remove(at: index)
     }
 
     /// Close one pinned window: cancel its stream, hide it, and drop our strong

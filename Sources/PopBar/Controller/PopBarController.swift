@@ -163,6 +163,11 @@ final class PopBarController {
             windows.dismissTransient()
             return
         }
+        // Places the popup should stay away from (a browser's address bar, the
+        // user's own rules). Read here; matched off the main thread below, since
+        // it asks the other app over accessibility.
+        let ignoreRules = PopBarPreferences.activeIgnoreRules
+        let frontID = front?.bundleIdentifier
 
         let loc = monitor.lastMouseUpLocation
         // Same spot + the transient already showing its actions → this is a
@@ -200,6 +205,23 @@ final class PopBarController {
         let generation = resolveGeneration
         resolveTask = Task { [weak self] in
             guard let self else { return }
+            // The element the selection is in: what ignore rules match and what
+            // the Inspect action reports.
+            let focused = AXSelectionProbe.focusedElement()
+            if Task.isCancelled { return }
+            if let focused, !ignoreRules.isEmpty,
+               let rule = SelectionIgnoreRules.match(focused, bundleID: frontID, rules: ignoreRules) {
+                if Task.isCancelled { return }
+                await MainActor.run {
+                    guard generation == self.resolveGeneration, self.running else { return }
+                    self.resolveGeneration &+= 1
+                    Self.log.debug("trigger ignored — \(rule.name)")
+                    // Growing the same selection in place leaves its popup be,
+                    // as a failed in-place read does.
+                    if !inPlace { self.windows.dismissTransient() }
+                }
+                return
+            }
             let result = await self.resolver.resolve(context)
             if Task.isCancelled { return }
             // Resolve the associated link at trigger time (off-main), only when a
@@ -227,10 +249,10 @@ final class PopBarController {
                     // its placed anchor stays put. `lastAnchor` still tracks the raw
                     // selection location for the NEXT re-trigger's proximity check.
                     self.lastAnchor = loc
-                    self.windows.refreshTransientSelection(text: result.text, url: url, source: source)
+                    self.windows.refreshTransientSelection(text: result.text, url: url, source: source, element: focused)
                 } else {
                     self.lastAnchor = loc
-                    self.windows.showTransient(text: result.text, url: url, source: source, anchor: loc,
+                    self.windows.showTransient(text: result.text, url: url, source: source, element: focused, anchor: loc,
                                                actions: self.actionStore.actions)
                 }
             }
@@ -240,11 +262,11 @@ final class PopBarController {
     private func handleDismiss(_ event: InputEvent) {
         // Only the transient (unpinned) window auto-dismisses; pinned windows
         // persist until their own close button.
-        guard windows.transientIsVisibleUnpinned else { return }
+        guard windows.hasDismissableWindow else { return }
         // A multi-click continuation (e.g. double-click then an accidental triple)
         // shouldn't dismiss — that would hide then immediately reshow (flicker).
         if case let .mouseDown(nsEvent) = event, nsEvent.clickCount >= 2 { return }
-        windows.dismissTransient()
+        windows.dismissOnOutsideClick()
     }
 
     // MARK: - Onboarding sample

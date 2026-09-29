@@ -118,6 +118,8 @@ targets:
       - path: Sources/Core/Speech/TTSTransport.swift
       - path: Sources/Core/Speech/MarkAligner.swift
       - path: Sources/Core/Speech/TTSRunRecorder.swift
+      - path: Sources/PopBar/Selection/SelectionIgnoreRules.swift
+      - path: Sources/Core/FileLog.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests
