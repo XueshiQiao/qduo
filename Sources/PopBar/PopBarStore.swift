@@ -8,6 +8,7 @@ final class PopBarStore: ObservableObject {
 
     @Published var autoExpandHeight: Bool
     @Published var resultFontSize: Double
+    @Published var readingHighlight: ReadingHighlightStyle
     @Published var style: PopBarStyle
     @Published var wheelOuterRadius: Double
     @Published var wheelInnerRadius: Double
@@ -38,6 +39,7 @@ final class PopBarStore: ObservableObject {
         self.controller = controller
         self.autoExpandHeight = PopBarPreferences.autoExpandHeight
         self.resultFontSize = PopBarPreferences.resultFontSize
+        self.readingHighlight = PopBarPreferences.readingHighlight
         self.style = PopBarPreferences.style
         self.wheelOuterRadius = PopBarPreferences.wheelOuterRadius
         self.wheelInnerRadius = PopBarPreferences.wheelInnerRadius
@@ -80,6 +82,11 @@ final class PopBarStore: ObservableObject {
     /// Set the result Markdown's base font size (issue #14). Persisted in PopBar's
     /// own prefs; the controller pushes it to every live panel so an already-open
     /// result re-renders at the new size immediately. Mirrors `setAutoExpandHeight`.
+    func setReadingHighlight(_ style: ReadingHighlightStyle) {
+        readingHighlight = style
+        PopBarPreferences.readingHighlight = style
+    }
+
     func setResultFontSize(_ size: Double) {
         resultFontSize = size
         PopBarPreferences.resultFontSize = size

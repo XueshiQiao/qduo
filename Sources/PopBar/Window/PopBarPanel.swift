@@ -271,6 +271,7 @@ final class PopBarPanel {
         model.autoExpandHeight = PopBarPreferences.autoExpandHeight
         // Same for the result font size (issue #14).
         model.resultFontSize = PopBarPreferences.resultFontSize
+        model.readingHighlight = PopBarPreferences.readingHighlight
         model.resultContentHeight = nil   // re-measure for this popup's content
         lastMeasuredContentHeight = 0     // drop the previous popup's measurement
         submenu.close()

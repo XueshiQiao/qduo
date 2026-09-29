@@ -24,6 +24,7 @@ final class PopBarPanelModel: ObservableObject {
     /// an already-open result re-renders at the new size. Headings/code scale as
     /// relative `.em(...)` multiples off this.
     @Published var resultFontSize: Double = PopBarPreferences.resultFontSize
+    @Published var readingHighlight: ReadingHighlightStyle = PopBarPreferences.readingHighlight
     /// The height the result scroll area should use when auto-expand is ON. The
     /// panel computes this (clamping the view's measured content height against the
     /// popup's own screen — issue #12) and pushes it here; the view applies it.

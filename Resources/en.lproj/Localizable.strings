@@ -461,3 +461,6 @@
 "inspect.rule" = "Matches ignore rule:";
 "inspect.element" = "Element";
 "inspect.path" = "Path, from the element up to its window";
+"popbar.readingHighlight.label" = "Reading highlight";
+"popbar.readingHighlight.pill" = "Pill";
+"popbar.readingHighlight.marker" = "Highlighter";

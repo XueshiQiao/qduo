@@ -58,6 +58,10 @@ enum ConfigSchema {
               "type": "number", "minimum": 11, "maximum": 20,
               "description": "Base font size of the rendered result."
             },
+            "readingHighlight": {
+              "type": "string", "enum": ["pill", "marker"],
+              "description": "How the reading window marks the word being spoken: pill = a rounded pill behind the word, marker = a highlighter stroke across its lower half."
+            },
             "simulateCopy": {
               "type": "boolean",
               "description": "When an app does not hand over the selection directly, press Cmd+C for you and read the clipboard (restored afterwards). Needed for most browsers and Electron apps. Default true."

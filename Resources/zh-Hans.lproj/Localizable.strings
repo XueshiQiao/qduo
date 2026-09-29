@@ -460,3 +460,6 @@
 "inspect.rule" = "命中忽略规则：";
 "inspect.element" = "元素";
 "inspect.path" = "路径：从元素往上到所在窗口";
+"popbar.readingHighlight.label" = "朗读高亮";
+"popbar.readingHighlight.pill" = "圆角胶囊";
+"popbar.readingHighlight.marker" = "荧光笔";

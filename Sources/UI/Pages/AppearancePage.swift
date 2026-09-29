@@ -127,6 +127,13 @@ struct AppearancePage: View {
             } label: {
                 iconLabel("textformat.size", .indigo, L("popbar.fontsize.label"))
             }
+            Picker(selection: Binding(get: { store.readingHighlight },
+                                      set: { store.setReadingHighlight($0) })) {
+                Text(L("popbar.readingHighlight.pill")).tag(ReadingHighlightStyle.pill)
+                Text(L("popbar.readingHighlight.marker")).tag(ReadingHighlightStyle.marker)
+            } label: {
+                iconLabel("highlighter", .indigo, L("popbar.readingHighlight.label"))
+            }
         } header: {
             Text(L("popbar.result.header"))
         } footer: {

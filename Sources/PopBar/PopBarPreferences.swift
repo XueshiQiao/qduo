@@ -22,6 +22,7 @@ enum PopBarPreferences {
     private enum P {
         static let autoExpandHeight   = "popup.autoExpandHeight"
         static let resultFontSize     = "popup.resultFontSize"
+        static let readingHighlight   = "popup.readingHighlight"
         static let style              = "popup.style"
         static let enabled            = "popup.enabled"
         static let simulateCopy       = "popup.simulateCopy"
@@ -85,6 +86,13 @@ enum PopBarPreferences {
     static var resultFontSize: Double {
         get { clamped(config.double(P.resultFontSize, default: resultFontSizeDefault), resultFontSizeRange) }
         set { config.set(P.resultFontSize, clamped(newValue, resultFontSizeRange)) }
+    }
+
+    /// How the reading window marks the word being spoken. Unknown values in the
+    /// file fall back to the pill.
+    static var readingHighlight: ReadingHighlightStyle {
+        get { ReadingHighlightStyle(rawValue: config.string(P.readingHighlight, default: ReadingHighlightStyle.pill.rawValue)) ?? .pill }
+        set { config.set(P.readingHighlight, newValue.rawValue) }
     }
 
     // MARK: - Wheel geometry / content (wheel + liquid-glass styles)
@@ -258,4 +266,13 @@ enum PreviewSearch {
         else { return nil }
         return URL(string: PopBarPreferences.previewSearchEngine.template + encoded)
     }
+}
+
+/// The reading window's spoken-word mark. Both are drawn behind the text, so the
+/// words themselves never change or move.
+enum ReadingHighlightStyle: String, CaseIterable {
+    /// A soft rounded pill a little wider than the word.
+    case pill
+    /// A highlighter stroke across the lower half of the word.
+    case marker
 }

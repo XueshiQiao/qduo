@@ -161,7 +161,8 @@ struct ReadingPanelView: View {
             if #available(macOS 15, *) {
                 marked(piece, current: r,
                        previous: local(previousHighlight, in: sentence).flatMap { Range($0, in: piece) })
-                    .textRenderer(WordHighlight.Renderer(step: highlightStep, target: highlightStep.rounded(.up)))
+                    .textRenderer(WordHighlight.Renderer(style: model.readingHighlight,
+                                                         step: highlightStep, target: highlightStep.rounded(.up)))
             } else {
                 // macOS 13–14 have no text renderer: fall back to a plain
                 // background on the word's own glyphs (no margin, no corners).
@@ -227,6 +228,12 @@ enum WordHighlight {
     static let padY: CGFloat = 1.5
     static let radius: CGFloat = 5
     static let fill = Color.accentColor.opacity(0.22)
+    /// Highlighter yellow: stronger on light backgrounds, softer on dark ones so
+    /// white text on top stays readable.
+    static let marker = Color(nsColor: NSColor(name: nil) { appearance in
+        let dark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return NSColor(srgbRed: 1, green: 0.84, blue: 0.04, alpha: dark ? 0.40 : 0.55)
+    })
 
     /// How the pill moves to the next word: the wheel's spring, quicker, since
     /// words change every 0.25–0.4 s and the pill must never trail the voice.
@@ -246,6 +253,7 @@ enum WordHighlight {
     /// previous word is in another sentence, the pill simply appears there.
     @available(macOS 15, *)
     struct Renderer: TextRenderer {
+        var style: ReadingHighlightStyle
         var step: Double
         var target: Double
         var animatableData: Double {
@@ -273,11 +281,25 @@ enum WordHighlight {
                 if i == 0, let previous, t < 1, abs(previous.midY - box.midY) < box.height / 2 {
                     shown = lerp(previous, box, t)
                 }
-                let pill = shown.insetBy(dx: -padX, dy: -padY)
-                ctx.fill(Path(roundedRect: pill, cornerRadius: radius, style: .continuous),
-                         with: .color(fill))
+                ctx.fill(shape(for: shown), with: .color(style == .marker ? marker : fill))
             }
             for line in layout { ctx.draw(line) }
+        }
+
+        /// The mark around a word's typographic box (ascent to descent). The pill
+        /// wraps it with a small margin; the highlighter covers roughly the
+        /// x-height band, from just under half height down to the baseline area,
+        /// like a pen stroke — slightly wider than the word, nearly square ends.
+        private func shape(for box: CGRect) -> Path {
+            switch style {
+            case .pill:
+                return Path(roundedRect: box.insetBy(dx: -padX, dy: -padY),
+                            cornerRadius: radius, style: .continuous)
+            case .marker:
+                let band = CGRect(x: box.minX - 1.5, y: box.minY + box.height * 0.48,
+                                  width: box.width + 3, height: box.height * 0.40)
+                return Path(roundedRect: band, cornerRadius: 2, style: .continuous)
+            }
         }
 
         private func lerp(_ a: CGRect, _ b: CGRect, _ t: Double) -> CGRect {
