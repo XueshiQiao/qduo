@@ -104,6 +104,7 @@ struct MainView: View {
         case .appearance: AppearancePage(store: appState.store)
         case .ocr:        OCRPage(store: appState.store)
         case .models:     ModelsPage(settings: appState.llm.settings)
+        case .speech:     SpeechSettingsView()
         case .about:      AboutPage()
         }
     }

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>顶部切换样式</title>
+<style>
+:root{--page:#ecebf1;--pane:#f6f5f9;--card:#fff;--text:#1d1d1f;--sub:#86868b;--line:rgba(0,0,0,.08);--field:rgba(0,0,0,.055);--accent:#0a84ff;--side:#efeef4}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#161618;--pane:#1f1f22;--card:#2c2c2e;--text:#f5f5f7;--sub:#98989d;--line:rgba(255,255,255,.09);--field:rgba(255,255,255,.08);--side:#232326}}
+:root[data-theme="dark"]{--page:#161618;--pane:#1f1f22;--card:#2c2c2e;--text:#f5f5f7;--sub:#98989d;--line:rgba(255,255,255,.09);--field:rgba(255,255,255,.08);--side:#232326}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;padding:28px 16px 60px}
+.wrap{max-width:1180px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:22px;margin:0 0 4px} header p{margin:0;color:var(--sub);max-width:760px}
+.toggle{display:flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px}
+.toggle button{border:0;background:none;color:var(--text);font:inherit;padding:5px 12px;border-radius:6px;cursor:pointer}
+.toggle button.on{background:var(--field);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px}
+.opt h2{font-size:15px;margin:0 0 4px}.opt p{color:var(--sub);margin:0 0 10px;min-height:38px}
+.tag{font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(52,199,89,.18);color:#248a3d;margin-left:6px;font-weight:500}
+.win{display:flex;background:var(--pane);border:1px solid var(--line);border-radius:12px;overflow:hidden;height:300px}
+.side{width:128px;background:var(--side);padding:12px 8px;border-right:1px solid var(--line)}
+.srow{display:flex;gap:7px;align-items:center;padding:5px 6px;border-radius:6px;font-size:12px;margin:1px 0}
+.srow.sel{background:var(--accent);color:#fff}
+.si{width:16px;height:16px;border-radius:4px;flex:none}
+.main{flex:1;padding:12px 14px;min-width:0}
+.title{font-weight:700;font-size:13px;margin:0 0 12px}
+.group{background:var(--card);border-radius:8px;border:1px solid var(--line);margin-top:8px}
+.row{padding:8px 10px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;color:var(--sub);font-size:12px}
+.row:last-child{border:0}
+/* A: native segmented, current */
+.segn{display:flex;justify-content:center}.segn span{padding:3px 14px;background:var(--field);font-size:12px}
+.segn span:first-child{border-radius:6px 0 0 6px}.segn span:last-child{border-radius:0 6px 6px 0}.segn span.on{background:var(--card);box-shadow:0 1px 2px rgba(0,0,0,.2)}
+/* B: underline tabs */
+.ul{display:flex;gap:18px;border-bottom:1px solid var(--line);margin:-2px 0 4px}
+.ul span{padding:4px 1px 8px;font-size:13px;color:var(--sub);position:relative}
+.ul span.on{color:var(--text);font-weight:600}
+.ul span.on:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--accent)}
+/* C: pill tabs */
+.pill{display:inline-flex;gap:4px;background:var(--field);padding:3px;border-radius:9px}
+.pill span{padding:4px 14px;border-radius:7px;font-size:12px;color:var(--sub);display:flex;gap:6px;align-items:center}
+.pill span.on{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+</style>
+</head>
+<body><div class="wrap">
+<header><div><h1>「AI 模型」页顶部的「大模型 / 朗读」切换：换成什么</h1>
+<p>第一个是现在的样子。其余是可选的替换。右上角可切深色。</p></div>
+<div class="toggle"><button id="lt" class="on">浅色</button><button id="dk">深色</button></div></header>
+<div class="grid">
+
+<div class="opt"><h2>现在 · 系统分段控件</h2><p>居中的灰色分段按钮，和下面的内容没有视觉联系。</p>
+<div class="win"><div class="side"><div class="srow"><span class="si" style="background:#8e8e93"></span>通用</div><div class="srow"><span class="si" style="background:#5e5ce6"></span>动作</div><div class="srow sel"><span class="si" style="background:#fff3"></span>AI 模型</div><div class="srow"><span class="si" style="background:#ff375f"></span>关于</div></div>
+<div class="main"><div class="title">AI 模型</div><div class="segn"><span>大模型</span><span class="on">朗读</span></div><div class="group"><div class="row">默认朗读员<span>MiniMax</span></div><div class="row">朗读员…</div></div></div></div></div>
+
+<div class="opt"><h2>① 拆成两个侧边栏页面<span class="tag">推荐</span></h2><p>左侧菜单多一项「朗读」，页面顶部不再需要任何切换。最简单，也和系统设置一致。</p>
+<div class="win"><div class="side"><div class="srow"><span class="si" style="background:#8e8e93"></span>通用</div><div class="srow"><span class="si" style="background:#5e5ce6"></span>动作</div><div class="srow"><span class="si" style="background:#0a84ff"></span>AI 模型</div><div class="srow sel"><span class="si" style="background:#fff3"></span>朗读</div><div class="srow"><span class="si" style="background:#ff375f"></span>关于</div></div>
+<div class="main"><div class="title">朗读</div><div class="group"><div class="row">默认朗读员<span>MiniMax</span></div><div class="row">朗读员…</div></div></div></div></div>
+
+<div class="opt"><h2>② 左对齐的下划线标签</h2><p>标签贴着标题左对齐，选中项下面一道蓝线，下方一条细分隔线，像 Xcode / Safari 设置里的标签。</p>
+<div class="win"><div class="side"><div class="srow"><span class="si" style="background:#8e8e93"></span>通用</div><div class="srow"><span class="si" style="background:#5e5ce6"></span>动作</div><div class="srow sel"><span class="si" style="background:#fff3"></span>AI 模型</div><div class="srow"><span class="si" style="background:#ff375f"></span>关于</div></div>
+<div class="main"><div class="title">AI 模型</div><div class="ul"><span>大模型</span><span class="on">朗读</span></div><div class="group"><div class="row">默认朗读员<span>MiniMax</span></div><div class="row">朗读员…</div></div></div></div></div>
+
+<div class="opt"><h2>③ 带图标的胶囊标签</h2><p>左对齐的圆角胶囊，选中项是白底，带小图标（芯片 / 喇叭），比系统分段控件柔和。</p>
+<div class="win"><div class="side"><div class="srow"><span class="si" style="background:#8e8e93"></span>通用</div><div class="srow"><span class="si" style="background:#5e5ce6"></span>动作</div><div class="srow sel"><span class="si" style="background:#fff3"></span>AI 模型</div><div class="srow"><span class="si" style="background:#ff375f"></span>关于</div></div>
+<div class="main"><div class="title">AI 模型</div><div class="pill"><span>◻︎ 大模型</span><span class="on">🔊 朗读</span></div><div class="group"><div class="row">默认朗读员<span>MiniMax</span></div><div class="row">朗读员…</div></div></div></div></div>
+
+</div></div>
+<script>const set=d=>{document.documentElement.dataset.theme=d?"dark":"light";lt.classList.toggle("on",!d);dk.classList.toggle("on",d)};lt.onclick=()=>set(false);dk.onclick=()=>set(true);</script>
+</body></html>

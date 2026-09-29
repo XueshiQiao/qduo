@@ -10,7 +10,7 @@
 # rename needs no edit here.
 #
 # Usage: scripts/run.sh [--page <id>] [--preview] [--quiet]
-#   --page <id>  pre-select a settings page (general|actions|appearance|ocr|models|about)
+#   --page <id>  pre-select a settings page (general|actions|appearance|ocr|models|speech|about)
 #   --preview    pop the sample popup ~2s after launch, for looking at the capsule/wheel
 #   --quiet      do NOT open the settings window (test the menu-bar-only path)
 set -euo pipefail

@@ -1,27 +1,38 @@
 import SwiftUI
 
-/// The **Speech** tab of the AI Models page: the readers Speak actions can use,
-/// the default one, each provider's API key, and the local audio cache.
+/// The **Speech** settings page (its own sidebar page). Four blocks, one level each: the
+/// default reader, the list of readers (a row each; clicking one opens its
+/// editor in a sheet, like the Actions page), the provider keys (a row each,
+/// edited in a sheet) and the local audio cache.
 struct SpeechSettingsView: View {
     @ObservedObject private var store = SpeechSettingsStore.shared
-    @State private var keyDrafts: [String: String] = [:]
-    @State private var keyErrors: [String: String] = [:]
     @State private var preview: SpeechPlayback?
     @State private var cacheBytes: Int64 = 0
+    @State private var editing: SpeechReader?
+    @State private var editingKey: KeyTarget?
+
+    /// A provider whose key sheet is open (`SpeechProvider` is not Identifiable).
+    struct KeyTarget: Identifiable { let id: String }
 
     var body: some View {
         Form {
             defaultSection
-            ForEach(store.readers) { reader in
-                ReaderSection(reader: reader, store: store, preview: $preview)
-            }
-            addSection
-            ForEach(SpeechProviders.all, id: \.id) { keySection($0) }
+            readersSection
+            keysSection
             cacheSection
         }
         .formStyle(.grouped)
         .onAppear { cacheBytes = SpeechCache.shared.size() }
         .onDisappear { SpeechCenter.shared.stop(preview) }
+        .navigationTitle(L("page.speech"))
+        .sheet(item: $editing) { reader in
+            ReaderEditor(readerID: reader.id, store: store, preview: $preview) { editing = nil }
+        }
+        .sheet(item: $editingKey) { target in
+            if let provider = SpeechProviders.find(target.id) {
+                KeyEditor(provider: provider, store: store) { editingKey = nil }
+            }
+        }
     }
 
     // MARK: - Default reader
@@ -31,61 +42,127 @@ struct SpeechSettingsView: View {
             Picker(selection: Binding(get: { store.defaultReaderID }, set: { store.setDefault($0) })) {
                 ForEach(store.allReaders) { Text($0.name).tag($0.id) }
             } label: { iconLabel("speaker.wave.2", .teal, L("speech.default")) }
-        } header: {
-            Text(L("speech.default.header"))
         } footer: {
             Text(L("speech.default.footer")).fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private var addSection: some View {
+    // MARK: - Readers
+
+    private var readersSection: some View {
         Section {
-            ForEach(SpeechProviders.all, id: \.id) { provider in
-                Button {
-                    store.addReader(provider: provider)
-                } label: {
-                    Label(String(format: L("speech.add"), provider.displayName), systemImage: "plus.circle")
-                }
+            ForEach(store.readers) { reader in
+                readerRow(reader)
+            }
+            systemRow
+        } header: {
+            HStack {
+                Text(L("speech.readers.header"))
+                Spacer()
+                Menu {
+                    ForEach(SpeechProviders.all, id: \.id) { provider in
+                        Button(String(format: L("speech.add.item"), provider.displayName)) {
+                            editing = store.addReader(provider: provider)
+                        }
+                    }
+                } label: { Label(L("speech.add.menu"), systemImage: "plus") }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
         } footer: {
-            Text(L("speech.add.footer")).fixedSize(horizontal: false, vertical: true)
+            Text(L("speech.readers.footer")).fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private func readerRow(_ reader: SpeechReader) -> some View {
+        let provider = SpeechProviders.find(reader.engine)
+        let voice = provider?.voices[reader.model]?.first { $0.id == reader.voice }?.label ?? reader.voice
+        return HStack(spacing: 10) {
+            IconTile(symbol: provider?.symbol ?? "speaker.wave.2", color: provider?.tint ?? .gray)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(reader.name)
+                    if reader.id == store.defaultReaderID { badge(L("speech.reader.default.badge"), .secondary) }
+                    if !store.hasKey(for: reader.engine) { badge(L("speech.reader.missingKey"), .orange) }
+                }
+                Text("\(voice) · \(reader.model) · \(String(format: "%.2g×", reader.speed))")
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+            }
+            // VoiceOver: the name is the row's "open the editor" button; the
+            // preview button stays reachable on its own.
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { editing = reader }
+            Spacer(minLength: 8)
+            previewControl(for: reader)
+            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { editing = reader }
+    }
+
+    private var systemRow: some View {
+        let system = SpeechReader.system()
+        return HStack(spacing: 10) {
+            IconTile(symbol: "desktopcomputer", color: .gray)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(system.name)
+                    if store.defaultReaderID == system.id { badge(L("speech.reader.default.badge"), .secondary) }
+                }
+                Text(L("speech.reader.system.subtitle")).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            previewControl(for: system)
+            // Same width as the readers' chevron, so the preview buttons line up.
+            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).hidden()
+        }
+    }
+
+    @ViewBuilder
+    private func previewControl(for reader: SpeechReader) -> some View {
+        if let preview, preview.reader.id == reader.id, preview.isActive {
+            PreviewStatus(playback: preview)
+        } else {
+            Button {
+                preview = SpeechCenter.shared.read(L("speech.preview.sample"), with: reader)
+            } label: { Label(L("speech.preview"), systemImage: "play.fill") }
+            .controlSize(.small)
+            .help(L("speech.preview"))
+        }
+    }
+
+    private func badge(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6).padding(.vertical, 1)
+            .background(Capsule().fill(Color.primary.opacity(0.07)))
     }
 
     // MARK: - Keys
 
-    private func keySection(_ provider: SpeechProvider) -> some View {
+    private var keysSection: some View {
         Section {
-            LabeledContent {
-                if store.hasKey(for: provider.id) {
+            ForEach(SpeechProviders.all, id: \.id) { provider in
+                LabeledContent {
                     HStack(spacing: 8) {
-                        Text(L("models.key.saved"))
-                            .font(.system(size: 11, weight: .medium)).foregroundStyle(.green)
-                        Button(L("models.key.clear")) { store.clearKey(for: provider.id) }
-                            .controlSize(.small)
+                        if store.hasKey(for: provider.id) {
+                            Text(L("models.key.saved")).font(.system(size: 11, weight: .medium)).foregroundStyle(.green)
+                        } else {
+                            Text(L("models.key.missing")).font(.system(size: 11)).foregroundStyle(.orange)
+                        }
+                        Button(store.hasKey(for: provider.id) ? L("speech.key.change") : L("speech.key.set")) {
+                            editingKey = KeyTarget(id: provider.id)
+                        }
+                        .controlSize(.small)
                     }
-                } else {
-                    Text(L("models.key.missing")).font(.system(size: 11)).foregroundStyle(.orange)
-                }
-            } label: {
-                iconLabel("key", .teal, String(format: L("models.keyFor"), provider.displayName))
-            }
-            HStack {
-                SecureField(L("models.key.placeholder"), text: Binding(
-                    get: { keyDrafts[provider.id] ?? "" }, set: { keyDrafts[provider.id] = $0 }))
-                Button(L("models.key.save")) {
-                    keyErrors[provider.id] = store.saveKey(keyDrafts[provider.id] ?? "", for: provider.id)
-                    if keyErrors[provider.id] == nil { keyDrafts[provider.id] = "" }
-                }
-                .disabled((keyDrafts[provider.id] ?? "").trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            if let error = keyErrors[provider.id] {
-                Text(error).font(.caption).foregroundStyle(.red)
+                } label: { iconLabel(provider.symbol, provider.tint, provider.displayName) }
             }
         } header: {
-            Text(String(format: L("speech.key.header"), provider.displayName))
+            Text(L("speech.keys.header"))
         } footer: {
-            Text(provider.keyHint).fixedSize(horizontal: false, vertical: true)
+            Text(L("speech.keys.footer")).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -113,25 +190,55 @@ struct SpeechSettingsView: View {
     }
 }
 
-/// One reader's settings.
-private struct ReaderSection: View {
-    let reader: SpeechReader
+/// One reader's settings, in a sheet. Changes apply as they are made; Done
+/// just closes it.
+private struct ReaderEditor: View {
+    let readerID: String
     @ObservedObject var store: SpeechSettingsStore
     @Binding var preview: SpeechPlayback?
+    let close: () -> Void
     @State private var customVoice = false
 
-    private var provider: SpeechProvider? { SpeechProviders.find(reader.engine) }
-    private var voices: [SpeechProvider.Voice] { provider?.voices[reader.model] ?? [] }
-
-    private func set(_ change: (inout SpeechReader) -> Void) {
-        var copy = reader
-        change(&copy)
-        store.update(copy)
-    }
+    private var reader: SpeechReader? { store.readers.first { $0.id == readerID } }
 
     var body: some View {
-        Section {
+        VStack(spacing: 0) {
+            Text(L("speech.editor.title")).font(.headline).padding(.top, 16)
+            if let reader { form(reader) }
+            HStack {
+                Button(L("speech.editor.remove"), role: .destructive) {
+                    store.remove(readerID)
+                    close()
+                }
+                Spacer()
+                if let reader {
+                    if let preview, preview.reader.id == reader.id, preview.isActive {
+                        PreviewStatus(playback: preview)
+                    }
+                    Button {
+                        preview = SpeechCenter.shared.read(L("speech.preview.sample"), with: reader)
+                    } label: { Label(L("speech.preview"), systemImage: "play.fill") }
+                }
+                Button(L("speech.editor.done")) { close() }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, 20).padding(.bottom, 16)
+        }
+        .frame(width: 480)
+        .onDisappear { SpeechCenter.shared.stop(preview) }
+    }
+
+    private func form(_ reader: SpeechReader) -> some View {
+        let provider = SpeechProviders.find(reader.engine)
+        let voices = provider?.voices[reader.model] ?? []
+        func set(_ change: (inout SpeechReader) -> Void) {
+            var copy = reader
+            change(&copy)
+            store.update(copy)
+        }
+        return Form {
             TextField(L("speech.reader.name"), text: Binding(get: { reader.name }, set: { v in set { $0.name = v } }))
+            LabeledContent(L("speech.editor.provider"), value: provider?.displayName ?? reader.engine)
 
             Picker(L("speech.reader.model"), selection: Binding(get: { reader.model }, set: { model in
                 set {
@@ -171,22 +278,59 @@ private struct ReaderSection: View {
                 Text(L("speech.reader.region.cn")).tag("cn")
                 Text(L("speech.reader.region.intl")).tag("intl")
             }
-
-            HStack {
-                Button {
-                    preview = SpeechCenter.shared.read(L("speech.preview.sample"), with: reader)
-                } label: { Label(L("speech.preview"), systemImage: "play.circle") }
-                if let preview, preview.reader.id == reader.id {
-                    PreviewStatus(playback: preview)
-                }
-                Spacer()
-                Button(role: .destructive) {
-                    store.remove(reader.id)
-                } label: { Text(L("speech.reader.remove")) }
-            }
-        } header: {
-            Text("\(reader.name) · \(provider?.displayName ?? reader.engine)")
         }
+        .formStyle(.grouped)
+        .scrollDisabled(true)
+        .frame(height: customVoice || !voices.contains(where: { $0.id == reader.voice }) ? 300 : 262)
+    }
+}
+
+/// One provider's API key, in a sheet: status, paste-and-save, clear.
+private struct KeyEditor: View {
+    let provider: SpeechProvider
+    @ObservedObject var store: SpeechSettingsStore
+    let close: () -> Void
+    @State private var draft = ""
+    @State private var error: String?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(String(format: L("speech.key.header"), provider.displayName)).font(.headline).padding(.top, 16)
+            Form {
+                Section {
+                    LabeledContent {
+                        if store.hasKey(for: provider.id) {
+                            HStack(spacing: 8) {
+                                Text(L("models.key.saved")).font(.system(size: 11, weight: .medium)).foregroundStyle(.green)
+                                Button(L("models.key.clear")) { store.clearKey(for: provider.id) }.controlSize(.small)
+                            }
+                        } else {
+                            Text(L("models.key.missing")).font(.system(size: 11)).foregroundStyle(.orange)
+                        }
+                    } label: { iconLabel("key", provider.tint, String(format: L("models.keyFor"), provider.displayName)) }
+                    HStack {
+                        SecureField(L("models.key.placeholder"), text: $draft)
+                        Button(L("models.key.save")) {
+                            error = store.saveKey(draft, for: provider.id)
+                            if error == nil { draft = ""; close() }
+                        }
+                        .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    if let error { Text(error).font(.caption).foregroundStyle(.red) }
+                } footer: {
+                    Text(provider.keyHint).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .formStyle(.grouped)
+            .scrollDisabled(true)
+            .frame(height: 170)
+            HStack {
+                Spacer()
+                Button(L("speech.key.done")) { close() }.keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, 20).padding(.bottom, 16)
+        }
+        .frame(width: 480)
     }
 }
 

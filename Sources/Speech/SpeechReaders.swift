@@ -88,6 +88,9 @@ struct SpeechProvider {
     let voices: [String: [Voice]]   // by model
     let defaultVoice: String
     let keyHint: String
+    /// Settings-page icon tile for this provider's rows.
+    let symbol: String
+    let tint: Color
 }
 
 enum SpeechProviders {
@@ -120,7 +123,8 @@ enum SpeechProviders {
             ],
         ],
         defaultVoice: "longanhuan_v3.6",
-        keyHint: L("speech.key.hint.qwen"))
+        keyHint: L("speech.key.hint.qwen"),
+        symbol: "cloud.fill", tint: .orange)
 
     /// MiniMax Speech 2.8. turbo is the default: first sound and word timings
     /// measured the same as hd (2026-09-29), at ¥2.0 instead of ¥3.5 per 10k
@@ -154,7 +158,8 @@ enum SpeechProviders {
         defaultModel: "speech-2.8-turbo",
         voices: ["speech-2.8-turbo": miniMaxVoices, "speech-2.8-hd": miniMaxVoices],
         defaultVoice: "English_radiant_girl",
-        keyHint: L("speech.key.hint.minimax"))
+        keyHint: L("speech.key.hint.minimax"),
+        symbol: "waveform", tint: .pink)
 
     static let all = [qwenAudio, miniMax]
 

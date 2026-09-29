@@ -143,7 +143,7 @@ enum ConfigSchema {
               "description": "The id of the reader speak actions use unless they name one. \"system\" = the macOS system voice." },
             "readers": {
               "type": "array",
-              "description": "Cloud voices set up in Settings › AI Models › Speech.",
+              "description": "Cloud voices set up in Settings › Speech.",
               "items": {
                 "type": "object",
                 "properties": {

@@ -13,6 +13,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
     case appearance
     case ocr
     case models
+    case speech
     case about
 
     var id: String { rawValue }
@@ -24,7 +25,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
     var block: Block {
         switch self {
         case .general, .actions, .appearance, .ocr: return .popup
-        case .models, .about:                       return .app
+        case .models, .speech, .about:              return .app
         }
     }
 
@@ -35,6 +36,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return L("page.appearance")
         case .ocr:        return L("page.ocr")
         case .models:     return L("page.models")
+        case .speech:     return L("page.speech")
         case .about:      return L("page.about")
         }
     }
@@ -46,6 +48,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return "circle.hexagongrid.fill"
         case .ocr:        return "viewfinder"
         case .models:     return "brain.head.profile"
+        case .speech:     return "speaker.wave.2.fill"
         case .about:      return "info.circle.fill"
         }
     }
@@ -57,6 +60,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return .purple
         case .ocr:        return .teal
         case .models:     return .blue
+        case .speech:     return .orange
         case .about:      return .pink
         }
     }
