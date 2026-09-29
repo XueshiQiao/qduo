@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>朗读高亮样式</title>
+<style>
+:root{
+  --page:#f4f1ea; --ink:#1d1d1f; --muted:#6e6e73; --card:#ffffffcc; --line:#0000001a;
+  --glass:rgba(250,250,252,.62); --text:rgba(0,0,0,.88); --accent:#0a84ff;
+  --accent-soft:rgba(10,132,255,.20); --marker:rgba(255,214,10,.55); --sent:rgba(10,132,255,.07);
+}
+:root[data-theme="dark"]{
+  --page:#16161a; --ink:#f2f2f7; --muted:#98989f; --card:#1f1f24cc; --line:#ffffff1f;
+  --glass:rgba(30,30,34,.62); --text:rgba(255,255,255,.88); --accent:#409cff;
+  --accent-soft:rgba(64,156,255,.30); --marker:rgba(255,214,10,.40); --sent:rgba(64,156,255,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#16161a; --ink:#f2f2f7; --muted:#98989f; --card:#1f1f24cc; --line:#ffffff1f;
+    --glass:rgba(30,30,34,.62); --text:rgba(255,255,255,.88); --accent:#409cff;
+    --accent-soft:rgba(64,156,255,.30); --marker:rgba(255,214,10,.40); --sent:rgba(64,156,255,.10);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/1.6 -apple-system,"PingFang SC",sans-serif}
+header{max-width:1100px;margin:0 auto;padding:28px 16px 8px;display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:22px;margin:0 0 6px}
+header p{margin:0;color:var(--muted);max-width:720px}
+.controls{display:flex;gap:8px}
+button{font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+main{max-width:1100px;margin:0 auto;padding:12px 16px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+.opt{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.opt h2{font-size:15px;margin:0}
+.opt .tag{font-size:12px;color:var(--muted)}
+.stage{border-radius:12px;padding:14px;background:
+  radial-gradient(120% 90% at 0% 0%,#f7b267 0,transparent 55%),
+  radial-gradient(120% 90% at 100% 0%,#b388eb 0,transparent 55%),
+  radial-gradient(120% 120% at 50% 100%,#4ea8de 0,transparent 60%),#7a6fd6}
+.panel{background:var(--glass);backdrop-filter:blur(22px) saturate(1.6);-webkit-backdrop-filter:blur(22px) saturate(1.6);
+  border-radius:14px;border:1px solid rgba(255,255,255,.35);padding:8px 12px 12px;color:var(--text);font-size:15px;line-height:1.45}
+.bar{font-size:12px;color:var(--muted);margin-bottom:4px}
+.opt p.note{margin:0;font-size:13px;color:var(--muted)}
+.w{transition:all .12s ease-out}
+
+/* 0 现在：背景色贴着字边 */
+.s0 .w.on{background:var(--accent-soft)}
+
+/* 1 圆角胶囊 + 左右留白 */
+.s1 .w.on{background:var(--accent-soft);border-radius:5px;box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* 2 荧光笔：只涂下半截，暖黄 */
+.s2 .w.on{background:linear-gradient(transparent 52%,var(--marker) 52%,var(--marker) 92%,transparent 92%);
+  box-shadow:3px 0 0 transparent;padding:0 1px}
+
+/* 3 下划线条：圆头粗线，字色变强调色 */
+.s3 .w{text-decoration:none;background-image:linear-gradient(var(--accent),var(--accent));background-repeat:no-repeat;
+  background-size:0 2.5px;background-position:50% 100%}
+.s3 .w.on{color:var(--accent);background-size:100% 2.5px}
+
+/* 4 卡拉 OK：已读正常，未读变淡，当前词强调色 */
+.s4 .w{opacity:.42}
+.s4 .w.done{opacity:1}
+.s4 .w.on{opacity:1;color:var(--accent)}
+
+/* 5 两级：整句淡底 + 当前词胶囊 */
+.s5 .sent.on{background:var(--sent);border-radius:4px;box-shadow:0 0 0 2px var(--sent)}
+.s5 .w.on{background:var(--accent-soft);border-radius:5px;box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* 6 实心胶囊：强调色底 + 白字 */
+.s6 .w.on{background:var(--accent);color:#fff;border-radius:5px;box-shadow:0 0 0 3px var(--accent)}
+
+footer{max-width:1100px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:13px}
+footer table{border-collapse:collapse;width:100%;margin-top:8px}
+footer td,footer th{border-top:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>朗读高亮样式</h1>
+    <p>每张卡片都在自动「朗读」同一段中英混排，高亮一个词一个词往前走。背景是彩色的，好看出玻璃窗口上的效果。右上角可切浅色 / 深色。</p>
+  </div>
+  <div class="controls">
+    <button id="theme">切换浅色 / 深色</button>
+    <button id="pause">暂停</button>
+  </div>
+</header>
+<main id="grid"></main>
+<footer>
+  <table>
+    <tr><th>编号</th><th>思路</th><th>适合</th><th>代价</th></tr>
+    <tr><td>0</td><td>现在：淡蓝底，紧贴字边</td><td>—</td><td>—</td></tr>
+    <tr><td>1</td><td>圆角胶囊，左右上下各留约 3pt</td><td>直接解决「卡在字边」，最稳</td><td rowspan="1">需要自己画高亮（见下）</td></tr>
+    <tr><td>2</td><td>荧光笔：只涂字的下半截，暖黄</td><td>像在书上划线，最「阅读感」</td><td>需要自己画</td></tr>
+    <tr><td>3</td><td>强调色字 + 圆头下划线</td><td>最干净，不遮字</td><td>需要自己画</td></tr>
+    <tr><td>4</td><td>卡拉 OK：没念到的字变淡，念过的恢复，当前词强调色</td><td>一眼看出进度；长段落最好跟</td><td>纯改字色，最容易做</td></tr>
+    <tr><td>5</td><td>两级：当前整句淡底 + 当前词胶囊</td><td>长段落里不迷路</td><td>需要自己画</td></tr>
+    <tr><td>6</td><td>实心强调色胶囊 + 白字</td><td>最醒目</td><td>需要自己画；看久了偏抢眼</td></tr>
+  </table>
+  <p>「需要自己画」是说：现在朗读窗口的高亮是给文字加一段背景色，系统只会把颜色涂在字的范围内，没法留白、也没法做圆角。要做 1/2/3/5/6，得改成先排好字、再在每个词的位置上画一个形状。这在 macOS 13 上也能做，但改动比 4 大。这个页面是网页模拟，真实效果以 App 截图为准。</p>
+</footer>
+<script>
+const TEXT = [
+  "Enter your email and we will send you a link directly to your customer portal.",
+  "打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。"
+];
+const OPTS = [
+  ["0 · 现在","贴着字边的淡蓝底"],
+  ["1 · 圆角胶囊","留白 + 圆角，推荐"],
+  ["2 · 荧光笔","下半截暖黄"],
+  ["3 · 下划线","强调色字 + 圆头线"],
+  ["4 · 卡拉 OK","未读变淡，当前词强调色"],
+  ["5 · 句 + 词两级","整句淡底 + 词胶囊"],
+  ["6 · 实心胶囊","强调色底白字"]
+];
+// split: English words, each CJK char, keep spaces/punct as plain text
+function tokens(s){ return s.match(/[A-Za-z0-9']+|[一-鿿]|\s+|[^\sA-Za-z0-9'一-鿿]/g); }
+const grid=document.getElementById('grid');
+OPTS.forEach((o,i)=>{
+  const card=document.createElement('section'); card.className='opt s'+i;
+  let html=`<h2>${o[0]}</h2><div class="tag">${o[1]}</div><div class="stage"><div class="panel"><div class="bar">MiniMax</div>`;
+  TEXT.forEach(t=>{
+    html+='<span class="sent">';
+    tokens(t).forEach(tok=>{ html+= /^[A-Za-z0-9'一-鿿]/.test(tok) ? `<span class="w">${tok}</span>` : tok; });
+    html+='</span> ';
+  });
+  html+='</div></div>';
+  card.innerHTML=html; grid.appendChild(card);
+});
+let step=0, paused=false;
+function tick(){
+  if(paused) return;
+  document.querySelectorAll('.opt').forEach(card=>{
+    const ws=[...card.querySelectorAll('.w')], n=ws.length, k=step%(n+4);
+    ws.forEach((w,j)=>{ w.classList.toggle('on',j===k); w.classList.toggle('done',j<k); });
+    card.querySelectorAll('.sent').forEach(s=>s.classList.toggle('on', ws[k] && s.contains(ws[k])));
+  });
+  step++;
+}
+setInterval(tick,280); tick();
+document.getElementById('pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'继续':'暂停';};
+const root=document.documentElement;
+document.getElementById('theme').onclick=()=>{
+  const dark = root.dataset.theme ? root.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+};
+</script>
+</body>
+</html>
