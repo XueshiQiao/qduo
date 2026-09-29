@@ -8,11 +8,13 @@ struct SpeechSettingsView: View {
     @ObservedObject private var store = SpeechSettingsStore.shared
     @State private var preview: SpeechPlayback?
     @State private var cacheBytes: Int64 = 0
-    @State private var editing: SpeechReader?
+    @State private var editing: ReaderTarget?
     @State private var editingKey: KeyTarget?
 
     /// A provider whose key sheet is open (`SpeechProvider` is not Identifiable).
     struct KeyTarget: Identifiable { let id: String }
+    /// A reader whose editor sheet is open, by id: the store holds the live copy.
+    struct ReaderTarget: Identifiable { let id: String }
 
     var body: some View {
         Form {
@@ -25,8 +27,8 @@ struct SpeechSettingsView: View {
         .onAppear { cacheBytes = SpeechCache.shared.size() }
         .onDisappear { SpeechCenter.shared.stop(preview) }
         .navigationTitle(L("page.speech"))
-        .sheet(item: $editing) { reader in
-            ReaderEditor(readerID: reader.id, store: store, preview: $preview) { editing = nil }
+        .sheet(item: $editing) { target in
+            ReaderEditor(readerID: target.id, store: store, preview: $preview) { editing = nil }
         }
         .sheet(item: $editingKey) { target in
             if let provider = SpeechProviders.find(target.id) {
@@ -62,7 +64,7 @@ struct SpeechSettingsView: View {
                 Menu {
                     ForEach(SpeechProviders.all, id: \.id) { provider in
                         Button(String(format: L("speech.add.item"), provider.displayName)) {
-                            editing = store.addReader(provider: provider)
+                            editing = ReaderTarget(id: store.addReader(provider: provider).id)
                         }
                     }
                 } label: { Label(L("speech.add.menu"), systemImage: "plus") }
@@ -85,20 +87,21 @@ struct SpeechSettingsView: View {
                     if reader.id == store.defaultReaderID { badge(L("speech.reader.default.badge"), .secondary) }
                     if !store.hasKey(for: reader.engine) { badge(L("speech.reader.missingKey"), .orange) }
                 }
-                Text("\(voice) · \(reader.model) · \(String(format: "%.2g×", reader.speed))")
+                Text("\(voice) · \(reader.model) · \(String(format: "%.2f×", reader.speed))")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }
             // VoiceOver: the name is the row's "open the editor" button; the
             // preview button stays reachable on its own.
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction { editing = reader }
+            .accessibilityAction { editing = ReaderTarget(id: reader.id) }
             Spacer(minLength: 8)
             previewControl(for: reader)
             Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
-        .onTapGesture { editing = reader }
+        .onTapGesture { editing = ReaderTarget(id: reader.id) }
+        .accessibilityElement(children: .contain)
     }
 
     private var systemRow: some View {
@@ -207,6 +210,7 @@ private struct ReaderEditor: View {
             if let reader { form(reader) }
             HStack {
                 Button(L("speech.editor.remove"), role: .destructive) {
+                    SpeechCenter.shared.stop(preview)
                     store.remove(readerID)
                     close()
                 }
@@ -214,10 +218,11 @@ private struct ReaderEditor: View {
                 if let reader {
                     if let preview, preview.reader.id == reader.id, preview.isActive {
                         PreviewStatus(playback: preview)
+                    } else {
+                        Button {
+                            preview = SpeechCenter.shared.read(L("speech.preview.sample"), with: reader)
+                        } label: { Label(L("speech.preview"), systemImage: "play.fill") }
                     }
-                    Button {
-                        preview = SpeechCenter.shared.read(L("speech.preview.sample"), with: reader)
-                    } label: { Label(L("speech.preview"), systemImage: "play.fill") }
                 }
                 Button(L("speech.editor.done")) { close() }
                     .keyboardShortcut(.defaultAction)
@@ -280,7 +285,6 @@ private struct ReaderEditor: View {
             }
         }
         .formStyle(.grouped)
-        .scrollDisabled(true)
         .frame(height: customVoice || !voices.contains(where: { $0.id == reader.voice }) ? 300 : 262)
     }
 }
@@ -292,6 +296,12 @@ private struct KeyEditor: View {
     let close: () -> Void
     @State private var draft = ""
     @State private var error: String?
+
+    private func save() {
+        guard !draft.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        error = store.saveKey(draft, for: provider.id)
+        if error == nil { draft = ""; close() }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -310,10 +320,8 @@ private struct KeyEditor: View {
                     } label: { iconLabel("key", provider.tint, String(format: L("models.keyFor"), provider.displayName)) }
                     HStack {
                         SecureField(L("models.key.placeholder"), text: $draft)
-                        Button(L("models.key.save")) {
-                            error = store.saveKey(draft, for: provider.id)
-                            if error == nil { draft = ""; close() }
-                        }
+                            .onSubmit(save)
+                        Button(L("models.key.save"), action: save)
                         .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                     if let error { Text(error).font(.caption).foregroundStyle(.red) }
@@ -322,8 +330,7 @@ private struct KeyEditor: View {
                 }
             }
             .formStyle(.grouped)
-            .scrollDisabled(true)
-            .frame(height: 170)
+            .frame(height: 230)
             HStack {
                 Spacer()
                 Button(L("speech.key.done")) { close() }.keyboardShortcut(.defaultAction)

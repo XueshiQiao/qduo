@@ -448,7 +448,6 @@
 "speech.reader.region.intl" = "国际";
 "speech.preview" = "试听";
 "speech.preview.sample" = "你好，这是朗读试听。Hello, this is a preview of the voice.";
-"speech.reader.remove" = "删除";
 "popbar.editor.reader" = "朗读员";
 "popbar.editor.reader.default" = "默认（%@）";
 "popbar.editor.reader.missing" = "已删除的朗读员";
