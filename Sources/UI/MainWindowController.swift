@@ -121,9 +121,10 @@ struct MainView: View {
 
     private var brand: some View {
         HStack(spacing: 10) {
-            Image("AppLogo")
-                .resizable().frame(width: 34, height: 34)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            // Pre-scaled to exactly 34pt (AppLogo34): letting SwiftUI shrink the
+            // 1024px master at draw time leaves jagged edges at this size.
+            Image("AppLogo34")
+                .accessibilityHidden(true) // the app name sits right next to it
             VStack(alignment: .leading, spacing: 1) {
                 Text(Brand.name).font(.system(size: 14, weight: .bold))
                 Text(verbatim: "v\(Brand.version)")
@@ -131,10 +132,11 @@ struct MainView: View {
             }
             Spacer()
         }
-        // The logo artwork carries 3pt of transparent margin inside its 34pt
-        // frame; 13 instead of 16 puts its visible edge on the same line as the
-        // row icons below (measured: both at 16pt from the window edge).
-        .padding(.leading, 13).padding(.trailing, 16).padding(.top, 16).padding(.bottom, 12)
+        // The logo artwork carries ~3.3pt of transparent margin inside its 34pt
+        // frame; 12.5 instead of 16 puts its visible edge on the same line as
+        // the row icons below (measured on a 2x screenshot: both at 16pt from
+        // the window edge).
+        .padding(.leading, 12.5).padding(.trailing, 16).padding(.top, 16).padding(.bottom, 12)
     }
 
     private func toggleSidebar() {

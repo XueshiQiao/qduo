@@ -100,7 +100,7 @@ struct SidebarIcon: View {
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: 26, height: 26)
-            .background(RoundedRectangle(cornerRadius: 6).fill(
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(
                 LinearGradient(colors: [color.opacity(0.98), color.opacity(0.68)],
                                startPoint: .top, endPoint: .bottom)))
             .drawingGroup()
