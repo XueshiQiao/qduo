@@ -157,8 +157,12 @@ enum SystemTranslator {
                     return .failure(.cancelled)
                 } catch {
                     // Deleted between the status check and now, say: the view
-                    // route can still ask for the download.
+                    // route can still ask for the download — on a window the
+                    // user can see, or its sheet would be invisible.
                     log.error("direct failed (\(error.localizedDescription)) — trying the view route")
+                    let now = await LanguageAvailability().status(from: source, to: target)
+                    return await viaView(text, source: source, target: target,
+                                         needsDownload: now != .installed, started: started)
                 }
             }
             return await viaView(text, source: source, target: target, needsDownload: false, started: started)
@@ -270,7 +274,12 @@ private final class TranslationHost: NSObject, NSWindowDelegate {
                 }
                 // One at a time: a newer request supersedes an unfinished one.
                 if job != nil { Self.log.info("finish: superseded by a newer request") }
+                // The app to hand the focus back to passes to the newer request:
+                // if the old one brought this app forward, the newer one (asked
+                // for from a pinned popup, say) still has to give it back.
+                let handBackTo = previousApp
                 finish(throwing: CancellationError())
+                previousApp = handBackTo
                 job = Job(id: id, text: text, continuation: continuation, visible: visible)
                 show(visible: visible)
                 var config = TranslationSession.Configuration(source: source, target: target)
@@ -412,7 +421,11 @@ private final class TranslationHost: NSObject, NSWindowDelegate {
     nonisolated func windowWillClose(_ notification: Notification) {
         MainActor.assumeIsolated {
             if job != nil { Self.log.info("finish: window closed by hand") }
+            // Nothing takes over after a close by hand, so the focus goes back
+            // here (`finish` leaves it alone for a cancellation).
+            let app = previousApp
             finish(throwing: SystemTranslator.Failure.cancelled)
+            app?.activate()
         }
     }
 
