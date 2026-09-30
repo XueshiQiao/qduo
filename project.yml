@@ -127,6 +127,7 @@ targets:
       - path: Sources/Core/Speech/TTSRunRecorder.swift
       - path: Sources/PopBar/Selection/SelectionIgnoreRules.swift
       - path: Sources/Core/FileLog.swift
+      - path: Sources/Core/Config/ConfigSchema.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

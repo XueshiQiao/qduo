@@ -68,8 +68,8 @@ enum ConfigSchema {
             },
             "hotKey": {
               "type": "string",
-              "pattern": "^(([a-zA-Z0-9]+\\+)*[a-zA-Z0-9]+)?$",
-              "description": "The popup hotkey, written the way it is spoken, e.g. \"opt+x\". Empty = none recorded yet (there is no default). Same key names as ocr.hotKey, and it cannot be the same combo."
+              "pattern": "^(([a-zA-Z0-9]+\\\\+)*[a-zA-Z0-9]+)?$",
+              "description": "The popup hotkey, written the way it is spoken, e.g. \\"opt+x\\". Empty = none recorded yet (there is no default). Same key names as ocr.hotKey, and it cannot be the same combo."
             },
             "simulateCopy": {
               "type": "boolean",
@@ -157,7 +157,7 @@ enum ConfigSchema {
           "description": "Readers for the speak action. API keys are NOT here — they are in the Keychain.",
           "properties": {
             "defaultReader": { "type": "string",
-              "description": "The id of the reader speak actions use unless they name one. \"system\" = the macOS system voice." },
+              "description": "The id of the reader speak actions use unless they name one. \\"system\\" = the macOS system voice." },
             "readers": {
               "type": "array",
               "description": "Cloud voices set up in Settings › Speech.",
@@ -223,7 +223,7 @@ enum ConfigSchema {
             "targetLanguage": { "type": "string",
               "description": "For \\"systemTranslate\\": the language to translate into, as macOS names it, e.g. \\"zh\\" (Simplified Chinese), \\"zh-TW\\" (Traditional Chinese), \\"en\\", \\"en-GB\\", \\"ja\\", \\"fr\\"." },
             "reader": { "type": "string",
-              "description": "For \"speak\": the id of the reader (see speech.readers, or \"system\"). Absent = speech.defaultReader." },
+              "description": "For \\"speak\\": the id of the reader (see speech.readers, or \\"system\\"). Absent = speech.defaultReader." },
             "modelOverride": {
               "type": "object",
               "description": "Use a different model for THIS action only.",
