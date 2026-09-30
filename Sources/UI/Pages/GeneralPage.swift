@@ -105,9 +105,7 @@ struct GeneralPage: View {
         Section {
             // Only the installed ones: the built-in list names terminals most
             // people don't have. The others stay in the config file untouched.
-            let installed = store.terminalApps.filter {
-                NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
-            }
+            let installed = store.terminalApps.filter { appURL(for: $0) != nil }
             if installed.isEmpty {
                 Text(L("popbar.terminals.empty"))
                     .font(.caption).foregroundStyle(.secondary)
@@ -291,7 +289,7 @@ private struct ExcludedAppRow: View {
     let remove: () -> Void
 
     var body: some View {
-        let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+        let url = appURL(for: bundleID)
         HStack(spacing: 8) {
             Image(nsImage: url.map { NSWorkspace.shared.icon(forFile: $0.path) }
                   ?? NSWorkspace.shared.icon(for: .application))
@@ -307,4 +305,13 @@ private struct ExcludedAppRow: View {
                 .buttonStyle(.borderless)
         }
     }
+}
+
+/// Where the app with this bundle ID is: the copy Launch Services knows about,
+/// or else a running copy. An app run straight from a build folder (a
+/// development build, say) is often not registered, so only the running app
+/// can say where it is.
+private func appURL(for bundleID: String) -> URL? {
+    NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+        ?? NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first?.bundleURL
 }
