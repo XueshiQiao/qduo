@@ -239,6 +239,10 @@ static float4 sampleAt(thread const Ctx &c, float2 p, thread float &edge) {
     // distance from the nearest solid, measured on the page
     float away = mapD(c, Mt * float3(gp.xy, 0));
     a *= 1 - smoothstep(u[U_REACH] * 0.45, u[U_REACH], away);
+    // Nothing at all inside the hole: the selection shows through it and clicks
+    // there must reach the app underneath (the panel's hit-test assumes the hole
+    // is empty, measured flat on screen — so measure it the same way here).
+    if (length(p) < u[U_R] - u[U_r]) a = 0;
     if (a < 1.0 / 255.0) a = 0;
     return float4(0, 0, 0, a);
 }

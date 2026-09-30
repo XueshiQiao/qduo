@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 import Combine
 import SwiftUI
+import QuartzCore
 
 /// The two surfaces the 3D donut wheel comes in. Locked with the user against
 /// `docs/wheel-3d-donut.html` (stage B): ceramic is opaque and matte, glass is a
@@ -72,6 +73,19 @@ final class DonutMotion: ObservableObject {
     func setTargets(_ t: DonutTargets) {
         guard t != targets else { return }
         targets = t
+        onNeedsFrame?()
+    }
+
+    /// Back to rest: flat, folded, nothing lit. For a wheel shown afresh — the
+    /// panel keeps its view (and so this object) between popups, and the new one
+    /// must not open with the last one's tilt or an unfolded second ring.
+    func reset() {
+        tilt = .zero; tiltV = .zero
+        unfold = 0; unfoldV = 0
+        subMidV = 0; subSpan = 0; subSpanV = 0
+        sel = sel.map { _ in 0 }
+        subSel = subSel.map { _ in 0 }
+        targets = DonutTargets()
         onNeedsFrame?()
     }
 
@@ -196,6 +210,34 @@ final class DonutMotion: ObservableObject {
         let s = Self.perspective / (Self.perspective - wz)
         let c = Double(canvas) / 2
         return CGPoint(x: c + wx * s, y: c - wy * s)
+    }
+
+    /// `project` for a whole flat layer lying at `height` above the ring's plane,
+    /// as one projective transform: layer point (view space, as if the ring were
+    /// flat) → screen point. Lets the icons and names be laid out ONCE, flat, and
+    /// moved by the GPU as one piece — so no glyph is snapped to the pixel grid on
+    /// its own, and an icon and its name can never step at different moments.
+    func planeTransform(height h: Double) -> ProjectionTransform {
+        let r = rotation, P = Self.perspective, c = Double(canvas) / 2
+        // (xv, yv, 1) → ring-local (x, y) = (xv − c, c − yv)
+        // → world (wx, wy) and w = 1 − wz / P  (homogeneous)
+        // → screen (X, Y, w) = (wx + c·w, −wy + c·w, w)
+        func row(_ a: Double, _ b: Double, _ k: Double) -> (Double, Double, Double) {
+            // coefficients of a·x + b·y + k in terms of xv, yv, 1
+            (a, -b, -a * c + b * c + k)
+        }
+        let wx = row(r[0], r[1], r[2] * h)
+        let wy = row(r[3], r[4], r[5] * h)
+        let wz = row(r[6], r[7], r[8] * h)
+        let w = (-wz.0 / P, -wz.1 / P, 1 - wz.2 / P)
+        let X = (wx.0 + c * w.0, wx.1 + c * w.1, wx.2 + c * w.2)
+        let Y = (-wy.0 + c * w.0, -wy.1 + c * w.1, -wy.2 + c * w.2)
+        // ProjectionTransform multiplies ROW vectors: [xv yv 1] · M.
+        return ProjectionTransform(CATransform3D(
+            m11: CGFloat(X.0), m12: CGFloat(Y.0), m13: 0, m14: CGFloat(w.0),
+            m21: CGFloat(X.1), m22: CGFloat(Y.1), m23: 0, m24: CGFloat(w.1),
+            m31: 0, m32: 0, m33: 1, m34: 0,
+            m41: CGFloat(X.2), m42: CGFloat(Y.2), m43: 0, m44: CGFloat(w.2)))
     }
 
     /// The inverse of `project` onto the plane at `height` above the ring's centre:

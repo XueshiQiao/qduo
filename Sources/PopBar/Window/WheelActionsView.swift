@@ -257,6 +257,7 @@ struct WheelActionsView: View {
             // Re-arm the auto-hide and start closed for each fresh wheel.
             enteredRing = false
             pointerOnWheel = false
+            motion.reset()
             submenu = nil
             expanded = false
             settledAt = nil
@@ -457,6 +458,7 @@ struct WheelActionsView: View {
     private func donutVisuals(_ material: DonutMaterial, dividers: Bool) -> some View {
         let d = canvas
         let dark = isDark
+        let surfaceDark = donutSurfaceDark(material)
         return ZStack {
             if material == .glass {
                 DonutMotionReader(motion: motion) { m in
@@ -465,10 +467,11 @@ struct WheelActionsView: View {
                         .mask(m.outlinePath())
                 }
             }
-            DonutRingView(motion: motion, targets: donutTargets, material: material, dark: dark, dividers: dividers,
+            DonutRingView(motion: motion, targets: donutTargets, material: material,
+                          surfaceDark: surfaceDark, pageDark: dark, dividers: dividers,
                           canvas: d, layout: layout, sliceCount: actions.count)
                 .frame(width: d, height: d)
-            DonutMotionReader(motion: motion) { m in donutGlyphs(m) }
+            DonutMotionReader(motion: motion) { m in donutGlyphs(m, surfaceDark: surfaceDark) }
         }
         .frame(width: d, height: d)
         // Every bit of motion here is driven frame by frame from `DonutMotion`. The
@@ -478,24 +481,52 @@ struct WheelActionsView: View {
         .transaction { $0.animation = nil }
     }
 
-    private func donutGlyphs(_ m: DonutMotion) -> some View {
+    /// Whether the donut's SURFACE is dark. Only glass follows the system into dark
+    /// mode: ceramic stays white in both, because that is what ceramic looks like —
+    /// the user tried the dark version and asked for it back (a dark ring read as
+    /// black plastic, not porcelain).
+    private func donutSurfaceDark(_ material: DonutMaterial) -> Bool {
+        isDark && material == .glass
+    }
+
+    /// The icons and names, laid out FLAT (where the flat wheel would put them) and
+    /// then carried onto the tilted ring by one GPU transform per ring — the tube
+    /// crest they sit on. Positioning each glyph per frame instead made SwiftUI snap
+    /// every icon and every name to the pixel grid on its own: they shimmered while
+    /// the ring moved, and a few pixels of mouse travel could step an icon without
+    /// its name. Now each ring's glyphs are one flattened layer that moves as one.
+    private func donutGlyphs(_ m: DonutMotion, surfaceDark: Bool) -> some View {
         let n = Double(max(actions.count, 1))
+        let c = canvas / 2
+        func flat(_ a: Double, _ r: Double) -> CGPoint {
+            CGPoint(x: c + CGFloat(sin(a) * r), y: c - CGFloat(cos(a) * r))
+        }
         return ZStack {
-            ForEach(Array(actions.enumerated()), id: \.element.id) { idx, action in
-                let a = (Double(idx) + 0.5) * 2 * .pi / n            // clockwise from twelve
-                let hot = hovered == action.id
-                donutGlyph(action, hot: hot, soft: hot && pointerOnSecondRing(of: action.id))
-                    .position(m.project(x: sin(a) * m.tubeCentre, y: cos(a) * m.tubeCentre, z: m.crest))
+            ZStack {
+                ForEach(Array(actions.enumerated()), id: \.element.id) { idx, action in
+                    let a = (Double(idx) + 0.5) * 2 * .pi / n            // clockwise from twelve
+                    let hot = hovered == action.id
+                    donutGlyph(action, hot: hot, soft: hot && pointerOnSecondRing(of: action.id), dark: surfaceDark)
+                        .position(flat(a, m.tubeCentre))
+                }
             }
+            .frame(width: canvas, height: canvas)
+            .drawingGroup()
+            .projectionEffect(m.planeTransform(height: m.crest))
+
             if let open = submenu, let s = m.sub, !open.children.isEmpty {
                 let step = s.span / Double(open.children.count)
-                ForEach(Array(open.children.enumerated()), id: \.element.id) { j, child in
-                    let a = s.mid - s.span / 2 + (Double(j) + 0.5) * step
-                    donutGlyph(child, hot: hoveredChild == child.id, soft: false)
-                        .opacity(max(0, (m.unfold - 0.35) / 0.65))
-                        .position(m.project(x: sin(a) * s.centre, y: cos(a) * s.centre,
-                                            z: s.tube * DonutMotion.squash))
+                ZStack {
+                    ForEach(Array(open.children.enumerated()), id: \.element.id) { j, child in
+                        let a = s.mid - s.span / 2 + (Double(j) + 0.5) * step
+                        donutGlyph(child, hot: hoveredChild == child.id, soft: false, dark: surfaceDark)
+                            .position(flat(a, s.centre))
+                    }
                 }
+                .frame(width: canvas, height: canvas)
+                .opacity(max(0, (m.unfold - 0.35) / 0.65))
+                .drawingGroup()
+                .projectionEffect(m.planeTransform(height: s.tube * DonutMotion.squash))
             }
         }
         .frame(width: canvas, height: canvas)
@@ -503,9 +534,10 @@ struct WheelActionsView: View {
 
     /// One slice's icon + name, painted like the liquid skin's (dark ink on the light
     /// surfaces, near-white on the dark ones, the brand gradient when hovered).
-    private func donutGlyph(_ action: PopBarActionConfig, hot: Bool, soft: Bool) -> some View {
-        let dark = isDark
-        return VStack(spacing: 2) {
+    /// `dark` is the SURFACE's darkness, not the system's — white ceramic keeps its
+    /// dark ink in dark mode.
+    private func donutGlyph(_ action: PopBarActionConfig, hot: Bool, soft: Bool, dark: Bool) -> some View {
+        VStack(spacing: 2) {
             if layout.showIcons {
                 Image(systemName: action.iconSymbol)
                     .font(.system(size: 15, weight: .medium))
@@ -515,8 +547,18 @@ struct WheelActionsView: View {
                 sliceLabel(action, weight: hot ? .bold : .medium)
             }
         }
-        .foregroundStyle(glyphStyle(hot: hot, dark: dark).opacity(soft ? 0.55 : 1))
+        .foregroundStyle(donutGlyphStyle(hot: hot, dark: dark).opacity(soft ? 0.55 : 1))
         .shadow(color: dark ? .black.opacity(0.55) : .white.opacity(0.6), radius: dark ? 1.5 : 2)
+    }
+
+    /// `glyphStyle`, but keyed on the surface: its hover gradient otherwise follows
+    /// the system, and the lifted dark-mode blues wash out on white ceramic.
+    private func donutGlyphStyle(hot: Bool, dark: Bool) -> AnyShapeStyle {
+        guard hot else { return glyphStyle(hot: false, dark: dark) }
+        let c: (top: Color, bottom: Color) = dark
+            ? (Color(red: 0.376, green: 0.647, blue: 0.980), Color(red: 0.133, green: 0.827, blue: 0.933))
+            : (Color(red: 0.145, green: 0.388, blue: 0.922), Color(red: 0.024, green: 0.714, blue: 0.831))
+        return AnyShapeStyle(LinearGradient(colors: [c.top, c.bottom], startPoint: .top, endPoint: UnitPoint(x: 0.35, y: 1)))
     }
 
     // MARK: - Visuals (skin-specific; geometry shared)

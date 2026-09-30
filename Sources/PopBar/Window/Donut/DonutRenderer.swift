@@ -22,7 +22,7 @@ private struct DonutPalette {
     var accent: (Float, Float, Float)
     var shadow: Float
 
-    init(material: DonutMaterial, dark: Bool) {
+    init(material: DonutMaterial, dark: Bool, pageDark: Bool) {
         switch (material, dark) {
         case (.ceramic, false): base = (0xEC, 0xEA, 0xE6); baseAlpha = 1
         case (.ceramic, true):  base = (0x3B, 0x3C, 0x42); baseAlpha = 1
@@ -33,7 +33,8 @@ private struct DonutPalette {
         // The hovered slice leans toward the app icon's blue (#2563EB, lifted to
         // #60A5FA in dark mode) — the same colour the hovered label takes.
         accent = dark ? (0x60 / 255.0, 0xA5 / 255.0, 0xFA / 255.0) : (0x25 / 255.0, 0x63 / 255.0, 0xEB / 255.0)
-        shadow = (dark ? 0.5 : 0.24) * (material == .glass ? 0.55 : 1)
+        // A shadow has to be darker to read on a dark page.
+        shadow = (pageDark ? 0.5 : 0.24) * (material == .glass ? 0.55 : 1)
     }
 }
 
@@ -47,6 +48,13 @@ enum DonutSupport {
 /// An MTKView that never takes part in hit-testing: every click and hover belongs to
 /// the wheel's SwiftUI surface, which sits in the same hosting view.
 final class DonutMetalView: MTKView {
+    /// Called once the view is in a window: a display link can only be made for a
+    /// view that is on a screen.
+    var onWindowChange: (() -> Void)?
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        onWindowChange?()
+    }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
     override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { false }
@@ -62,7 +70,10 @@ struct DonutRingView: NSViewRepresentable {
     let motion: DonutMotion
     let targets: DonutTargets
     let material: DonutMaterial
-    let dark: Bool
+    /// The ring's own surface is dark (dark glass). Ceramic is always light.
+    let surfaceDark: Bool
+    /// The system is in dark mode — what the ring's shadow falls on.
+    let pageDark: Bool
     /// Carve a groove between neighbouring slices (and children).
     let dividers: Bool
     let canvas: CGFloat
@@ -77,7 +88,10 @@ struct DonutRingView: NSViewRepresentable {
         v.colorPixelFormat = .bgra8Unorm
         v.framebufferOnly = true
         v.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
-        v.preferredFramesPerSecond = 120
+        // Never self-driven: MTKView's own loop calls the delegate on a BACKGROUND
+        // thread (measured), while `DonutMotion` is read and written by SwiftUI on the
+        // main one. The renderer's main-thread ticker calls `draw()` instead.
+        v.isPaused = true
         v.enableSetNeedsDisplay = false
         v.autoResizeDrawable = true
         v.wantsLayer = true
@@ -90,6 +104,13 @@ struct DonutRingView: NSViewRepresentable {
         }
         v.delegate = r
         r.view = v
+        v.onWindowChange = { [weak r] in r?.stop(); r?.wake() }
+        if let ml = v.layer as? CAMetalLayer {
+            // Present in step with Core Animation, so the ring and the SwiftUI labels
+            // laid over it land on screen in the SAME frame instead of one trailing
+            // the other.
+            ml.presentsWithTransaction = true
+        }
         motion.onNeedsFrame = { [weak r] in r?.wake() }
         applyGeometry()
         return v
@@ -98,7 +119,8 @@ struct DonutRingView: NSViewRepresentable {
     func updateNSView(_ v: DonutMetalView, context: Context) {
         let r = context.coordinator
         r.material = material
-        r.dark = dark
+        r.surfaceDark = surfaceDark
+        r.pageDark = pageDark
         r.dividers = dividers
         applyGeometry()
         motion.setTargets(targets)
@@ -112,7 +134,7 @@ struct DonutRingView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ v: DonutMetalView, coordinator: DonutRenderer) {
-        v.isPaused = true
+        coordinator.stop()
         v.delegate = nil
     }
 }
@@ -124,9 +146,13 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
     private let motion: DonutMotion
     weak var view: DonutMetalView?
     var material: DonutMaterial = .ceramic
-    var dark = false
+    var surfaceDark = false
+    var pageDark = false
     var dividers = true
     private var lastTime: CFTimeInterval = 0
+    /// Drives frames on the MAIN thread while anything moves; nil while idle.
+    private var ticker: AnyObject?
+    private var cvLink: CVDisplayLink?
 
     init(motion: DonutMotion) {
         self.motion = motion
@@ -157,19 +183,51 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
     /// Start drawing again (a target changed). The first frame after a pause gets a
     /// nominal step instead of the whole idle gap.
     func wake() {
-        guard let v = view, v.isPaused else { return }
+        guard ticker == nil, cvLink == nil, let v = view, v.window != nil else { return }
         lastTime = 0
-        v.isPaused = false
+        if #available(macOS 14.0, *) {
+            // Vsync-aligned and delivered on the main run loop.
+            let link = v.displayLink(target: self, selector: #selector(tick))
+            link.add(to: .main, forMode: .common)
+            ticker = link
+        } else {
+            // macOS 13 has no main-thread display link; CVDisplayLink fires on its own
+            // thread, so it only ever hops to the main queue and does nothing else.
+            var link: CVDisplayLink?
+            CVDisplayLinkCreateWithActiveCGDisplays(&link)
+            guard let link else { return }
+            CVDisplayLinkSetOutputHandler(link) { [weak self] _, _, _, _, _ in
+                DispatchQueue.main.async { self?.tick() }
+                return kCVReturnSuccess
+            }
+            CVDisplayLinkStart(link)
+            cvLink = link
+        }
+        tick()   // the first frame now, not a vsync later
+    }
+
+    func stop() {
+        if #available(macOS 14.0, *) { (ticker as? CADisplayLink)?.invalidate() }
+        ticker = nil
+        if let link = cvLink { CVDisplayLinkStop(link) }
+        cvLink = nil
+    }
+
+    /// One frame, on the main thread: advance the springs, draw, and stop once
+    /// everything has settled.
+    @objc private func tick() {
+        guard let v = view else { stop(); return }
+        let now = CACurrentMediaTime()
+        let dt = lastTime == 0 || now - lastTime > 0.1 ? 1.0 / 60 : now - lastTime
+        lastTime = now
+        let moving = motion.step(dt)
+        v.draw()
+        if !moving { stop() }
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     func draw(in view: MTKView) {
-        let now = CACurrentMediaTime()
-        let dt = lastTime == 0 || now - lastTime > 0.1 ? 1.0 / 60 : now - lastTime
-        lastTime = now
-        let moving = motion.step(dt)
-
         if let pipeline, let queue, view.drawableSize.width > 0, view.drawableSize.height > 0,
            let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
            let cmd = queue.makeCommandBuffer(), let enc = cmd.makeRenderCommandEncoder(descriptor: pass) {
@@ -182,10 +240,11 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
             enc.setFragmentBytes(&subSel, length: MemoryLayout<Float>.stride * subSel.count, index: 2)
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
             enc.endEncoding()
-            cmd.present(drawable)
+            // presentsWithTransaction: present from here, once the GPU has the work.
             cmd.commit()
+            cmd.waitUntilScheduled()
+            drawable.present()
         }
-        if !moving { view.isPaused = true }
     }
 
     private func uniforms(drawableSize: CGSize) -> [Float] {
@@ -202,9 +261,9 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
         for (i, v) in m.rotation.enumerated() { u[U.M + i] = Float(v) }
         u[U.P] = Float(DonutMotion.perspective)
         u[U.mat] = material == .glass ? 2 : 0
-        u[U.dark] = dark ? 1 : 0
+        u[U.dark] = surfaceDark ? 1 : 0
         u[U.groove] = dividers ? 1 : 0
-        let pal = DonutPalette(material: material, dark: dark)
+        let pal = DonutPalette(material: material, dark: surfaceDark, pageDark: pageDark)
         let lin: (Float) -> Float = { powf($0, 2.2) }
         u[U.base] = lin(pal.base.0); u[U.base + 1] = lin(pal.base.1); u[U.base + 2] = lin(pal.base.2)
         u[U.baseA] = pal.baseAlpha
