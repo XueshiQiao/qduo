@@ -21,6 +21,12 @@ struct LinkProbe {
     /// present only on the clipboard-copy path.
     let html: Data?
     let rtf: Data?
+    /// Whether the pointer is ON the selection — true after a selection gesture,
+    /// which ends where the mouse is released. False for the popup hotkey: the
+    /// pointer can be anywhere (the text may have been selected with the
+    /// keyboard), so whatever link it happens to rest on says nothing about the
+    /// selection, and T2 is skipped.
+    var pointerIsOnSelection: Bool = true
 }
 
 /// Which tier produced the winning URL.
@@ -71,6 +77,7 @@ enum LinkResolver {
 
         let t1 = timed(.t1Text) { .ran(fromText(probe.text)) }
         let t2 = timed(.t2PointURL) {
+            guard probe.pointerIsOnSelection else { return .skipped("popup hotkey — the pointer is not on the selection") }
             // Hit-testing over our own window (the ring is usually under the cursor)
             // would run AppKit/SwiftUI on this background thread — see OwnWindowHit.
             let axPoint = CGPoint(x: probe.mouseLocation.x, y: probe.screenFlipHeight - probe.mouseLocation.y)

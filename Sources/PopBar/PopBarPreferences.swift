@@ -25,6 +25,8 @@ enum PopBarPreferences {
         static let readingHighlight   = "popup.readingHighlight"
         static let style              = "popup.style"
         static let enabled            = "popup.enabled"
+        static let hotKeyEnabled      = "popup.hotKeyEnabled"
+        static let hotKey             = "popup.hotKey"
         static let simulateCopy       = "popup.simulateCopy"
         static let excludedApps       = "popup.excludedApps"
         static let terminalApps       = "popup.terminalApps"
@@ -175,6 +177,28 @@ enum PopBarPreferences {
     static var popupEnabled: Bool {
         get { config.bool(P.enabled, default: true) }
         set { config.set(P.enabled, newValue) }
+    }
+
+    // MARK: - Popup hotkey (issue #4)
+
+    /// Whether the popup hotkey is registered. Opt-in; default OFF.
+    ///
+    /// Independent of the pause: pausing stops the popup opening BY ITSELF when
+    /// text is selected; the hotkey opens it on purpose, paused or not, and in
+    /// excluded apps and address bars too. Paused + hotkey is "only when I ask".
+    /// The whole design is in `docs/popup-hotkey.html`.
+    static var popupHotKeyEnabled: Bool {
+        get { config.bool(P.hotKeyEnabled, default: false) }
+        set { config.set(P.hotKeyEnabled, newValue) }
+    }
+
+    /// The popup hotkey, written the way it is spoken (`"opt+x"`). Nil until the
+    /// user records one: there is no built-in default, because any combo picked
+    /// for everyone is some other app's shortcut for someone, and a hotkey that
+    /// silently does nothing is worse than one that asks to be set.
+    static var popupHotKey: KeyCombo? {
+        get { KeyCombo(configString: config.string(P.hotKey, default: "")) }
+        set { config.set(P.hotKey, newValue?.configString ?? "") }
     }
 
     // MARK: - Where the popup reads

@@ -25,6 +25,14 @@ final class PopBarStore: ObservableObject {
     @Published private(set) var excludedApps: [String]
     @Published private(set) var terminalApps: [String]
 
+    // Popup hotkey (issue #4)
+    @Published private(set) var popupHotKeyEnabled: Bool
+    /// Nil until one is recorded — there is no default combo.
+    @Published private(set) var popupHotKey: KeyCombo?
+    /// Whether the popup hotkey is actually registered right now (false while
+    /// off, while none is recorded, or when the combo is taken).
+    @Published private(set) var popupHotKeyRegistered: Bool
+
     // Screenshot OCR
     @Published var screenOCREnabled: Bool
     @Published var screenOCRAutoCopy: Bool
@@ -55,6 +63,9 @@ final class PopBarStore: ObservableObject {
         self.ignoreAddressBars = PopBarPreferences.ignoreAddressBars
         self.excludedApps = PopBarPreferences.excludedApps
         self.terminalApps = PopBarPreferences.terminalApps
+        self.popupHotKeyEnabled = PopBarPreferences.popupHotKeyEnabled
+        self.popupHotKey = PopBarPreferences.popupHotKey
+        self.popupHotKeyRegistered = controller.popupHotKeyIsRegistered
         self.screenOCREnabled = PopBarPreferences.screenOCREnabled
         self.screenOCRAutoCopy = PopBarPreferences.screenOCRAutoCopy
         self.screenOCRHotKey = PopBarPreferences.screenOCRHotKey
@@ -112,6 +123,8 @@ final class PopBarStore: ObservableObject {
         if screenRec != isScreenRecordingAuthorized { isScreenRecordingAuthorized = screenRec }
         let reg = controller.screenOCRIsRegistered
         if reg != screenOCRRegistered { screenOCRRegistered = reg }
+        let popupReg = controller.popupHotKeyIsRegistered
+        if popupReg != popupHotKeyRegistered { popupHotKeyRegistered = popupReg }
     }
 
     /// Switch the popup's presentation style. Persisted in PopBar's own prefs and
@@ -177,12 +190,53 @@ final class PopBarStore: ObservableObject {
     // MARK: - Paused
 
     /// Pause or resume the popup. Takes effect at once: pausing closes anything
-    /// showing and stops listening; resuming starts again if permitted.
+    /// showing and stops the popup opening on a selection (the popup hotkey, if
+    /// on, still works); resuming starts again if permitted.
     func setPopupEnabled(_ on: Bool) {
         guard on != popupEnabled else { return }
         popupEnabled = on
         PopBarPreferences.popupEnabled = on
         if on { controller.start() } else { controller.stop() }
+    }
+
+    // MARK: - Popup hotkey (issue #4)
+
+    /// Turn the popup hotkey on or off. Returns false when turning it on could not
+    /// register a recorded combo because another app holds it.
+    @discardableResult
+    func setPopupHotKeyEnabled(_ on: Bool) -> Bool {
+        let wasUsable = popupHotKeyRegistered
+        popupHotKeyEnabled = on
+        PopBarPreferences.popupHotKeyEnabled = on
+        let ok = controller.setPopupHotKeyEnabled(on)
+        popupHotKeyRegistered = controller.popupHotKeyIsRegistered
+        pauseIfHotKeyJustBecameUsable(wasUsable: wasUsable)
+        // No combo recorded yet is not a failure — the page asks for one.
+        return ok || popupHotKey == nil
+    }
+
+    /// Record a new popup hotkey. Refused when it is the screenshot-OCR one (one
+    /// combo cannot do two things) or when another app holds it.
+    @discardableResult
+    func setPopupHotKey(_ combo: KeyCombo) -> Bool {
+        guard combo != screenOCRHotKey else { return false }
+        let wasUsable = popupHotKeyRegistered
+        let ok = controller.setPopupHotKey(combo)
+        if ok { popupHotKey = combo }
+        popupHotKeyRegistered = controller.popupHotKeyIsRegistered
+        pauseIfHotKeyJustBecameUsable(wasUsable: wasUsable)
+        return ok
+    }
+
+    /// Someone who turns the popup hotkey on almost always wants the popup to
+    /// open ONLY when they press it — so the moment it starts working (switched
+    /// on with a combo, or the first combo recorded) the popup is paused for
+    /// them. Only on that transition: resuming afterwards, for "both", sticks,
+    /// and re-recording a combo does not pause again. Not before it works
+    /// either — pausing with no working hotkey would leave nothing that opens it.
+    private func pauseIfHotKeyJustBecameUsable(wasUsable: Bool) {
+        guard !wasUsable, popupHotKeyRegistered, popupEnabled else { return }
+        setPopupEnabled(false)
     }
 
     // MARK: - Where the popup reads
@@ -256,6 +310,7 @@ final class PopBarStore: ObservableObject {
     /// success the published combo is updated so the recorder field reflects it.
     @discardableResult
     func setScreenOCRHotKey(_ combo: KeyCombo) -> Bool {
+        guard combo != popupHotKey else { return false }   // the popup hotkey has it
         let ok = controller.setScreenOCRHotKey(combo)
         if ok { screenOCRHotKey = combo }
         screenOCRRegistered = controller.screenOCRIsRegistered

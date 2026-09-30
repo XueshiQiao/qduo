@@ -21,6 +21,9 @@ struct GeneralPage: View {
 
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var languageCode: String? = Preferences.languageOverride
+    /// Set when the recorded popup hotkey could not be registered (another app,
+    /// or the screenshot-OCR hotkey, has it), so the field can say so.
+    @State private var popupHotKeyError = false
 
     /// The Accessibility grant happens in System Settings, in another process — the
     /// app is never told. Polling is the only way to notice, and two seconds is
@@ -39,6 +42,7 @@ struct GeneralPage: View {
         Form {
             if !store.isTrusted { permissionSection }
             appSection
+            popupHotKeySection
             readingSection
             excludedAppsSection
             terminalAppsSection
@@ -51,6 +55,45 @@ struct GeneralPage: View {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
         }
         .onReceive(trustPoll) { _ in store.refreshTrust() }
+    }
+
+    // MARK: - Popup hotkey (issue #4)
+
+    /// Independent of the pause, on purpose: the pause is about the popup opening
+    /// by itself, the hotkey about opening it when asked. Paused + hotkey is the
+    /// "only when I press it" mode. See `docs/popup-hotkey.html`.
+    private var popupHotKeySection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { store.popupHotKeyEnabled },
+                                 set: { popupHotKeyError = !store.setPopupHotKeyEnabled($0) })) {
+                featureLabel("keyboard", .purple,
+                             L("popbar.hotkey.enable.title"), L("popbar.hotkey.enable.subtitle"))
+            }
+            if store.popupHotKeyEnabled {
+                LabeledContent {
+                    HotKeyRecorderField(combo: store.popupHotKey) { combo in
+                        popupHotKeyError = !store.setPopupHotKey(combo)
+                    }
+                } label: {
+                    iconLabel("command", .purple, L("popbar.ocr.hotkey.label"))
+                }
+                if store.popupHotKey == nil {
+                    Text(L("popbar.hotkey.notSet"))
+                        .font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if popupHotKeyError || !store.popupHotKeyRegistered {
+                    Text(L("popbar.ocr.hotkey.occupied"))
+                        .font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        } header: {
+            Text(L("popbar.hotkey.header"))
+        } footer: {
+            Text(String(format: L("popbar.hotkey.footer"), Brand.name))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: - How the selection is read

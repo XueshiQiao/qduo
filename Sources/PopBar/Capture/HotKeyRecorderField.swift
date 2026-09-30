@@ -6,7 +6,8 @@ import Carbon.HIToolbox   // cmdKey/shiftKey/optionKey/controlKey masks
 /// key-down (with at least one non-shift modifier) becomes the new combo. Tapping again,
 /// or pressing Esc, cancels recording without reporting a change.
 struct HotKeyRecorderField: View {
-    let combo: KeyCombo
+    /// Nil shows a "click to record" prompt — a hotkey with no default (the popup one).
+    let combo: KeyCombo?
     /// Called with the newly recorded combo. The parent persists it and may reject it
     /// (e.g. the combo is already taken) — this view just reports intent.
     let onRecorded: (KeyCombo) -> Void
@@ -18,7 +19,7 @@ struct HotKeyRecorderField: View {
         Button {
             if isRecording { stopRecording() } else { startRecording() }
         } label: {
-            Text(isRecording ? L("popbar.ocr.hotkey.recording") : combo.display)
+            Text(isRecording ? L("popbar.ocr.hotkey.recording") : combo?.display ?? L("popbar.hotkey.record"))
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
                 .foregroundStyle(isRecording ? Color.accentColor : Color.primary)
                 .frame(minWidth: 100)

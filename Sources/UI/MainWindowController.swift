@@ -159,6 +159,16 @@ struct MainView: View {
 private struct StatusFooter: View {
     @ObservedObject var store: PopBarStore
 
+    /// Paused with the popup hotkey on, the popup still opens — the status says
+    /// how, or a paused app that pops up would look broken.
+    private var statusText: String {
+        if store.popupEnabled { return L("popbar.status.running") }
+        if store.popupHotKeyRegistered, let combo = store.popupHotKey {
+            return String(format: L("popbar.status.pausedHotKey.format"), combo.display)
+        }
+        return L("popbar.status.paused")
+    }
+
     var body: some View {
         if !store.isTrusted {
             HStack(spacing: 7) {
@@ -174,7 +184,7 @@ private struct StatusFooter: View {
                     .fill(store.popupEnabled ? Color.green : Color(nsColor: .tertiaryLabelColor))
                     .frame(width: 9, height: 9)
                     .frame(width: 12, height: 12)
-                Text(L(store.popupEnabled ? "popbar.status.running" : "popbar.status.paused"))
+                Text(statusText)
                     .font(.system(size: 11)).foregroundColor(.secondary)
                 Spacer()
                 PauseButton(paused: !store.popupEnabled) {

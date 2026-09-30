@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QDuo 快捷键弹出</title>
+<style>
+  :root {
+    --bg: #faf9f5; --surface: #ffffff; --ink: #1f1e1c; --ink-soft: #5a5751;
+    --ink-faint: #8a857c; --rule: #e6e2d4; --code-bg: #f3f0e6;
+    --accent: #d97757; --good: #4f8a5c; --warn: #b6711c; --bad: #b14338;
+    --serif: "Tiempos", "Source Serif Pro", "Iowan Old Style", Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b1a18; --surface: #242320; --ink: #ece8df; --ink-soft: #b9b3a6;
+            --ink-faint: #8f897d; --rule: #3a3833; --code-bg: #2e2c28; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+         font-size: 16px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 880px; margin: 0 auto; padding: 72px 24px 120px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; text-transform: uppercase;
+             letter-spacing: 0.08em; color: var(--accent); margin-bottom: 18px; }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: 42px; line-height: 1.15; margin: 0 0 18px; }
+  .lede { font-family: var(--serif); font-size: 20px; line-height: 1.55; color: var(--ink-soft); margin: 0; }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin: 60px 0 14px; }
+  h3 { font-size: 17px; font-weight: 600; margin: 32px 0 10px; }
+  p { margin: 0 0 16px; }
+  li { margin-bottom: 8px; }
+  code { font-family: var(--mono); background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 0.88em; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 16px 0 26px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); }
+  .note { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+          border-radius: 6px; padding: 14px 18px; margin: 20px 0; }
+  .muted { color: var(--ink-faint); }
+  .yes { color: var(--good); font-weight: 600; }
+  .no { color: var(--bad); font-weight: 600; }
+  svg text { font-family: var(--sans); }
+  .flow { width: 100%; height: auto; margin: 12px 0 24px; }
+  .flow .box { fill: var(--surface); stroke: var(--rule); stroke-width: 1.5; }
+  .flow .gate { fill: var(--code-bg); stroke: var(--accent); stroke-width: 1.5; }
+  .flow .t { fill: var(--ink); font-size: 14px; }
+  .flow .s { fill: var(--ink-faint); font-size: 12px; }
+  .flow .line { stroke: var(--ink-faint); stroke-width: 1.5; fill: none; }
+  .flow .stop { fill: var(--bad); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="eyebrow">Design · issue #4 · 2026-09-30</div>
+<h1>快捷键弹出</h1>
+<p class="lede">选中文字以后按一个快捷键，把菜单弹出来。它和「暂停」是两个互不相干的开关：暂停只管选中文字以后会不会<em>自动</em>弹，快捷键只管按下去弹不弹。</p>
+
+<h2>起因</h2>
+<p>issue #4（用户 @yaoxinghuo）：「希望支持快捷键触发和框选文本两种触发方式」。选中即弹已经有了，缺的是「只在我想要的时候弹」——有些人嫌选中就弹太打扰。</p>
+
+<h2>两个开关，互相独立</h2>
+<table>
+  <tr><th>开关</th><th>管什么</th><th>在哪里</th><th>默认</th></tr>
+  <tr><td><b>暂停</b></td><td>选中文字以后自动弹不弹</td><td>菜单栏、设置侧边栏底部；配置 <code>popup.enabled</code></td><td>运行（会自动弹）</td></tr>
+  <tr><td><b>快捷键弹出</b></td><td>按下快捷键弹不弹</td><td>设置 → 通用 → 快捷键弹出；配置 <code>popup.hotKeyEnabled</code> + <code>popup.hotKey</code></td><td>关，而且没有预设组合键</td></tr>
+</table>
+
+<p>四种组合，每一种都说得通：</p>
+<table>
+  <tr><th>用户想要的</th><th>暂停开关</th><th>快捷键</th><th>选中文字</th><th>按快捷键</th></tr>
+  <tr><td>正常使用（默认，和以前一样）</td><td>运行</td><td>关</td><td class="yes">弹</td><td class="muted">—</td></tr>
+  <tr><td>完全安静</td><td>暂停</td><td>关</td><td class="no">不弹</td><td class="muted">—</td></tr>
+  <tr><td><b>只在按快捷键时弹</b>（issue #4 要的）</td><td>暂停</td><td>开</td><td class="no">不弹</td><td class="yes">弹</td></tr>
+  <tr><td>自动弹，外加快捷键兜底</td><td>运行</td><td>开</td><td class="yes">弹</td><td class="yes">弹</td></tr>
+</table>
+
+<h3>打开快捷键时自动暂停</h3>
+<p>两个开关虽然互相独立，但打开快捷键的人，绝大多数是想「只在按快捷键时才弹」。所以<b>快捷键开始能用的那一刻</b>（开关打开且已录好组合键，或者开关开着、第一次录好组合键），QDuo 会顺手帮用户暂停。</p>
+<ul>
+  <li>只在「从不能用变成能用」这一下暂停一次。之后用户手动恢复，就是想要「两者都要」，不会再被暂停；改录别的组合键也不会再暂停。</li>
+  <li>组合键还没录好时不暂停：否则会出现既不自动弹、也没有快捷键的状态，App 看起来像坏了。</li>
+  <li>关掉快捷键时<b>不会</b>自动恢复（讨论时只定了「打开时暂停」，关掉时怎么办没有定，先不动）。这时如果还在暂停，侧边栏会显示「已暂停」，用户能看出来。</li>
+  <li>App 重启时不会触发暂停，只看设置里的开关动作。</li>
+</ul>
+
+<div class="note">
+<b>为什么不做成「触发方式：自动 / 快捷键 / 两者」三选一？</b>讨论时先是这么设计的，后来发现它和「暂停」管的是同一件事——选了「仅快捷键」就等于暂停，暂停按钮就成了一个按了没用的按钮。拆成两个互不相干的开关后，所有状态都由两个开关组合出来，没有哪个按钮会失效。第四种组合是白捡的：用键盘 Shift+方向键选的字，自动弹出认不出来，按快捷键可以补上。
+</div>
+
+<h2>快捷键不受任何例外限制</h2>
+<p>用户按快捷键是明确想要，而这些例外本来是为了防止「误弹」才设的。截图取词（OCR）的快捷键早就是这个规则。</p>
+<table>
+  <tr><th>例外</th><th>选中自动弹</th><th>按快捷键</th></tr>
+  <tr><td>暂停</td><td class="no">不弹</td><td class="yes">弹</td></tr>
+  <tr><td>排除的 App（<code>popup.excludedApps</code>）</td><td class="no">不弹</td><td class="yes">弹</td></tr>
+  <tr><td>浏览器地址栏（<code>popup.ignoreAddressBars</code>）</td><td class="no">不弹</td><td class="yes">弹</td></tr>
+  <tr><td>QDuo 自己的窗口</td><td class="no">不弹</td><td class="no">不弹</td></tr>
+</table>
+
+<h2>一条读取流程，两个入口</h2>
+<p>两种触发走的是同一份代码（<code>PopBarController.handleTrigger(_:)</code>，参数 <code>TriggerSource</code> 是 <code>.gesture</code> 或 <code>.hotKey</code>）。区别只在最前面那几道「要不要继续」的检查。</p>
+
+<svg class="flow" viewBox="0 0 860 330" role="img" aria-label="两个入口共用读取流程">
+  <rect class="box" x="20" y="20" width="220" height="56" rx="8"/>
+  <text class="t" x="130" y="44" text-anchor="middle">选中文字（拖选 / 双击）</text>
+  <text class="s" x="130" y="63" text-anchor="middle">TriggerSource.gesture</text>
+
+  <rect class="box" x="620" y="20" width="220" height="56" rx="8"/>
+  <text class="t" x="730" y="44" text-anchor="middle">按下快捷键</text>
+  <text class="s" x="730" y="63" text-anchor="middle">TriggerSource.hotKey</text>
+
+  <rect class="gate" x="20" y="104" width="220" height="44" rx="8"/>
+  <text class="t" x="130" y="131" text-anchor="middle">暂停了？→ 到此为止</text>
+  <rect class="gate" x="20" y="160" width="220" height="44" rx="8"/>
+  <text class="t" x="130" y="187" text-anchor="middle">排除的 App / 地址栏？→ 停</text>
+
+  <path class="line" d="M130 76 V104"/>
+  <path class="line" d="M130 148 V160"/>
+  <path class="line" d="M130 204 V230 H330"/>
+  <path class="line" d="M730 76 V230 H530"/>
+  <text class="s" x="740" y="150">不看暂停、不看例外</text>
+
+  <rect class="box" x="330" y="210" width="200" height="44" rx="8"/>
+  <text class="t" x="430" y="237" text-anchor="middle">读取选中的文字</text>
+  <path class="line" d="M430 254 V272"/>
+  <rect class="box" x="330" y="272" width="200" height="44" rx="8"/>
+  <text class="t" x="430" y="299" text-anchor="middle">弹出菜单</text>
+</svg>
+
+<h3>为什么「是否暂停」要在读取之前判断，而不是弹框前</h3>
+<p>讨论时考虑过：前面一步不少地照常读，只在最后弹框前看一眼暂停。没这么做，因为读取可能会<b>替用户按一次 ⌘C</b>（Chrome、微信这类 App 只能这样读，读完再把剪贴板还原）。要是暂停时也照读，暂停期间每拖选一次，QDuo 都会在后台动一次剪贴板，剪贴板管理工具还可能把这些都记下来。暂停就应该什么都不做。</p>
+
+<h2>暂停时，监听鼠标的模块为什么还开着</h2>
+<p>快捷键开着的时候，暂停期间监听也不关。它只在旁边看，不读取、不弹框，只做两件事：</p>
+<ol>
+  <li><b>记下每次按下鼠标那一刻剪贴板的状态。</b>终端（Ghostty + herdr、tmux 的鼠标模式、OTTY）里的文字是程序自己复制到剪贴板的，QDuo 判断「剪贴板是不是在这次选字之后变的」，靠的就是这个记录（<code>CopyOnSelectStrategy</code>）。不记的话，暂停时按快捷键在这些终端里就读不到。按快捷键时的规则是：剪贴板在<b>上一次按下鼠标之后</b>变过，就当作是选中的内容。</li>
+  <li><b>点别处时关掉快捷键弹出的菜单</b>，和平时一样。</li>
+</ol>
+<p>暂停且快捷键关着时，监听照旧完全关闭。</p>
+
+<h2>读取结果和正常情况一样吗</h2>
+<table>
+  <tr><th>读取办法</th><th>用在哪</th><th>按快捷键时</th></tr>
+  <tr><td>直接问系统选中了什么（辅助功能接口）</td><td>原生 App、Safari 等</td><td>一样</td></tr>
+  <tr><td>读终端自己复制到剪贴板的内容</td><td>Ghostty + herdr、tmux、OTTY</td><td>一样（靠上一节的记录）。比较起点从「这次拖选开始时」变成「上一次按鼠标时」</td></tr>
+  <tr><td>替用户按 ⌘C 再读剪贴板</td><td>Chrome、Electron、微信</td><td>一样。发出的按键里只带 ⌘；用户手上还按着快捷键的修饰键时，个别 App 可能不认，讨论时认为问题不大，没有特殊处理</td></tr>
+</table>
+
+<h2>弹在哪里</h2>
+<ul>
+  <li><b>选中自动弹</b>：弹在松开鼠标的位置（没变）。</li>
+  <li><b>按快捷键</b>：<b>永远弹在鼠标所在的位置</b>，不看选区在哪。</li>
+</ul>
+<div class="note">
+<b>曾经的做法和为什么改掉：</b>第一版是「能拿到选区位置就弹在选区上方，拿不到才弹在鼠标处」。实际用下来不行：圆环要用鼠标去点，如果它弹在离鼠标很远的地方，鼠标得划过去，途中经过别的 App 就可能让它消失；而且鼠标可能恰好停在圆环第二圈（子菜单）的位置，一弹出来就直接展开了子菜单。所以只能弹在鼠标处。
+</div>
+<p>同理，查「选中的文字是不是链接」时，按快捷键的情况下跳过「鼠标下面是不是链接」这一步（<code>LinkResolver</code> 的 T2）：鼠标不在选区上，它正好停在某个网页链接上也跟选中的文字无关。这个问题是实测时发现的——第一次测试时它把另一块屏幕上网页里的一个链接当成了选区的链接。</p>
+
+<h2>其他规则</h2>
+<ul>
+  <li><b>没有预设快捷键。</b>给所有人挑一个组合键，总会和某些人别的 App 冲突，按了没反应还发现不了。打开开关后，设置里提示去录一个。</li>
+  <li><b>不能和截图取词的快捷键相同</b>，两边设置时都会拒绝，显示「该快捷键已被占用」。</li>
+  <li><b>快捷键被别的 App 占了</b>：注册失败，保留原来那个，设置里提示被占用。</li>
+  <li><b>按快捷键时没有选中文字</b>：什么都不弹。</li>
+  <li><b>没有辅助功能权限</b>：按了也读不到，只写日志。</li>
+  <li><b>侧边栏状态</b>：暂停且快捷键可用时，显示「已暂停 · ⇧⌘C 仍可弹出」（换成实际的组合键），免得暂停了还在弹，看起来像坏了。</li>
+</ul>
+
+<h2>讨论过、没做的：按住修饰键再选</h2>
+<p>另一种方案是「按住某个键拖选才弹」。没做，因为每个修饰键拖拽时本来就有用处，而 QDuo 只能旁观、拦不住这个键：⇧ 是扩大选区，⌃+点击等于右键，⌘+点击是新标签打开或多选，⌥ 在终端和编辑器里是矩形选区（正好撞上 issue #8 那批终端）。而且得在动手选之前就决定要不要弹，快捷键则是选完再决定。</p>
+
+<h2>代码在哪</h2>
+<table>
+  <tr><th>文件</th><th>内容</th></tr>
+  <tr><td><code>Sources/PopBar/Controller/PopBarController.swift</code></td><td><code>TriggerSource</code>、<code>handleTrigger</code>、快捷键注册、<code>wantsMonitor</code></td></tr>
+  <tr><td><code>Sources/PopBar/PopBarPreferences.swift</code></td><td><code>popupHotKeyEnabled</code>、<code>popupHotKey</code></td></tr>
+  <tr><td><code>Sources/PopBar/PopBarStore.swift</code></td><td>设置页用的状态，和截图取词快捷键互相查重，打开时自动暂停（<code>pauseIfHotKeyJustBecameUsable</code>）</td></tr>
+  <tr><td><code>Sources/UI/Pages/GeneralPage.swift</code></td><td>「快捷键弹出」设置区</td></tr>
+  <tr><td><code>Sources/UI/MainWindowController.swift</code></td><td>侧边栏状态文字</td></tr>
+  <tr><td><code>Sources/PopBar/Selection/LinkResolver.swift</code></td><td><code>pointerIsOnSelection</code>：快捷键时跳过 T2</td></tr>
+</table>
+
+<p class="muted">设计讨论于 2026-09-30，与 Claude 对话中定下。</p>
+</div>
+</body>
+</html>

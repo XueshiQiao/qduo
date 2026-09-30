@@ -62,6 +62,15 @@ enum ConfigSchema {
               "type": "string", "enum": ["pill", "marker", "solid", "karaoke"],
               "description": "How the reading window marks the word being spoken: pill = a rounded pill behind the word, marker = a highlighter stroke across its lower half, solid = an accent-colour pill with the word in white, karaoke = unread text faded and the spoken word in the accent colour."
             },
+            "hotKeyEnabled": {
+              "type": "boolean",
+              "description": "Register the popup hotkey: select text, press it, and the popup opens. Works while paused, in excludedApps and in address bars — it is pressed on purpose. Paused + hotkey = the popup opens only when asked. Default false."
+            },
+            "hotKey": {
+              "type": "string",
+              "pattern": "^(([a-zA-Z0-9]+\\+)*[a-zA-Z0-9]+)?$",
+              "description": "The popup hotkey, written the way it is spoken, e.g. \"opt+x\". Empty = none recorded yet (there is no default). Same key names as ocr.hotKey, and it cannot be the same combo."
+            },
             "simulateCopy": {
               "type": "boolean",
               "description": "When an app does not hand over the selection directly, press Cmd+C for you and read the clipboard (restored afterwards). Needed for most browsers and Electron apps. Default true."

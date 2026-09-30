@@ -33,7 +33,8 @@ final class PopBarController {
     /// How close a new trigger must be to the current capsule to be treated as
     /// the same selection (keep it, don't re-read/re-show).
     private let sameSelectionRadius: CGFloat = 40
-    private var running = false
+    /// The popup hotkey (issue #4), registered while `popupHotKeyEnabled` is on.
+    private var popupHotKey: GlobalHotKey?
     private var resolveTask: Task<Void, Never>?
     /// Bumped per trigger so a slow/canceled resolve can't act on the panel after
     /// a newer trigger has taken over.
@@ -65,7 +66,18 @@ final class PopBarController {
         monitor.onDismiss = { [weak self] event in self?.handleDismiss(event) }
     }
 
-    var isRunning: Bool { running }
+    /// Whether the global input monitor is on. It runs whenever the popup can
+    /// open from a selection OR from the popup hotkey — see `wantsMonitor`.
+    var isRunning: Bool { monitor.isRunning }
+
+    /// The monitor is needed while paused too if the popup hotkey is on: it keeps
+    /// the clipboard baseline at each mouse-down that the terminal read path
+    /// compares against (`CopyOnSelectStrategy`), and it closes a popup the
+    /// hotkey opened when the user clicks elsewhere. It only watches — a paused
+    /// app still never reads a selection by itself (see `handleTrigger`).
+    private var wantsMonitor: Bool {
+        PopBarPreferences.popupEnabled || PopBarPreferences.popupHotKeyEnabled
+    }
 
     // MARK: - Lifecycle (call on main)
 
@@ -89,11 +101,12 @@ final class PopBarController {
     }
 
     /// Start global monitoring. No-op without the Accessibility permission, and
-    /// while paused — every start path comes through here, so this one check is
-    /// what keeps a pause from being undone by a permission refresh.
+    /// while paused with no popup hotkey — every start path comes through here, so
+    /// this one check is what keeps a pause from being undone by a permission
+    /// refresh.
     func start() {
-        guard !running else { return }
-        guard PopBarPreferences.popupEnabled else {
+        guard !monitor.isRunning else { return }
+        guard wantsMonitor else {
             Self.log.info("paused — not starting")
             return
         }
@@ -101,16 +114,22 @@ final class PopBarController {
             Self.log.warn("no Accessibility permission — not starting")
             return
         }
-        running = true
         monitor.start()
-        Self.log.info("started")
+        Self.log.info("started\(PopBarPreferences.popupEnabled ? "" : " (paused; watching for the popup hotkey)")")
     }
 
+    /// Close every popup and drop any read in flight, then keep the monitor only
+    /// if the popup hotkey still needs it. What a pause does, and what turning
+    /// the hotkey off while paused does.
     func stop() {
-        running = false
         resolveTask?.cancel()
-        monitor.stop()
+        resolveGeneration &+= 1
         windows.closeAll()
+        if wantsMonitor {
+            Self.log.info("paused — monitor kept for the popup hotkey")
+            return
+        }
+        monitor.stop()
         // OCR is deliberately NOT stopped here: its lifecycle is independent of the
         // selection monitor, so disabling the selection popup must not kill the OCR
         // hotkey. Full OCR teardown happens via `stopScreenOCR()` on tool shutdown.
@@ -145,9 +164,111 @@ final class PopBarController {
     /// `screenOCREnabled` is true, if the combo was taken at launch).
     var screenOCRIsRegistered: Bool { ocr.isEnabled }
 
+    /// Stop everything, the monitor included (app shutdown).
+    func shutdown() {
+        resolveTask?.cancel()
+        resolveGeneration &+= 1
+        monitor.stop()
+        windows.closeAll()
+        popupHotKey?.invalidate()
+        popupHotKey = nil
+    }
+
+    // MARK: - Popup hotkey (issue #4)
+
+    /// Register the popup hotkey if the user turned it on and recorded one (app
+    /// launch). Needs no permission to register; reading the selection when it is
+    /// pressed needs Accessibility, like every read.
+    func startPopupHotKeyIfEnabled() {
+        guard PopBarPreferences.popupHotKeyEnabled else { return }
+        _ = registerPopupHotKey()
+    }
+
+    /// Whether the popup hotkey is registered right now. False while it is off,
+    /// while none is recorded, and when the recorded combo is taken.
+    var popupHotKeyIsRegistered: Bool { popupHotKey != nil }
+
+    /// Turn the popup hotkey on or off (already persisted by the caller). Returns
+    /// false when turning it on could not register the combo — or there is none
+    /// yet, which the settings page shows as "record one" rather than an error.
+    @discardableResult
+    func setPopupHotKeyEnabled(_ on: Bool) -> Bool {
+        let ok: Bool
+        if on {
+            ok = registerPopupHotKey()
+            start()   // the monitor may be needed now (paused + hotkey)
+        } else {
+            popupHotKey?.invalidate()
+            popupHotKey = nil
+            ok = true
+            // Paused: nothing needs the monitor any more. Open windows stay.
+            if !wantsMonitor { monitor.stop() }
+        }
+        return ok
+    }
+
+    /// Persist + re-register a new popup hotkey. Returns false (keeping the
+    /// previous combo, registered and persisted) when the new one is taken.
+    @discardableResult
+    func setPopupHotKey(_ combo: KeyCombo) -> Bool {
+        guard PopBarPreferences.popupHotKeyEnabled else {
+            PopBarPreferences.popupHotKey = combo
+            return true
+        }
+        let previous = popupHotKey
+        previous?.invalidate()
+        guard let registered = GlobalHotKey(combo: combo, onPressed: { [weak self] in self?.handlePopupHotKey() }) else {
+            Self.log.warn("popup hotkey \(combo.display) is taken — keeping the previous one")
+            popupHotKey = nil
+            _ = registerPopupHotKey()
+            return false
+        }
+        popupHotKey = registered
+        PopBarPreferences.popupHotKey = combo
+        Self.log.info("popup hotkey set: \(combo.display)")
+        return true
+    }
+
+    private func registerPopupHotKey() -> Bool {
+        if popupHotKey != nil { return true }
+        guard let combo = PopBarPreferences.popupHotKey else {
+            Self.log.info("popup hotkey on, but none recorded yet")
+            return false
+        }
+        popupHotKey = GlobalHotKey(combo: combo) { [weak self] in self?.handlePopupHotKey() }
+        guard popupHotKey != nil else {
+            Self.log.warn("failed to register popup hotkey \(combo.display) — likely taken")
+            return false
+        }
+        Self.log.info("popup hotkey registered: \(combo.display)")
+        return true
+    }
+
+    private func handlePopupHotKey() {
+        guard AccessibilityAuthorizer.isTrusted else {
+            Self.log.warn("popup hotkey pressed without the Accessibility permission — nothing can be read")
+            return
+        }
+        handleTrigger(.hotKey)
+    }
+
     // MARK: - Trigger → resolve → show
 
-    private func handleTrigger() {
+    /// What opened the popup. The two share ONE read path; they differ only in
+    /// which of the "do not open here" checks apply. See `docs/popup-hotkey.html`.
+    private enum TriggerSource {
+        /// A selection gesture (drag, double / triple click): the popup opening by
+        /// itself. Stopped by the pause, excluded apps and the ignore rules.
+        case gesture
+        /// The popup hotkey: pressed on purpose, so none of those apply.
+        case hotKey
+    }
+
+    private func handleTrigger(_ source: TriggerSource = .gesture) {
+        // Paused: the popup does not open by itself, and the selection is not even
+        // read — reading can press ⌘C for the user, which a paused app must not do.
+        // Checked here, before anything else, and not later when showing.
+        if source == .gesture, !PopBarPreferences.popupEnabled { return }
         // `frontmostApplication` can momentarily return nil; fall back to the
         // menu-bar-owning app so the Electron AX-enable + self-skip still work.
         let front = NSWorkspace.shared.frontmostApplication
@@ -157,7 +278,7 @@ final class PopBarController {
         if front?.bundleIdentifier == Bundle.main.bundleIdentifier { return }
         // Apps the user excluded in Settings: selecting there never opens the popup.
         // Case-insensitive: the list is hand-editable, and bundle IDs are too.
-        if let id = front?.bundleIdentifier,
+        if source == .gesture, let id = front?.bundleIdentifier,
            PopBarPreferences.excludedApps.contains(where: { $0.caseInsensitiveCompare(id) == .orderedSame }) {
             Self.log.debug("trigger ignored — \(id) is excluded")
             // A read still running for an earlier selection must not land on top
@@ -170,17 +291,23 @@ final class PopBarController {
         // Places the popup should stay away from (a browser's address bar, the
         // user's own rules). Read here; matched off the main thread below, since
         // it asks the other app over accessibility.
-        let ignoreRules = PopBarPreferences.activeIgnoreRules
+        let ignoreRules = source == .gesture ? PopBarPreferences.activeIgnoreRules : []
         let frontID = front?.bundleIdentifier
 
-        let loc = monitor.lastMouseUpLocation
+        // A gesture ends where the mouse was released. A hotkey has no gesture, so
+        // the popup opens at the pointer — never at the selection: the ring is
+        // reached with the mouse, and opening it away from the pointer means a
+        // long move across other apps (which can dismiss it), or the pointer
+        // already resting on a sub-ring slot and opening that submenu.
+        let loc = source == .gesture ? monitor.lastMouseUpLocation : NSEvent.mouseLocation
         // Same spot + the transient already showing its actions → this is a
         // re-trigger for the SAME selection growing (e.g. double-click then triple-
         // click). We re-read so the action uses the LATEST selection (the whole
         // line), but we update the captured text *in place* — no hide/reposition —
         // so the window stays put and doesn't flicker. Pinned windows are never the
         // target of a re-trigger; the transient is.
-        let inPlace = windows.transientIsShowingActions
+        let inPlace = source == .gesture
+            && windows.transientIsShowingActions
             && hypot(loc.x - lastAnchor.x, loc.y - lastAnchor.y) < sameSelectionRadius
 
         // Only resolve the associated link when a web-preview action is actually on
@@ -205,8 +332,9 @@ final class PopBarController {
             isTerminalApp: frontID.map { id in
                 PopBarPreferences.terminalApps.contains { $0.caseInsensitiveCompare(id) == .orderedSame }
             } ?? false)
-        Self.log.debug("trigger — front=\(front?.bundleIdentifier ?? front?.localizedName ?? "nil") inPlace=\(inPlace) resolvesLinks=\(resolvesLinks)")
+        Self.log.debug("trigger (\(source == .gesture ? "selection" : "hotkey")) — front=\(front?.bundleIdentifier ?? front?.localizedName ?? "nil") inPlace=\(inPlace) resolvesLinks=\(resolvesLinks)")
 
+        let isHotKey = source == .hotKey
         resolveTask?.cancel()
         resolveGeneration &+= 1
         let generation = resolveGeneration
@@ -220,7 +348,7 @@ final class PopBarController {
                let rule = SelectionIgnoreRules.match(focused, bundleID: frontID, rules: ignoreRules) {
                 if Task.isCancelled { return }
                 await MainActor.run {
-                    guard generation == self.resolveGeneration, self.running else { return }
+                    guard generation == self.resolveGeneration else { return }
                     self.resolveGeneration &+= 1
                     Self.log.debug("trigger ignored — \(rule.name)")
                     // Growing the same selection in place leaves its popup be,
@@ -237,7 +365,8 @@ final class PopBarController {
             var url: URL?
             if resolvesLinks, let result, !result.text.isEmpty {
                 let probe = LinkProbe(text: result.text, mouseLocation: loc, screenFlipHeight: flipHeight,
-                                      focusedElement: result.focusedElement, html: result.htmlData, rtf: result.rtfData)
+                                      focusedElement: result.focusedElement, html: result.htmlData, rtf: result.rtfData,
+                                      pointerIsOnSelection: !isHotKey)
                 url = LinkResolver.resolve(probe).url
             }
             // Where the text came from, for putting a result back in its place.
@@ -246,7 +375,9 @@ final class PopBarController {
             let source = SelectionSource.capture(element: result?.sourceElement, pid: context.pid, via: result?.via)
             if Task.isCancelled { return }
             await MainActor.run {
-                guard generation == self.resolveGeneration, self.running else { return }
+                // A pause (or shutdown) bumps the generation, so a read that was
+                // still running when it happened is dropped here.
+                guard generation == self.resolveGeneration else { return }
                 guard let result, !result.text.isEmpty else {
                     if !inPlace { self.windows.dismissTransient() }   // don't tear down on an in-place refresh miss
                     return

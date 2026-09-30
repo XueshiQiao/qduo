@@ -54,6 +54,10 @@ enum ConfigSeed {
         bool("popup.autoExpandHeight", "popbar.autoExpandHeight", default: true)
         number("popup.resultFontSize", "popbar.resultFontSize",
                default: PopBarPreferences.resultFontSizeDefault)
+        // The popup hotkey (issue #4) is newer than the UserDefaults era: off, and
+        // no combo — there is nothing to carry across.
+        doc.set(path: "popup.hotKeyEnabled", to: .bool(false))
+        doc.set(path: "popup.hotKey", to: .string(""))
 
         // ── Wheel geometry ────────────────────────────────────────────────────
         number("wheel.outerRadius", "popbar.wheel.outerRadius",

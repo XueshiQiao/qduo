@@ -401,6 +401,13 @@
 "menu.pausedTooltip.format" = "%@ is paused";
 "popbar.status.running" = "Running";
 "popbar.status.paused" = "Paused";
+"popbar.status.pausedHotKey.format" = "Paused · %@ still opens it";
+"popbar.hotkey.header" = "Popup Shortcut";
+"popbar.hotkey.enable.title" = "Open with a shortcut";
+"popbar.hotkey.enable.subtitle" = "Select text, then press the shortcut to open the popup";
+"popbar.hotkey.record" = "Click to record";
+"popbar.hotkey.notSet" = "No shortcut yet — click the button above and press one.";
+"popbar.hotkey.footer" = "Turning this on pauses %@, so the popup opens only when you press the shortcut. To have it open on a selection as well, resume from the bottom of the sidebar or the menu bar. The shortcut works while paused, in excluded apps and in address bars.";
 "speech.reader.system" = "System voice";
 "speech.key.hint.qwen" = "An Alibaba Cloud Model Studio (百炼) API key, starting with sk-. Kept in the Keychain; the same key serves every Qwen-Audio reader.";
 "speech.key.hint.minimax" = "A MiniMax API key (mainland site platform.minimax.cn → Account → API Keys). Kept in the Keychain; the same key serves every MiniMax reader. Billed per character: turbo ¥2.0 and hd ¥3.5 per 10,000 characters; a Chinese character counts as 2.";

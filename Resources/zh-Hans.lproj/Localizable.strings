@@ -400,6 +400,13 @@
 "menu.pausedTooltip.format" = "%@ 已暂停";
 "popbar.status.running" = "运行中";
 "popbar.status.paused" = "已暂停";
+"popbar.status.pausedHotKey.format" = "已暂停 · %@ 仍可弹出";
+"popbar.hotkey.header" = "快捷键弹出";
+"popbar.hotkey.enable.title" = "用快捷键弹出";
+"popbar.hotkey.enable.subtitle" = "选中文字后按下快捷键，弹出菜单";
+"popbar.hotkey.record" = "点击录制";
+"popbar.hotkey.notSet" = "还没有设置快捷键：点上面的按钮，再按下想用的组合键。";
+"popbar.hotkey.footer" = "打开后会自动暂停 %@，也就是只有按快捷键才弹出。想让选中文字时也自动弹出：在侧边栏底部或菜单栏点「恢复」。暂停时、在排除的 App 里、在浏览器地址栏里，按快捷键都会弹出。";
 "speech.reader.system" = "系统语音";
 "speech.key.hint.qwen" = "阿里云百炼的 API Key，以 sk- 开头。存在钥匙串里；所有 Qwen-Audio 朗读员共用这一个 key。";
 "speech.key.hint.minimax" = "MiniMax 开放平台的 API Key（国内站 platform.minimax.cn → 账户管理 → 接口密钥）。存在钥匙串里；所有 MiniMax 朗读员共用这一个 key。按字符计费：turbo ¥2.0 / 万字符，hd ¥3.5 / 万字符，1 个汉字算 2 个字符。";

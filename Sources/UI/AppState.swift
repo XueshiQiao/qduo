@@ -81,6 +81,8 @@ final class AppState: ObservableObject {
         // when the selection popup is switched off, because they are separate
         // features that happen to live in one app.
         controller.startOCRIfEnabled()
+        // So does the popup hotkey: it works while paused, which is the point.
+        controller.startPopupHotKeyIfEnabled()
 
         // Dev/screenshot affordance: pop a sample popup shortly after launch, so the
         // capsule or wheel can be looked at without selecting text by hand. Passed
@@ -101,7 +103,7 @@ final class AppState: ObservableObject {
 
     /// Stop background work cleanly (from `applicationWillTerminate`).
     func shutdown() {
-        controller.stop()
+        controller.shutdown()
         controller.stopScreenOCR()   // not torn down by stop() — independent lifecycle
     }
 
