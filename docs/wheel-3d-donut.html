@@ -74,6 +74,8 @@ h1{font-size:28px;margin:0 0 6px}
     <button data-v="light">浅色</button><button data-v="dark">深色</button></div>
   <div class="grp"><span>倾斜</span><input type="range" id="tilt" min="0" max="16" step="1"><output id="tiltO"></output></div>
   <div class="grp"><span>厚度</span><input type="range" id="round" min="0.35" max="1" step="0.05"><output id="roundO"></output></div>
+  <div class="grp" data-k="hl"><span>选中底色</span>
+    <button data-v="blue">蓝（现在）</button><button data-v="warm">暖灰（像釉色深一点）</button><button data-v="none">无底色</button></div>
   <div class="grp" data-k="lift"><span>选中扇区</span>
     <button data-v="none">不动</button><button data-v="up">抬起</button><button data-v="down">下压</button></div>
   <div class="grp" data-k="groove"><span>分隔缝</span>
@@ -156,7 +158,7 @@ const ACCENT = {light:'#2F6FEC', dark:'#4C8DFF'};
 // ---------------------------------------------------------------------------------------------
 // Settings (the bar). Remembered per browser; falls back to defaults if storage is unavailable.
 // ---------------------------------------------------------------------------------------------
-const DEFAULTS = {material:'matte', theme:'light', tilt:8, round:0.8, lift:'none', groove:'on', zoom:'1.5', view:'B', slow:'off'};
+const DEFAULTS = {hl:'blue', material:'matte', theme:'light', tilt:8, round:0.8, lift:'none', groove:'on', zoom:'1.5', view:'B', slow:'off'};
 const S = Object.assign({}, DEFAULTS);
 try { Object.assign(S, JSON.parse(localStorage.getItem('wheel3d') || '{}')); } catch (e) {}
 // URL overrides (used for headless screenshots): ?material=glass&theme=dark&zoom=2&aim=180,84&aim2=200,146&still
@@ -185,7 +187,7 @@ uniform float uDark;
 uniform float uSel[${N}];
 uniform float uLift;                 // signed px: + raises the hovered slice, - presses it
 uniform float uGroove;
-uniform vec3 uBase, uAccent; uniform float uBaseA;
+uniform vec3 uBase, uAccent; uniform float uBaseA, uTintK;
 uniform float uGround;               // page plane depth below the ring (B shadow)
 // submenu arc
 uniform float uSubOn, uSubMid, uSubSpan, uSubR, uSubr;
@@ -248,7 +250,7 @@ vec4 shade(vec3 N, vec3 V, vec3 nL, float t, float sel, float seam, float occ){
   // the inner wall faces the hole and sees less light
   float ao = 1. - .22*smoothstep(0., 1., -t)*(1. - nL.z);
   ao *= (1. - .38*seam) * occ;
-  vec3 base = mix(uBase, uAccent, sel*(uMat==2 ? .55 : mix(.30, .20, uDark)));
+  vec3 base = mix(uBase, uAccent, sel*uTintK*(uMat==2 ? .55 : mix(.30, .20, uDark)));
   vec3 col; float a = 1.;
   if (uMat == 0){            // matte ceramic: wrapped diffuse, broad dull sheen
     float w = max((NL+.35)/1.35, 0.);
@@ -472,7 +474,7 @@ class Stage {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
     const loc = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
     this.u = {};
-    for (const n of ['uCenter','uDpr','uR','ur','uK','uM','uP','uMode','uMat','uDark','uSel','uLift','uGroove','uBase','uAccent','uBaseA','uGround',
+    for (const n of ['uCenter','uDpr','uR','ur','uK','uM','uP','uMode','uMat','uDark','uSel','uLift','uGroove','uBase','uAccent','uBaseA','uTintK','uGround',
                      'uSubOn','uSubMid','uSubSpan','uSubR','uSubr','uSubN','uSubSel'])
       this.u[n] = gl.getUniformLocation(pr, n);
   }
@@ -667,7 +669,8 @@ class Stage {
     gl.uniform1f(u.uLift, liftPx);
     gl.uniform1f(u.uGroove, S.groove === 'on' ? 1 : 0);
     gl.uniform3fv(u.uBase, hexLin(mc.base)); gl.uniform1f(u.uBaseA, mc.a);
-    gl.uniform3fv(u.uAccent, hexLin(ACCENT[theme]));
+    gl.uniform3fv(u.uAccent, hexLin(S.hl === 'warm' ? (theme === 'dark' ? '#8C8378' : '#B7AC9E') : ACCENT[theme]));
+    gl.uniform1f(u.uTintK, S.hl === 'none' ? 0 : S.hl === 'warm' ? 1.5 : 1);
     gl.uniform1f(u.uGround, g.r*K + 16*g.z);
     gl.uniform1f(u.uSubOn, subOn ? 1 : 0);
     if (sub){
