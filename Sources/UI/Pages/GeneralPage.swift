@@ -77,7 +77,9 @@ struct GeneralPage: View {
                 } label: {
                     iconLabel("command", .purple, L("popbar.ocr.hotkey.label"))
                 }
-                if store.popupHotKey == nil {
+                // A rejected combo is reported first: with none recorded yet, the
+                // "record one" hint would otherwise hide that the try failed.
+                if store.popupHotKey == nil && !popupHotKeyError {
                     Text(L("popbar.hotkey.notSet"))
                         .font(.caption).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
