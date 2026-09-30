@@ -10,7 +10,8 @@ struct ReadingPanelView: View {
     let width: CGFloat
     let fixedHeight: CGFloat
 
-    private var sentences: [SpeechPlayback.Sentence] { playback.sentences }
+    /// Where each line of the text sits, to keep the one being read in view.
+    @State private var lines = ReadingLines()
 
     /// The word highlighted before the current one, and a counter that ticks once
     /// per word. The renderer slides the pill from the previous word to the
@@ -49,9 +50,9 @@ struct ReadingPanelView: View {
                     lastHighlight = hit
                     withAnimation(WordHighlight.slide) { highlightStep += 1 }
                 }
-                .onChange(of: currentSentence) { id in
-                    guard let id else { return }
-                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .center) }
+                .onChange(of: currentLine?.minY) { _ in
+                    guard currentLine != nil else { return }
+                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(Self.lineAnchor, anchor: .center) }
                 }
             }
         }
@@ -135,64 +136,59 @@ struct ReadingPanelView: View {
             .frame(width: width, alignment: .leading)
     }
 
+    /// The text exactly as it is read — one Text, so its own line breaks are
+    /// the only ones. The sentences it is sent to the voice in never show here.
     private var textBody: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(sentences, id: \.id) { sentence in
-                sentenceText(sentence)
-                    .font(.system(size: model.resultFontSize))
-                    .foregroundStyle(Color.primary.opacity(ResultTextStyle.inkOpacity))
-                    .lineSpacing(model.resultFontSize * ResultTextStyle.lineSpacingEm)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .id(sentence.id)
+        spokenText
+            .font(.system(size: model.resultFontSize))
+            .foregroundStyle(Color.primary.opacity(ResultTextStyle.inkOpacity))
+            .lineSpacing(model.resultFontSize * ResultTextStyle.lineSpacingEm)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .overlay(alignment: .topLeading) {
+                // An invisible mark on the line being read, for the scroll view to centre.
+                if let line = currentLine {
+                    Color.clear.frame(width: 1, height: line.height)
+                        .id(Self.lineAnchor)
+                        .padding(.top, line.minY)
+                }
             }
-        }
     }
 
-    /// One sentence, with the spoken word marked when it falls inside it. The
-    /// word keeps the same font, weight and colour as the rest: only a shape is
-    /// drawn behind it, so nothing in the line moves as the highlight walks.
+    private static let lineAnchor = "reading.currentLine"
+
+    /// The whole text, with the spoken word marked. The word keeps the same font,
+    /// weight and colour as the rest: only a shape is drawn behind it, so nothing
+    /// in the line moves as the highlight walks.
     @ViewBuilder
-    private func sentenceText(_ sentence: SpeechPlayback.Sentence) -> some View {
-        let piece = sentence.text
-        let style = model.readingHighlight
-        if #available(macOS 15, *) {
-            if let hit = local(playback.highlight, in: sentence), let r = Range(hit, in: piece) {
-                marked(piece, current: r,
-                       previous: local(previousHighlight, in: sentence).flatMap { Range($0, in: piece) })
-                    .textRenderer(renderer(style, .current))
-            } else if style == .karaoke, let hit = playback.highlight {
-                // Karaoke also shades the sentences around the current one.
-                Text(verbatim: piece)
-                    .textRenderer(renderer(style, sentence.range.location < hit.location ? .read : .unread))
+    private var spokenText: some View {
+        let text = playback.text
+        if let hit = playback.highlight, hit.length > 0, let r = Range(hit, in: text) {
+            if #available(macOS 15, *) {
+                // An empty previous range would slip past the overlap check and
+                // cut the text backwards, so only a real word counts.
+                let previous = previousHighlight.flatMap { $0.length > 0 ? Range($0, in: text) : nil }
+                marked(text, current: r, previous: previous)
+                    .textRenderer(renderer(model.readingHighlight))
             } else {
-                Text(verbatim: piece)
+                // macOS 13–14 have no text renderer: fall back to a plain
+                // background on the word's own glyphs (no margin, no corners).
+                Text(fallbackAttributed(text, r))
             }
-        } else if let hit = local(playback.highlight, in: sentence), let r = Range(hit, in: piece) {
-            // macOS 13–14 have no text renderer: fall back to a plain
-            // background on the word's own glyphs (no margin, no corners).
-            Text(fallbackAttributed(piece, r))
         } else {
-            Text(verbatim: piece)
+            Text(verbatim: text)
         }
     }
 
     @available(macOS 15, *)
-    private func renderer(_ style: ReadingHighlightStyle,
-                          _ place: WordHighlight.Place) -> WordHighlight.Renderer {
-        WordHighlight.Renderer(style: style, place: place,
-                               step: highlightStep, target: highlightStep.rounded(.up))
+    private func renderer(_ style: ReadingHighlightStyle) -> WordHighlight.Renderer {
+        WordHighlight.Renderer(style: style, step: highlightStep, target: highlightStep.rounded(.up))
     }
 
-    private func local(_ hit: NSRange?, in sentence: SpeechPlayback.Sentence) -> NSRange? {
-        guard let hit, let overlap = sentence.range.intersection(hit), overlap.length > 0 else { return nil }
-        return NSRange(location: overlap.location - sentence.range.location, length: overlap.length)
-    }
-
-    /// The sentence as one Text, with the current word (and the previous one, when
-    /// it is in this sentence and doesn't overlap) tagged for the renderer. Every
-    /// part is verbatim, so `*`, `_` etc. in the text are never read as Markdown.
+    /// The text as one Text, with the current word (and the previous one, when
+    /// it doesn't overlap) tagged for the renderer. Every part is verbatim, so
+    /// `*`, `_` etc. in the text are never read as Markdown.
     @available(macOS 15, *)
     private func marked(_ piece: String, current: Range<String.Index>,
                         previous: Range<String.Index>?) -> Text {
@@ -221,9 +217,12 @@ struct ReadingPanelView: View {
         return result
     }
 
-    private var currentSentence: Int? {
+    /// The line the spoken word is on, in the text's own coordinates.
+    private var currentLine: ReadingLines.Line? {
         guard let hit = playback.highlight else { return nil }
-        return sentences.first { NSLocationInRange(hit.location, $0.range) }?.id
+        return lines.line(at: hit.location, text: playback.text, width: width,
+                          fontSize: model.resultFontSize,
+                          lineSpacing: model.resultFontSize * ResultTextStyle.lineSpacingEm)
     }
 
     private var height: CGFloat {
@@ -263,10 +262,6 @@ enum WordHighlight {
     @available(macOS 15, *)
     struct PreviousMark: TextAttribute {}
 
-    /// Where a sentence stands relative to the word being spoken (karaoke shades
-    /// whole sentences by it).
-    enum Place { case read, current, unread }
-
     /// How faded karaoke's not-yet-read text is.
     static let unreadOpacity = 0.4
 
@@ -274,12 +269,10 @@ enum WordHighlight {
     /// SwiftUI laid it out — the text is never restyled, so nothing re-flows.
     /// While `step` animates up to `target`, the mark is interpolated from the
     /// previous word's box to the current one's, so it slides along the line
-    /// instead of jumping. On a new line, or when the previous word is in another
-    /// sentence, it simply appears there.
+    /// instead of jumping. On a new line it simply appears there.
     @available(macOS 15, *)
     struct Renderer: TextRenderer {
         var style: ReadingHighlightStyle
-        var place: Place
         var step: Double
         var target: Double
         var animatableData: Double {
@@ -288,12 +281,6 @@ enum WordHighlight {
         }
 
         func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
-            if style == .karaoke && place != .current {
-                var c = ctx
-                if place == .unread { c.opacity = unreadOpacity }
-                for line in layout { c.draw(line) }
-                return
-            }
             // The current word's box per line it sits on, the line each is on,
             // and the previous word's box.
             var current: [(box: CGRect, line: CGRect)] = []
@@ -418,5 +405,43 @@ enum WordHighlight {
                           width: a.width + (b.width - a.width) * t,
                           height: a.height + (b.height - a.height) * t)
         }
+    }
+}
+
+/// Where each line of the reading text sits, laid out with TextKit the same way
+/// the Text is (system font, same width and line spacing), so the scroll view can
+/// keep the line being read in view. Laid out once per text, width and font size
+/// — not on every word. It can be off by a line where TextKit and SwiftUI wrap a
+/// word differently; that only nudges where the view scrolls.
+final class ReadingLines {
+    struct Line: Equatable { let minY: CGFloat; let height: CGFloat }
+
+    private var key: (text: String, width: CGFloat, fontSize: CGFloat)?
+    private var storage: NSTextStorage?
+    private var manager = NSLayoutManager()
+    private var container = NSTextContainer()
+
+    func line(at location: Int, text: String, width: CGFloat,
+              fontSize: CGFloat, lineSpacing: CGFloat) -> Line? {
+        if key?.text != text || key?.width != width || key?.fontSize != fontSize {
+            key = (text, width, fontSize)
+            let style = NSMutableParagraphStyle()
+            style.lineSpacing = lineSpacing
+            let storage = NSTextStorage(string: text, attributes: [
+                .font: NSFont.systemFont(ofSize: fontSize), .paragraphStyle: style,
+            ])
+            manager = NSLayoutManager()
+            container = NSTextContainer(size: CGSize(width: width, height: .greatestFiniteMagnitude))
+            container.lineFragmentPadding = 0
+            manager.addTextContainer(container)
+            storage.addLayoutManager(manager)
+            manager.ensureLayout(for: container)
+            self.storage = storage
+        }
+        let length = (text as NSString).length
+        guard length > 0 else { return nil }
+        let glyph = manager.glyphIndexForCharacter(at: min(max(location, 0), length - 1))
+        let rect = manager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        return Line(minY: rect.minY, height: rect.height)
     }
 }

@@ -45,20 +45,6 @@ final class SpeechPlayback: ObservableObject, Identifiable {
 
     var isActive: Bool { state == .preparing || state == .playing || state == .paused }
 
-    struct Sentence { let id: Int; let range: NSRange; let text: String }
-    /// The text in sentences with their UTF-16 ranges, for the reading window
-    /// (computed once: the window redraws on every word).
-    private(set) lazy var sentences: [Sentence] = {
-        var out: [Sentence] = []
-        var location = 0
-        for (i, piece) in TextChunker.sentences(text).enumerated() {
-            let length = (piece as NSString).length
-            out.append(Sentence(id: i, range: NSRange(location: location, length: length), text: piece))
-            location += length
-        }
-        return out
-    }()
-
     func start() {
         backend?.stop()
         highlight = nil
