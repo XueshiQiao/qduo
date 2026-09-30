@@ -10,8 +10,8 @@ private enum DonutUniform {
     static let cx = 0, cy = 1, scale = 2, R = 3, r = 4, K = 5, M = 6, P = 15
     static let mat = 16, dark = 17, groove = 18, base = 19, baseA = 22, accent = 23
     static let ground = 26, subOn = 27, subMid = 28, subSpan = 29, subR = 30, subr = 31
-    static let subN = 32, subFull = 33, n = 34, shadow = 35, reach = 36
-    static let count = 37
+    static let subN = 32, subFull = 33, n = 34, shadow = 35, reach = 36, lift = 37, tint = 38
+    static let count = 39
 }
 
 /// The donut's surface colours, per material and appearance (sRGB). Tuned in the
@@ -20,6 +20,7 @@ private struct DonutPalette {
     var base: (Float, Float, Float)
     var baseAlpha: Float
     var accent: (Float, Float, Float)
+    var tint: Float
     var shadow: Float
 
     init(material: DonutMaterial, dark: Bool, pageDark: Bool) {
@@ -30,9 +31,18 @@ private struct DonutPalette {
         case (.glass, true):    base = (0x12, 0x15, 0x1C); baseAlpha = 0.30
         }
         base = (base.0 / 255, base.1 / 255, base.2 / 255)
-        // The hovered slice leans toward the app icon's blue (#2563EB, lifted to
-        // #60A5FA in dark mode) — the same colour the hovered label takes.
-        accent = dark ? (0x60 / 255.0, 0xA5 / 255.0, 0xFA / 255.0) : (0x25 / 255.0, 0x63 / 255.0, 0xEB / 255.0)
+        switch material {
+        case .ceramic:
+            // No colour on a hovered ceramic slice: blue read as a stain on white
+            // porcelain and warm grey as dirt (both tried by the user). The slice is
+            // pressed in instead, and its icon and name take the brand blue.
+            accent = (1, 1, 1)
+            tint = 0
+        case .glass:
+            // Glass can hold colour: the app icon's blue (#2563EB, #60A5FA in dark mode).
+            accent = dark ? (0x60 / 255.0, 0xA5 / 255.0, 0xFA / 255.0) : (0x25 / 255.0, 0x63 / 255.0, 0xEB / 255.0)
+            tint = 1
+        }
         // A shadow has to be darker to read on a dark page.
         shadow = (pageDark ? 0.5 : 0.24) * (material == .glass ? 0.55 : 1)
     }
@@ -271,9 +281,12 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
         // The page sits a little below the tube's underside.
         u[U.ground] = Float(m.crest + 16)
         u[U.shadow] = pal.shadow
-        // How far past the solid the shadow may reach before it is cut to nothing —
-        // see the comment in the shader about clicks.
-        u[U.reach] = 14
+        // How far past the solid the shadow may reach before it fades to nothing.
+        u[U.reach] = 40
+        // The hovered slice (and child) is pressed in a little, like a button — it
+        // must not grow, which a raised slice would (it comes toward the eye).
+        u[U.lift] = -3.5
+        u[U.tint] = pal.tint
         u[U.n] = Float(max(m.sliceCount, 1))
         if let s = m.sub {
             u[U.subOn] = 1

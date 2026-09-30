@@ -459,7 +459,10 @@ struct WheelActionsView: View {
         let d = canvas
         let dark = isDark
         let surfaceDark = donutSurfaceDark(material)
-        return ZStack {
+        // All of it is drawn in a mouse-transparent window under the popup: see
+        // `DonutLayerWindow` for why drawing it here would swallow every click in
+        // the wheel's square, the hole included.
+        return DonutLayerWindow(content: ZStack {
             if material == .glass {
                 DonutMotionReader(motion: motion) { m in
                     LiquidGlassBlur(dark: dark)
@@ -478,7 +481,8 @@ struct WheelActionsView: View {
         // wheel changes its state inside `withAnimation(openSpring)`, and letting
         // SwiftUI animate the same things on top made switching groups leave the
         // previous group's names fading out on the far side of the wheel.
-        .transaction { $0.animation = nil }
+        .transaction { $0.animation = nil })
+        .frame(width: d, height: d)
     }
 
     /// Whether the donut's SURFACE is dark. Only glass follows the system into dark
@@ -520,7 +524,10 @@ struct WheelActionsView: View {
                     ForEach(Array(open.children.enumerated()), id: \.element.id) { j, child in
                         let a = s.mid - s.span / 2 + (Double(j) + 0.5) * step
                         donutGlyph(child, hot: hoveredChild == child.id, soft: false, dark: surfaceDark)
-                            .position(flat(a, s.centre))
+                            // A little inside the tube's midline: out on the second ring
+                            // the lean carries the names outward the most, and at the
+                            // midline they read as sliding off the outer edge.
+                            .position(flat(a, s.centre - s.tube * 0.22))
                     }
                 }
                 .frame(width: canvas, height: canvas)

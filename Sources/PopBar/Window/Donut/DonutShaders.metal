@@ -38,6 +38,8 @@ using namespace metal;
 #define U_N        34
 #define U_SHADOW   35
 #define U_REACH    36
+#define U_LIFT     37   // signed: + raises the hovered slice, - presses it
+#define U_TINT     38   // how strongly the hovered slice takes the accent
 
 constant float PI = 3.14159265;
 
@@ -118,7 +120,7 @@ static float3 env(float3 R, float d) {
 }
 
 // N, V world; nL local normal; t = position across the tube (-1 inner edge ... +1 outer)
-static float4 shade(thread const Ctx &c, float3 N, float3 V, float3 nL, float t, float sel, float seam) {
+static float4 shade(thread const Ctx &c, float3 N, float3 V, float3 nL, float t, float sel, float seam, float occ) {
     constant float *u = c.u;
     float dark = u[U_DARK];
     int mat = int(u[U_MAT]);
@@ -131,10 +133,10 @@ static float4 shade(thread const Ctx &c, float3 N, float3 V, float3 nL, float t,
                      mix(float3(0.62, 0.64, 0.68), float3(0.20, 0.21, 0.24), dark), 0.5 + 0.5 * N.z);
     // the inner wall faces the hole and sees less light
     float ao = 1 - 0.22 * smoothstep(0.0, 1.0, -t) * (1 - nL.z);
-    ao *= 1 - 0.38 * seam;
+    ao *= (1 - 0.38 * seam) * occ;
     float3 base = float3(u[U_BASE], u[U_BASE + 1], u[U_BASE + 2]);
     float3 accent = float3(u[U_ACCENT], u[U_ACCENT + 1], u[U_ACCENT + 2]);
-    base = mix(base, accent, sel * (mat == 2 ? 0.55 : mix(0.30, 0.20, dark)));
+    base = mix(base, accent, sel * u[U_TINT] * (mat == 2 ? 0.55 : mix(0.30, 0.20, dark)));
     float3 col; float a = 1;
     if (mat == 0) {            // matte ceramic: wrapped diffuse, broad dull sheen
         float w = max((NL + 0.35) / 1.35, 0.0);
@@ -162,14 +164,16 @@ static float4 shade(thread const Ctx &c, float3 N, float3 V, float3 nL, float t,
 static float mainD(thread const Ctx &c, float3 p) {
     constant float *u = c.u;
     int i, nb; float bd; sliceInfo(c, p.xy, i, nb, bd);
-    float2 q = float2(length(p.xy) - u[U_R], p.z / u[U_K]);
+    float z = p.z - u[U_LIFT] * selBlend(c, i, nb, bd);
+    float2 q = float2(length(p.xy) - u[U_R], z / u[U_K]);
     return (length(q) - u[U_r]) * u[U_K] + u[U_GROOVE] * 1.1 * (1 - smoothstep(0.0, 1.6, bd));
 }
 static float subD(thread const Ctx &c, float3 p) {
     constant float *u = c.u;
     if (u[U_SUBON] < 0.5) return 1e5;
     float2 cp; int ci, cn; float cbd; subInfo(c, p.xy, cp, ci, cn, cbd);
-    float3 v = float3(p.xy - cp, p.z / u[U_K]);
+    float z = p.z - u[U_LIFT] * subSelBlend(c, ci, cn, cbd);
+    float3 v = float3(p.xy - cp, z / u[U_K]);
     return (length(v) - u[U_SUBr]) * u[U_K] + u[U_GROOVE] * 1.1 * (1 - smoothstep(0.0, 1.6, cbd));
 }
 static float mapD(thread const Ctx &c, float3 p) { return min(mainD(c, p), subD(c, p)); }
@@ -179,7 +183,7 @@ static float3 calcN(thread const Ctx &c, float3 p) {
 }
 static float boundR(thread const Ctx &c) {
     constant float *u = c.u;
-    return max(u[U_R] + u[U_r], u[U_SUBON] > 0.5 ? u[U_SUBR] + u[U_SUBr] : 0.0) + 3;
+    return max(u[U_R] + u[U_r], u[U_SUBON] > 0.5 ? u[U_SUBR] + u[U_SUBr] : 0.0) + abs(u[U_LIFT]) + 3;
 }
 static bool march(thread const Ctx &c, float3 ro, float3 rd, thread float &t, thread float &dmin) {
     float Rb = boundR(c); dmin = 1e5;
@@ -213,25 +217,29 @@ static float4 sampleAt(thread const Ctx &c, float2 p, thread float &edge) {
     float3 ro = Mt * roW, rd = Mt * rdW; float t, dmin;
     if (march(c, ro, rd, t, dmin)) {
         float3 pos = ro + rd * t; float3 nL = calcN(c, pos); float3 nW = c.M * nL;
-        float tt, sel, seam;
+        float tt, sel, seam, occ = 1;
+        // Where a slice sits lower than its neighbour, the neighbour's wall shades it:
+        // real geometry, so a pressed slice reads as pressed, not just recoloured.
+        float lift = u[U_LIFT];
         if (subD(c, pos) < mainD(c, pos)) {
             float2 cp; int ci, cn; float cbd; subInfo(c, pos.xy, cp, ci, cn, cbd);
             float2 v = pos.xy - cp;
             tt = clamp(dot(v, cp / max(length(cp), 1e-3)) / u[U_SUBr], -1.0, 1.0);
             sel = subSelBlend(c, ci, cn, cbd); seam = u[U_GROOVE] * (1 - smoothstep(0.0, 1.4, cbd));
+            if (lift != 0) { float dz = (c.subSel[cn] - c.subSel[ci]) * sign(lift); occ = 1 - 0.35 * max(dz, 0.0) * (1 - smoothstep(0.0, 5.0, cbd)); }
         } else {
             int i, nb; float bd; sliceInfo(c, pos.xy, i, nb, bd);
             tt = clamp((length(pos.xy) - u[U_R]) / u[U_r], -1.0, 1.0);
             sel = selBlend(c, i, nb, bd); seam = u[U_GROOVE] * (1 - smoothstep(0.0, 1.4, bd));
+            if (lift != 0) { float dz = (c.sel[nb] - c.sel[i]) * sign(lift); occ = 1 - 0.35 * max(dz, 0.0) * (1 - smoothstep(0.0, 5.0, bd)); }
         }
         edge = (dot(nW, -rdW) < 0.45 || seam > 0.02) ? 1 : 0;
-        return shade(c, nW, -rdW, nL, tt, sel, seam);
+        return shade(c, nW, -rdW, nL, tt, sel, seam, occ);
     }
     edge = dmin * u[U_SCALE] < 2 ? 1 : 0;
     // missed: the ray lands on the page below — the soft shadow the ring casts.
-    // Faded to exactly nothing within `reach` of the ring: every pixel with any alpha
-    // at all belongs to this window as far as the window server is concerned, so a
-    // wide faint shadow would swallow clicks meant for the app underneath.
+    // (It is drawn in a window that ignores the mouse, so it can be as soft and wide
+    // as it looks best; `reach` only bounds the work.)
     float3 gp = roW + rdW * ((-u[U_GROUND] - roW.z) / rdW.z);
     float3 Ls = normalize(float3(0, 0.32, 1));
     float sh = 1 - smoothstep(0.0, 1.0, softShadow(c, Mt * gp, Mt * Ls));
@@ -239,10 +247,6 @@ static float4 sampleAt(thread const Ctx &c, float2 p, thread float &edge) {
     // distance from the nearest solid, measured on the page
     float away = mapD(c, Mt * float3(gp.xy, 0));
     a *= 1 - smoothstep(u[U_REACH] * 0.45, u[U_REACH], away);
-    // Nothing at all inside the hole: the selection shows through it and clicks
-    // there must reach the app underneath (the panel's hit-test assumes the hole
-    // is empty, measured flat on screen — so measure it the same way here).
-    if (length(p) < u[U_R] - u[U_r]) a = 0;
     if (a < 1.0 / 255.0) a = 0;
     return float4(0, 0, 0, a);
 }

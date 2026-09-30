@@ -1,0 +1,125 @@
+import AppKit
+import SwiftUI
+
+/// Shows `content` in a borderless child window that lies exactly under this view
+/// and IGNORES THE MOUSE — so nothing in it can ever take a click.
+///
+/// Why the 3D ring needs this: the window server treats every pixel of a Metal
+/// drawable, and of a SwiftUI `drawingGroup`, as the window's own for clicks — even
+/// where it is fully transparent (measured: a transparent MTKView or drawingGroup in
+/// a clear panel swallowed a click that a plain transparent view let through). Drawn
+/// in the popup itself, the donut would make its whole square, the hole included,
+/// deaf to the app underneath. Drawn here, below the popup, it is only a picture;
+/// the popup keeps nothing but the near-invisible ring it already uses to receive
+/// clicks (`WheelActionsView.interactiveSurface`), exactly like the flat styles.
+///
+/// A child window moves, hides and re-shows with its parent (also measured), so the
+/// popup's own show/hide/drag logic needs no changes.
+struct DonutLayerWindow<Content: View>: NSViewRepresentable {
+    let content: Content
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> Anchor {
+        let a = Anchor()
+        a.coordinator = context.coordinator
+        context.coordinator.hosting.rootView = AnyView(content)
+        return a
+    }
+
+    func updateNSView(_ a: Anchor, context: Context) {
+        context.coordinator.hosting.rootView = AnyView(content)
+        a.sync()
+    }
+
+    static func dismantleNSView(_ a: Anchor, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    final class Coordinator {
+        let window: NSWindow
+        let hosting = NSHostingView(rootView: AnyView(EmptyView()))
+        private var observers: [NSObjectProtocol] = []
+
+        init() {
+            let w = NSWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: true)
+            w.isOpaque = false
+            w.backgroundColor = .clear
+            w.hasShadow = false
+            w.ignoresMouseEvents = true
+            w.isReleasedWhenClosed = false
+            w.animationBehavior = .none
+            w.contentView = hosting
+            hosting.sizingOptions = []   // this window's size comes from the anchor, never from SwiftUI
+            window = w
+        }
+
+        func attach(to parent: NSWindow) {
+            guard window.parent !== parent else { return }
+            detach()
+            window.collectionBehavior = parent.collectionBehavior
+            window.appearance = parent.appearance
+            parent.addChildWindow(window, ordered: .below)
+            // Moving or resizing the popup moves this view on screen without re-running
+            // SwiftUI. A child window is meant to follow its parent by itself, but not
+            // when the parent is repositioned while hidden — which is exactly how the
+            // popup is shown at a new spot (measured: the ring stayed where the popup
+            // had been created). So follow explicitly.
+            for name in [NSWindow.didResizeNotification, NSWindow.didMoveNotification] {
+                observers.append(NotificationCenter.default.addObserver(
+                    forName: name, object: parent, queue: .main) { [weak self] _ in
+                        self?.onParentChange?()
+                    })
+            }
+        }
+
+        func detach() {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            window.parent?.removeChildWindow(window)
+            window.orderOut(nil)
+        }
+
+        var onParentChange: (() -> Void)?
+
+        deinit { detach() }
+    }
+
+    /// The placeholder inside the popup: invisible, never hit, and the thing whose
+    /// screen rectangle the child window copies.
+    final class Anchor: NSView {
+        weak var coordinator: Coordinator?
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override var isOpaque: Bool { false }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let c = coordinator else { return }
+            if let w = window {
+                c.onParentChange = { [weak self] in self?.sync() }
+                c.attach(to: w)
+                sync()
+            } else {
+                c.detach()
+            }
+        }
+
+        override func setFrameSize(_ newSize: NSSize) {
+            super.setFrameSize(newSize)
+            sync()
+        }
+
+        override func setFrameOrigin(_ newOrigin: NSPoint) {
+            super.setFrameOrigin(newOrigin)
+            sync()
+        }
+
+        func sync() {
+            guard let c = coordinator, let w = window else { return }
+            if c.window.parent == nil { c.attach(to: w) }
+            let r = w.convertToScreen(convert(bounds, to: nil))
+            if c.window.frame != r { c.window.setFrame(r, display: false) }
+        }
+    }
+}
