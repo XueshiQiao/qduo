@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>立体甜甜圈圆环</title>
+<style>
+:root{--bg:#f5f5f7;--ink:#1d1d1f;--muted:#6e6e73;--card:#fff;--line:rgba(0,0,0,.1);--accent:#0a7aff;
+  --pageBg:rgba(255,255,255,.86);--pageInk:#2b2a30;--sel:rgba(120,140,255,.28)}
+:root[data-theme="dark"]{--bg:#101012;--ink:#f5f5f7;--muted:#a1a1a6;--card:#1c1c1e;--line:rgba(255,255,255,.12);--accent:#3b9bff;
+  --pageBg:rgba(28,28,32,.88);--pageInk:#dedce4;--sel:rgba(90,120,255,.34)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+main{max-width:1320px;margin:0 auto;padding:28px 16px 80px}
+h1{font-size:28px;margin:0 0 6px}
+.lede{color:var(--muted);max-width:980px;margin:0 0 14px}
+.bar{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;display:flex;gap:14px 20px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.grp>span{font-size:12.5px;color:var(--muted);margin-right:2px}
+.bar button{font:inherit;font-size:13px;padding:4px 11px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.bar button.on{background:var(--accent);color:#fff;border-color:transparent}
+.bar input[type=range]{width:110px;accent-color:var(--accent)}
+.bar output{font-size:12.5px;color:var(--muted);min-width:34px;font-variant-numeric:tabular-nums}
+.stages{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.stages.only{grid-template-columns:1fr}
+@media (max-width:980px){.stages{grid-template-columns:1fr}}
+.cap{margin:0 0 8px}
+.cap b{font-size:15px}
+.cap p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.cap .fps{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-left:8px;font-weight:400}
+
+/* the desk: a slice of the Field Notes page behind the ring (same as the other wheel mockups) */
+.desk{position:relative;height:var(--dh,560px);border-radius:14px;overflow:hidden;cursor:default;
+  background:radial-gradient(60% 70% at 0% 0%,#f6c9a9 0%,transparent 70%),radial-gradient(60% 70% at 100% 0%,#b7c6f7 0%,transparent 70%),radial-gradient(60% 70% at 0% 100%,#a6e3cf 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#cdb7f3 0%,transparent 70%),#efeaf1}
+:root[data-theme="dark"] .desk{background:radial-gradient(60% 70% at 0% 0%,#5a3a2c 0%,transparent 70%),radial-gradient(60% 70% at 100% 0%,#2b3668 0%,transparent 70%),radial-gradient(60% 70% at 0% 100%,#1f4a3e 0%,transparent 70%),radial-gradient(60% 70% at 100% 100%,#40306a 0%,transparent 70%),#17161b}
+.page{position:absolute;inset:18px;border-radius:16px;background:var(--pageBg);padding:22px 26px;
+  font:400 18px/1.7 "New York","Iowan Old Style",Georgia,serif;color:var(--pageInk);overflow:hidden}
+.page .kick{font:600 12px/1 -apple-system,sans-serif;letter-spacing:.14em;color:#a26a45;margin-bottom:10px}
+.page h3{font-size:28px;line-height:1.2;margin:0 0 12px;font-weight:700}
+.page p{margin:0 0 12px}
+.page mark{background:var(--sel);color:inherit}
+
+/* ring layers. .anchor is a 0x0 point at the ring's centre; every layer is positioned around it. */
+.anchor{position:absolute;left:50%;top:var(--at,42%);width:0;height:0}
+.tilt{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;pointer-events:none}
+.tilt.p3d{transform-style:preserve-3d}
+.anchor canvas{position:absolute;display:block;pointer-events:none}
+.shadowA{position:absolute;border-radius:50%;pointer-events:none}
+.glassblur{position:absolute;display:none}
+.glassblur.ring{border-radius:50%}
+.glassblur.on{display:block}
+.lbl{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font:500 var(--fs,9px)/1.15 -apple-system,BlinkMacSystemFont,sans-serif;white-space:nowrap;
+  color:var(--glyph);text-shadow:0 0 var(--halo) var(--haloC);transition:color .15s}
+.lbl>span{display:flex;max-width:var(--lw,64px)}
+.lbl .t{overflow:hidden;text-overflow:ellipsis}
+.lbl svg{width:var(--is,15px);height:var(--is,15px);filter:drop-shadow(0 0 calc(var(--halo) * .8) var(--haloC))}
+.lbl.hot{color:var(--glyphHot);font-weight:700}
+.lbl.soft{color:var(--glyphHot);font-weight:700;opacity:.6}
+.lbl .chev{opacity:.7;flex:none}
+.notes{margin-top:22px;font-size:14px;color:var(--muted);max-width:1000px}
+.notes b{color:var(--ink)}
+</style>
+</head>
+<body>
+<main>
+<h1>立体甜甜圈圆环 · 原型</h1>
+<p class="lede">把鼠标移到圆环上：圆环会朝鼠标那一侧往下沉，移开后回弹。移到底部的 <b>Files &amp; Web</b> 上，二级菜单会从主圆环底下滑出来，成为外面一圈同材质的“半个甜甜圈”；往外推到它上面就能选子项。A 和 B 用同一套材质和光照，区别只在立体感从哪里来：A 是<b>用光影画出来</b>的，B 是<b>真的算了一个 3D 模型</b>。</p>
+
+<div class="bar" id="bar">
+  <div class="grp" data-k="material"><span>材质</span>
+    <button data-v="matte">哑光陶瓷</button><button data-v="glossy">光滑釉面</button><button data-v="glass">半透明玻璃</button></div>
+  <div class="grp" data-k="theme"><span>主题</span>
+    <button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+  <div class="grp"><span>倾斜</span><input type="range" id="tilt" min="0" max="16" step="1"><output id="tiltO"></output></div>
+  <div class="grp"><span>厚度</span><input type="range" id="round" min="0.35" max="1" step="0.05"><output id="roundO"></output></div>
+  <div class="grp" data-k="lift"><span>选中扇区</span>
+    <button data-v="none">不动</button><button data-v="up">抬起</button><button data-v="down">下压</button></div>
+  <div class="grp" data-k="groove"><span>分隔缝</span>
+    <button data-v="on">有</button><button data-v="off">无</button></div>
+  <div class="grp" data-k="zoom"><span>缩放</span>
+    <button data-v="1">1×（实际大小）</button><button data-v="1.5">1.5×</button><button data-v="2">2×</button></div>
+  <div class="grp" data-k="view"><span>显示</span>
+    <button data-v="both">A + B</button><button data-v="A">只看 A</button><button data-v="B">只看 B</button></div>
+  <div class="grp" data-k="slow"><span>动画</span>
+    <button data-v="off">正常</button><button data-v="on">慢放 ¼</button></div>
+  <div class="grp"><button id="replay">重新弹出</button></div>
+</div>
+
+<div class="stages" id="stages">
+  <section id="secA">
+    <div class="cap"><b>A · 平面 + 光影，整块倾斜</b><span class="fps" id="fpsA"></span>
+      <p>圆环本身是一张平面图，立体感靠每个像素按“如果这里是圆管，光该怎么打”算出来的明暗；倾斜时整张图跟着转，同时明暗重新计算，所以高光会跟着动。</p></div>
+    <div class="desk" data-stage="A"></div>
+  </section>
+  <section id="secB">
+    <div class="cap"><b>B · 真 3D 甜甜圈</b><span class="fps" id="fpsB"></span>
+      <p>对每个像素发一条视线去碰一个真实的 3D 模型（光线追踪），侧面厚度、遮挡、落在页面上的阴影都是算出来的，不是画的。</p></div>
+    <div class="desk" data-stage="B"></div>
+  </section>
+</div>
+
+<div class="notes">
+  <p><b>尺寸</b>：外半径 114、内半径 54、标签 9pt、图标 15pt；二级菜单与主圆环间隔 6、宽 52、每个子项 40°，都和 app 默认值相同（1× 即实际大小）。</p>
+  <p><b>二级菜单</b>：展开方式照搬 app —— 停在有子菜单的扇区上就从主圆环底下滑出，弹簧参数相同；还在滑动时子项不响应，停稳后才能选中；鼠标停在子项上时，父扇区变成浅一点的高亮。和 app 不同的地方：两头是圆管自然形成的圆头，不是 app 里半径 14 的圆角；另外 app 里“判断鼠标是在往外伸还是在绕圈”的防误触逻辑没有搬进来（这里只有一个带子菜单的扇区，影响不大）。</p>
+  <p><b>玻璃</b>：两边的玻璃都只是“磨砂模糊背景 + 光影”，没有做透过玻璃看到的扭曲。app 的圆环浮在别的程序上面，拿不到后面的画面去做扭曲，只能用系统的模糊，原型不该承诺 app 做不到的效果。</p>
+  <p><b>帧率</b>：标题旁的数字是这一侧最近一次动画的实际帧率，用来判断 B 的计算量在你的机器上是否吃力。</p>
+</div>
+</main>
+
+<template id="page">
+  <div class="page">
+    <div class="kick">FIELD NOTES</div>
+    <h3>The quiet hour before the city wakes</h3>
+    <p>Most mornings I walk the long way to the station, past the bakery and the shuttered flower stall.</p>
+    <p><mark>The light arrives slowly, first on the rooftops, then on the upper windows, and for a few minutes the whole street feels like it belongs to no one.</mark></p>
+    <p>By seven the trams are full again and the moment is gone until tomorrow.</p>
+  </div>
+</template>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------------------------------------
+// Data: the seven default actions, in the same clockwise-from-top order as the app screenshot.
+// ---------------------------------------------------------------------------------------------
+const ICONS = {
+  translate:'<path d="M5 4.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-6.5L8 20.5V17H5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z"/><path d="M9.2 14l2.8-6.5 2.8 6.5M10.2 11.8h3.6"/>',
+  polish:'<path d="M4 20 15 9"/><path d="M13.5 7.5l3 3"/><path d="M18 2.5v3.4M16.3 4.2h3.4M20.5 9.5v2.2M19.4 10.6h2.2M9.5 3v2.2M8.4 4.1h2.2"/>',
+  explain:'<path d="M9.2 18h5.6M10.2 21h3.6"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.1v.1h5v-.1c0-.8.4-1.5 1.1-2.1A6 6 0 0 0 12 3z"/>',
+  folder:'<path d="M3 7.2a2 2 0 0 1 2-2h4.2l2 2.2H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+  speak:'<path d="M3.5 9.2h3.8L12 5.2v13.6l-4.7-4H3.5z" fill="currentColor"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.3 6.6a7.6 7.6 0 0 1 0 10.8"/>',
+  copy:'<rect x="8.5" y="7.5" width="11" height="13.5" rx="2"/><path d="M5 16.5V5a2 2 0 0 1 2-2h8.5"/>',
+  eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  compass:'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>'
+};
+const ACTIONS = [
+  {t:'Translate',i:'translate'},{t:'Polish',i:'polish'},{t:'Explain',i:'explain'},
+  {t:'Files & Web',i:'folder',children:[{t:'Web Preview',i:'compass'},{t:'Preview',i:'eye'},{t:'Show in Finder',i:'folder'}]},
+  {t:'Search',i:'search'},{t:'Speak',i:'speak'},{t:'Copy',i:'copy'}
+];
+const N = ACTIONS.length, SUBMAX = 4;
+// App defaults (WheelLayout): ring 114/54, submenu seam 6 / thickness 52 / 40° per child, overshoot slack 26.
+const GEO = {outer:114, inner:54, slack:26, seam:6, thick:52, subStep:40, label:9, icon:15, labelW:64, persp:900};
+// SwiftUI .spring(response: 0.36, dampingFraction: 0.9) — the app's openSpring — as stiffness/damping.
+const OPEN_K = Math.pow(2*Math.PI/0.36, 2), OPEN_C = 2*0.9*Math.sqrt(OPEN_K);
+
+// Material colours (sRGB hex) per theme. alpha < 1 only for glass.
+const MAT = {
+  matte:  {id:0, light:{base:'#ECEAE6',a:1},   dark:{base:'#3B3C42',a:1}},
+  glossy: {id:1, light:{base:'#DADCE2',a:1},   dark:{base:'#141519',a:1}},
+  glass:  {id:2, light:{base:'#FFFFFF',a:.05}, dark:{base:'#12151C',a:.30}}
+};
+const ACCENT = {light:'#2F6FEC', dark:'#4C8DFF'};
+
+// ---------------------------------------------------------------------------------------------
+// Settings (the bar). Remembered per browser; falls back to defaults if storage is unavailable.
+// ---------------------------------------------------------------------------------------------
+const DEFAULTS = {material:'matte', theme:'light', tilt:8, round:0.8, lift:'none', groove:'on', zoom:'1.5', view:'B', slow:'off'};
+const S = Object.assign({}, DEFAULTS);
+try { Object.assign(S, JSON.parse(localStorage.getItem('wheel3d') || '{}')); } catch (e) {}
+// URL overrides (used for headless screenshots): ?material=glass&theme=dark&zoom=2&aim=180,84&aim2=200,146&still
+const Q = new URLSearchParams(location.search);
+for (const k of Object.keys(DEFAULTS)) if (Q.has(k)) S[k] = typeof DEFAULTS[k] === 'string' ? Q.get(k) : +Q.get(k);
+function save(){ try { localStorage.setItem('wheel3d', JSON.stringify(S)); } catch (e) {} }
+
+// ---------------------------------------------------------------------------------------------
+// Shader. One program for both stages: uMode 0 = A (flat plane, analytic tube normals),
+// uMode 1 = B (ray-marched solids). Lighting (shade) is shared, so the only difference between
+// the two stages is where the geometry comes from.
+// Coordinates: CSS px relative to the ring centre, y UP, z toward the viewer. The eye sits at
+// (0,0,P), which is exactly what CSS `perspective(P)` does — so DOM labels line up with B.
+// Angles "cw" are clockwise from twelve o'clock, like the app's slice order.
+// Two solids: the main torus, and the submenu — the same tube swept along an ARC (round ends).
+// ---------------------------------------------------------------------------------------------
+const FRAG = `#version 300 es
+precision highp float;
+out vec4 outColor;
+uniform vec2 uCenter; uniform float uDpr;
+uniform float uR, ur, uK;            // tube centre radius, tube radius, height squash (thickness)
+uniform mat3 uM;                     // ring local -> world rotation (the tilt)
+uniform float uP;                    // eye distance
+uniform int uMode, uMat;
+uniform float uDark;
+uniform float uSel[${N}];
+uniform float uLift;                 // signed px: + raises the hovered slice, - presses it
+uniform float uGroove;
+uniform vec3 uBase, uAccent; uniform float uBaseA;
+uniform float uGround;               // page plane depth below the ring (B shadow)
+// submenu arc
+uniform float uSubOn, uSubMid, uSubSpan, uSubR, uSubr;
+uniform int uSubN;
+uniform float uSubSel[${SUBMAX}];
+const float PI = 3.14159265;
+const int NS = ${N};
+
+float cwAngle(vec2 p){ float a = atan(p.x, p.y); return a < 0. ? a + 2.*PI : a; }
+float wrapPI(float a){ return a - 2.*PI*floor((a + PI)/(2.*PI)); }
+
+// main ring: slice index, the neighbour across the nearest divider, arc distance (px) to it
+void sliceInfo(vec2 p, out int idx, out int nb, out float bd){
+  float st = 2.*PI/float(NS); float f = cwAngle(p)/st;
+  idx = int(floor(f)) % NS; float fr = fract(f); float rho = length(p);
+  if (fr < .5){ bd = fr*st*rho; nb = (idx-1+NS)%NS; } else { bd = (1.-fr)*st*rho; nb = (idx+1)%NS; }
+}
+float selBlend(int i, int nb, float bd){ return mix(uSel[nb], uSel[i], smoothstep(-2., 2., bd)); }
+
+// submenu: nearest point on the arc's centre line, child index, neighbour, arc distance to the
+// nearest INTERIOR divider (the two ends have none)
+void subInfo(vec2 p, out vec2 c, out int ci, out int cn, out float cbd){
+  float d = wrapPI(cwAngle(p) - uSubMid);
+  float hl = max(uSubSpan*.5 - uSubr/max(uSubR, 1.), 0.);   // the round caps fill the rest of the span
+  float a = uSubMid + clamp(d, -hl, hl);
+  c = uSubR*vec2(sin(a), cos(a));
+  float st = uSubSpan/float(uSubN);
+  float f = (d + uSubSpan*.5)/max(st, 1e-4);
+  ci = clamp(int(floor(f)), 0, uSubN-1);
+  float fr = clamp(f - float(ci), 0., 1.), rho = length(p);
+  cbd = 1e4; cn = ci;
+  if (ci > 0 && fr*st*rho < cbd){ cbd = fr*st*rho; cn = ci-1; }
+  if (ci < uSubN-1 && (1.-fr)*st*rho < cbd){ cbd = (1.-fr)*st*rho; cn = ci+1; }
+}
+float subSelBlend(int ci, int cn, float cbd){ return mix(uSubSel[cn], uSubSel[ci], smoothstep(-2., 2., cbd)); }
+
+// soft box: a window-shaped light up-left. Glossy surfaces show it as a crisp highlight.
+float softbox(vec3 R){
+  if (R.z <= .05) return 0.;
+  vec2 uv = R.xy/R.z; vec2 q = abs(uv - vec2(-.55,.62)) - vec2(.34,.2);
+  return 1. - smoothstep(-.03, .10, max(q.x,q.y));
+}
+vec3 env(vec3 R){
+  float d = uDark;
+  vec3 top = mix(vec3(1.0), vec3(.34), d), hor = mix(vec3(.60,.62,.67), vec3(.10,.105,.12), d), gnd = mix(vec3(.26,.26,.28), vec3(.02), d);
+  vec3 c = R.z > 0. ? mix(hor, top, pow(R.z, .6)) : mix(hor, gnd, pow(-R.z, .5));
+  c += softbox(R)*mix(2.0, 1.5, d);
+  c += pow(max(dot(R, normalize(vec3(.7,-.6,.35))), 0.), 14.) * mix(.3, .22, d); // faint rim light low-right
+  return c;
+}
+
+// N, V world; nL local normal; t = position across the tube (-1 inner edge .. +1 outer edge)
+vec4 shade(vec3 N, vec3 V, vec3 nL, float t, float sel, float seam, float occ){
+  vec3 L = normalize(vec3(-.45,.55,.85));
+  float NL = dot(N,L), NV = max(dot(N,V), 0.);
+  vec3 H = normalize(L+V); float NH = max(dot(N,H), 0.);
+  vec3 R = reflect(-V, N);
+  float Fr = pow(1.-NV, 5.);
+  vec3 amb = mix(mix(vec3(.30,.30,.32), vec3(.05,.05,.06), uDark), mix(vec3(.62,.64,.68), vec3(.20,.21,.24), uDark), .5+.5*N.z);
+  // the inner wall faces the hole and sees less light
+  float ao = 1. - .22*smoothstep(0., 1., -t)*(1. - nL.z);
+  ao *= (1. - .38*seam) * occ;
+  vec3 base = mix(uBase, uAccent, sel*(uMat==2 ? .55 : mix(.30, .20, uDark)));
+  vec3 col; float a = 1.;
+  if (uMat == 0){            // matte ceramic: wrapped diffuse, broad dull sheen
+    float w = max((NL+.35)/1.35, 0.);
+    col = base*(amb*.85 + w*.95)*ao + .05*pow(NH,14.) + (.03+.25*Fr)*env(R)*.35*ao;
+  } else if (uMat == 1){     // glossy glaze: sharp specular + mirror-ish reflection of the soft box
+    col = base*(amb*.62 + max(NL,0.)*.72)*ao;
+    float F = .05 + .95*Fr;
+    col += F*env(R)*ao + F*softbox(R)*mix(14., 7., uDark) + 1.4*pow(NH,900.) + .12*pow(NH,70.);
+  } else {                   // glass: frosted backdrop comes from the DOM; here only body tint + light
+    float edge = smoothstep(.62, .98, abs(t));
+    vec3 body = base*(.85 + .35*max(NL,0.));
+    body = mix(body, mix(vec3(.40,.42,.48), vec3(.62,.66,.74), uDark), edge);
+    float aB = uBaseA + edge*mix(.30,.22,uDark) + .10*sel;
+    float F = .04 + .96*Fr;
+    vec3 refl = F*env(R) + F*softbox(R)*8.;
+    vec3 spec = vec3(1.8*pow(NH,650.) + .22*pow(NH,55.));
+    vec2 cd = -normalize(L.xy);
+    float cau = pow(max(dot(N.xy/max(length(N.xy), 1e-4), cd), 0.), 3.)*(1.-edge)*smoothstep(.15,.7,abs(t))*.28;
+    vec3 add = (refl*.85 + spec + cau)*(1. - .5*seam);
+    vec3 pm = body*aB*ao + add;
+    a = clamp(aB + dot(add, vec3(.3333))*.85, 0., 1.);
+    col = pm/max(a, 1e-4);
+  }
+  col = pow(clamp(col, 0., 1.), vec3(1./2.2));
+  return vec4(col*a, a);
+}
+
+// ---------- B: signed distances. Slices raised/pressed, dividers carved.
+float mainD(vec3 p){
+  int i, nb; float bd; sliceInfo(p.xy, i, nb, bd);
+  float z = p.z - uLift*selBlend(i, nb, bd);
+  vec2 q = vec2(length(p.xy) - uR, z/uK);
+  return (length(q) - ur)*uK + uGroove*1.1*(1. - smoothstep(0., 1.6, bd));
+}
+float subD(vec3 p){
+  if (uSubOn < .5) return 1e5;
+  vec2 c; int ci, cn; float cbd; subInfo(p.xy, c, ci, cn, cbd);
+  float z = p.z - uLift*subSelBlend(ci, cn, cbd);
+  vec3 v = vec3(p.xy - c, z/uK);
+  return (length(v) - uSubr)*uK + uGroove*1.1*(1. - smoothstep(0., 1.6, cbd));
+}
+float mapD(vec3 p){ return min(mainD(p), subD(p)); }
+vec3 calcN(vec3 p){
+  vec2 e = vec2(.04, -.04);
+  return normalize(e.xyy*mapD(p+e.xyy) + e.yyx*mapD(p+e.yyx) + e.yxy*mapD(p+e.yxy) + e.xxx*mapD(p+e.xxx));
+}
+float boundR(){ return max(uR + ur, uSubOn > .5 ? uSubR + uSubr : 0.) + abs(uLift) + 3.; }
+// dmin: closest the ray came to the surface when it missed (for edge anti-aliasing)
+bool march(vec3 ro, vec3 rd, out float t, out float dmin){
+  float Rb = boundR(); dmin = 1e5;
+  float b = dot(ro, rd), c = dot(ro, ro) - Rb*Rb, h = b*b - c;
+  if (h < 0.) return false;
+  h = sqrt(h); t = -b - h; float tmax = -b + h;
+  for (int k = 0; k < 140; k++){
+    float d = mapD(ro + rd*t); dmin = min(dmin, d);
+    if (d < .01) return true;
+    t += d*.7; if (t > tmax) return false;
+  }
+  return false;
+}
+float softShadow(vec3 ro, vec3 rd){
+  float res = 1., t = 1.;
+  for (int k = 0; k < 44; k++){
+    float h = mapD(ro + rd*t);
+    res = min(res, 3.2*h/t);
+    t += clamp(h, 1., 14.);
+    if (res < .001 || t > 260.) break;
+  }
+  return clamp(res, 0., 1.);
+}
+
+// edge = 1 when this pixel needs super-sampling (silhouette, grazing angle, or a divider)
+vec4 sampleB(vec2 p, out float edge){
+  vec3 roW = vec3(0., 0., uP), rdW = normalize(vec3(p, -uP));
+  mat3 Mt = transpose(uM);
+  vec3 ro = Mt*roW, rd = Mt*rdW; float t, dmin;
+  if (march(ro, rd, t, dmin)){
+    vec3 pos = ro + rd*t; vec3 nL = calcN(pos); vec3 nW = uM*nL;
+    float tt, sel, seam, occ = 1.;
+    if (subD(pos) < mainD(pos)){
+      vec2 c; int ci, cn; float cbd; subInfo(pos.xy, c, ci, cn, cbd);
+      vec2 v = pos.xy - c;
+      tt = clamp(dot(v, c/max(length(c), 1e-3))/uSubr, -1., 1.);
+      sel = subSelBlend(ci, cn, cbd); seam = uGroove*(1. - smoothstep(0., 1.4, cbd));
+      if (uLift != 0.){ float dz = (uSubSel[cn] - uSubSel[ci])*sign(uLift); occ = 1. - .35*max(dz,0.)*(1. - smoothstep(0., 5., cbd)); }
+    } else {
+      int i, nb; float bd; sliceInfo(pos.xy, i, nb, bd);
+      tt = clamp((length(pos.xy) - uR)/ur, -1., 1.);
+      sel = selBlend(i, nb, bd); seam = uGroove*(1. - smoothstep(0., 1.4, bd));
+      // contact darkening where a raised slice meets a lower neighbour (real geometry, real occlusion)
+      if (uLift != 0.){ float dz = (uSel[nb] - uSel[i])*sign(uLift); occ = 1. - .35*max(dz,0.)*(1. - smoothstep(0., 5., bd)); }
+    }
+    edge = (dot(nW, -rdW) < .45 || seam > .02) ? 1. : 0.;
+    return shade(nW, -rdW, nL, tt, sel, seam, occ);
+  }
+  edge = dmin*uDpr < 2. ? 1. : 0.;
+  // missed: the ray lands on the page below — soft shadow cast by the ring
+  float tg = (-uGround - roW.z)/rdW.z; vec3 gp = roW + rdW*tg;
+  float fade = 1. - smoothstep(boundR() + 10., boundR() + 60., length(gp.xy));
+  if (fade <= 0.) return vec4(0.);
+  vec3 Ls = normalize(vec3(0., .32, 1.));
+  float sh = (1. - smoothstep(0., 1., softShadow(Mt*gp, Mt*Ls)))*fade;
+  float a = sh*mix(.24, .50, uDark)*(uMat==2 ? .55 : 1.);
+  return vec4(0., 0., 0., a);
+}
+
+// ---------- A: flat tube shading for one object, given the nearest centre-line point c
+vec4 shadeFlat(vec2 p, vec2 c, float r, float sel, float seam, float occ, out float cov){
+  vec2 v = p - c; float e = length(v);
+  cov = clamp((r - e)*uDpr + .5, 0., 1.);
+  if (cov <= 0.) return vec4(0.);
+  float t = clamp(e/r, 0., .999), s = sqrt(1. - t*t);
+  vec2 dir = v/max(e, 1e-3);
+  vec3 nL = normalize(vec3(uK*t/s*dir, 1.));
+  float ts = t*sign(dot(v, c));                     // + toward the outside of the wheel
+  vec3 wp = uM*vec3(p, uK*r*s);
+  vec3 V = normalize(vec3(0., 0., uP) - wp);
+  return shade(uM*nL, V, nL, ts, sel, seam, occ);
+}
+
+void main(){
+  if (uMode == 1){
+    vec2 p0 = (gl_FragCoord.xy - uCenter)/uDpr; float edge;
+    vec4 c0 = sampleB(p0, edge);
+    if (edge < .5){ outColor = c0; return; }
+    vec4 acc = vec4(0.); float e2;
+    acc += sampleB((gl_FragCoord.xy + vec2(-.125,-.375) - uCenter)/uDpr, e2);
+    acc += sampleB((gl_FragCoord.xy + vec2( .375,-.125) - uCenter)/uDpr, e2);
+    acc += sampleB((gl_FragCoord.xy + vec2( .125, .375) - uCenter)/uDpr, e2);
+    acc += sampleB((gl_FragCoord.xy + vec2(-.375, .125) - uCenter)/uDpr, e2);
+    outColor = acc*.25; return;
+  }
+  // ---------- A: the canvas IS the ring plane (CSS tilts the whole canvas), so pixel = local point
+  vec2 p = (gl_FragCoord.xy - uCenter)/uDpr; float rho = length(p);
+  // A cannot move geometry, so a raised / pressed slice is faked with a contact shadow on the
+  // lower side of each divider
+  int i, nb; float bd; sliceInfo(p, i, nb, bd);
+  float occ = 1.;
+  if (uLift != 0.){ float dz = (uSel[nb] - uSel[i])*sign(uLift); occ = 1. - .35*max(dz,0.)*(1. - smoothstep(0., 5., bd)); }
+  float covM;
+  vec4 m = shadeFlat(p, uR*p/max(rho, 1e-3), ur, selBlend(i, nb, bd), uGroove*(1. - smoothstep(0., 1.4, bd)), occ, covM);
+  vec4 s = vec4(0.); float covS = 0.;
+  if (uSubOn > .5 && covM*m.a < 1.){
+    vec2 c; int ci, cn; float cbd; subInfo(p, c, ci, cn, cbd);
+    float occS = 1.;
+    if (uLift != 0.){ float dz = (uSubSel[cn] - uSubSel[ci])*sign(uLift); occS = 1. - .35*max(dz,0.)*(1. - smoothstep(0., 5., cbd)); }
+    s = shadeFlat(p, c, uSubr, subSelBlend(ci, cn, cbd), uGroove*(1. - smoothstep(0., 1.4, cbd)), occS, covS);
+  }
+  // the main ring sits on top of the submenu (which slides out from under it)
+  outColor = m*covM + s*covS*(1. - covM*m.a);
+}`;
+const VERT = `#version 300 es
+in vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+
+function hexLin(h){ const n = parseInt(h.slice(1), 16); return [(n>>16)&255, (n>>8)&255, n&255].map(v => Math.pow(v/255, 2.2)); }
+
+// Rodrigues: rotation by |w| radians about axis w (in-plane), y-up. Returns row-major 3x3.
+function rotFrom(wx, wy){
+  const th = Math.hypot(wx, wy);
+  if (th < 1e-6) return [1,0,0, 0,1,0, 0,0,1];
+  const x = wx/th, y = wy/th, z = 0, c = Math.cos(th), s = Math.sin(th), C = 1 - c;
+  return [c+x*x*C, x*y*C-z*s, x*z*C+y*s,
+          y*x*C+z*s, c+y*y*C, y*z*C-x*s,
+          z*x*C-y*s, z*y*C+x*s, c+z*z*C];
+}
+// Same rotation for CSS (y DOWN): flip y on both sides, then emit column-major matrix3d.
+function cssMatrix(R, P){
+  const f = [1,-1,1], m = (r,c) => f[r]*f[c]*R[r*3+c];
+  return `perspective(${P}px) matrix3d(${m(0,0)},${m(1,0)},${m(2,0)},0,${m(0,1)},${m(1,1)},${m(2,1)},0,${m(0,2)},${m(1,2)},${m(2,2)},0,0,0,0,1)`;
+}
+const mulT = (R, v) => [R[0]*v[0]+R[3]*v[1]+R[6]*v[2], R[1]*v[0]+R[4]*v[1]+R[7]*v[2], R[2]*v[0]+R[5]*v[1]+R[8]*v[2]];
+const wrapPI = a => a - 2*Math.PI*Math.floor((a + Math.PI)/(2*Math.PI));
+const cwAngle = (x, y) => { const a = Math.atan2(x, y); return a < 0 ? a + 2*Math.PI : a; };
+const STEP = 2*Math.PI/N;
+
+function makeLabel(act){
+  const d = document.createElement('div'); d.className = 'lbl';
+  d.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[act.i]}</svg><span><span class="t">${act.t}</span>${act.children ? '<span class="chev">&nbsp;›</span>' : ''}</span>`;
+  return d;
+}
+
+// ---------------------------------------------------------------------------------------------
+class Stage {
+  constructor(desk, mode){
+    this.desk = desk; this.mode = mode;
+    desk.appendChild(document.getElementById('page').content.cloneNode(true));
+    const a = this.anchor = document.createElement('div'); a.className = 'anchor'; desk.appendChild(a);
+    if (mode === 'A'){ this.shadow = document.createElement('div'); this.shadow.className = 'shadowA'; a.appendChild(this.shadow); }
+    this.tGlass = this.layer(false);
+    this.glassSub = document.createElement('div'); this.glassSub.className = 'glassblur'; this.tGlass.appendChild(this.glassSub);
+    this.glass = document.createElement('div'); this.glass.className = 'glassblur ring'; this.tGlass.appendChild(this.glass);
+    this.canvas = document.createElement('canvas');
+    if (mode === 'A'){ this.tCanvas = this.layer(false); this.tCanvas.appendChild(this.canvas); } else a.appendChild(this.canvas);
+    this.tLabels = this.layer(true);
+    this.labels = ACTIONS.map(act => { const d = makeLabel(act); this.tLabels.appendChild(d); return d; });
+    this.subLabels = [];
+    // tilt spring, per-slice highlight, submenu unfold spring, pop-in spring
+    this.w = [0,0]; this.v = [0,0]; this.tgt = [0,0];
+    this.sel = new Float32Array(N); this.subSel = new Float32Array(SUBMAX);
+    this.hover = -1; this.child = -1; this.onSecond = false;
+    this.parent = -1; this.open = false; this.unf = 0; this.unfV = 0;
+    this.appear = 1; this.appearV = 0;
+    this.frames = 0; this.fpsT = 0; this.fpsEl = document.getElementById('fps' + mode);
+    this.initGL();
+    desk.addEventListener('pointermove', e => { this.ptr = [e.clientX, e.clientY]; });
+    desk.addEventListener('pointerleave', () => { this.ptr = null; kick(); });
+    this.dirty = true;
+  }
+  layer(p3d){ const d = document.createElement('div'); d.className = 'tilt' + (p3d ? ' p3d' : ''); this.anchor.appendChild(d); return d; }
+
+  initGL(){
+    const gl = this.gl = this.canvas.getContext('webgl2', {premultipliedAlpha:true, alpha:true, antialias:false});
+    if (!gl){ this.desk.insertAdjacentHTML('beforeend', '<p style="position:absolute;inset:auto 0 10px;text-align:center;color:#c00">这个浏览器不支持 WebGL2</p>'); return; }
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const pr = this.pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, VERT)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FRAG)); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    this.u = {};
+    for (const n of ['uCenter','uDpr','uR','ur','uK','uM','uP','uMode','uMat','uDark','uSel','uLift','uGroove','uBase','uAccent','uBaseA','uGround',
+                     'uSubOn','uSubMid','uSubSpan','uSubR','uSubr','uSubN','uSubSel'])
+      this.u[n] = gl.getUniformLocation(pr, n);
+  }
+
+  // geometry in CSS px at the current zoom
+  geo(){
+    const z = +S.zoom, ro = GEO.outer*z, ri = GEO.inner*z, seam = GEO.seam*z, thick = GEO.thick*z;
+    return {z, ro, ri, R:(ro+ri)/2, r:(ro-ri)/2, P:GEO.persp*z, slack:GEO.slack*z,
+            seam, thick, subIn:ro+seam, subOut:ro+seam+thick, subMidR:ro+seam+thick/2, rs:thick/2};
+  }
+
+  // the submenu's shape at unfold u: it slides out from UNDER the main ring (app: SubmenuRing.radii)
+  subShape(){
+    const g = this.geo(), kids = this.parent >= 0 ? ACTIONS[this.parent].children : null;
+    if (!kids) return null;
+    const n = kids.length, full = n*GEO.subStep >= 360;
+    const spanFull = full ? 2*Math.PI : n*GEO.subStep*Math.PI/180;
+    const u = Math.max(0, this.unf), tuck = (1 - u)*(g.seam + g.thick);
+    const inner = g.subIn - tuck;
+    return {n, kids, mid:(this.parent + .5)*STEP, span:spanFull*u, spanFull, R:inner + g.rs, r:g.rs, u};
+  }
+
+  layout(){
+    const g = this.geo(), dpr = window.devicePixelRatio || 1;
+    const reach = g.subOut + 40*g.z;                          // ring + submenu + shadow
+    const dh = Math.max(560, Math.round(reach*2 + 30));
+    this.desk.style.setProperty('--dh', dh + 'px');
+    this.desk.style.setProperty('--at', Math.round(dh/2 - (g.subOut - g.ro)/2) + 'px');
+    const half = Math.ceil(this.mode === 'A' ? g.subOut + 3 : g.subOut + 56*g.z);
+    const side = half*2;
+    Object.assign(this.canvas.style, {width:side+'px', height:side+'px', left:-half+'px', top:-half+'px'});
+    this.canvas.width = Math.round(side*dpr); this.canvas.height = Math.round(side*dpr);
+    this.dpr = this.canvas.width/side;
+    const gs = this.glass.style, gr = g.ro + 1;
+    Object.assign(gs, {width:gr*2+'px', height:gr*2+'px', left:-gr+'px', top:-gr+'px'});
+    const mask = `radial-gradient(circle closest-side, transparent ${g.ri-.5}px, #000 ${g.ri+.5}px, #000 ${gr-1.5}px, transparent ${gr}px)`;
+    gs.webkitMaskImage = gs.maskImage = mask;
+    const ss = this.glassSub.style, sr = g.subOut + 2;
+    Object.assign(ss, {width:sr*2+'px', height:sr*2+'px', left:-sr+'px', top:-sr+'px'});
+    this.glassSubR = sr;
+    if (this.shadow){
+      const shr = g.ro + 22*g.z;
+      Object.assign(this.shadow.style, {width:shr*2+'px', height:shr*2+'px', left:-shr+'px', top:-shr+'px', filter:`blur(${7*g.z}px)`});
+    }
+    for (const d of [...this.labels, ...this.subLabels]){ d.style.setProperty('--fs', GEO.label*g.z+'px'); d.style.setProperty('--is', GEO.icon*g.z+'px'); d.style.setProperty('--lw', GEO.labelW*g.z+'px'); }
+    this.dirty = true;
+  }
+
+  // un-project the pointer onto the ring-local plane at height h (the top of a tube)
+  unproject(qx, qy, h, g){
+    const R = this.R || rotFrom(0,0);
+    const E = mulT(R, [0,0,g.P]), D = mulT(R, [qx, qy, -g.P]);
+    const t = (h - E[2])/D[2];
+    return [E[0] + D[0]*t, E[1] + D[1]*t];
+  }
+
+  // Where is the pointer: which slice / child, should the submenu be open, and where to tilt.
+  // Mirrors the app's hit(at:) — hole / parent / seam(keep) / child / outside.
+  sense(){
+    const g = this.geo(), K = +S.round, B = this.mode === 'B';
+    if (!this.ptr){ this.tgt = [0,0]; this.hover = -1; this.child = -1; this.onSecond = false; this.open = false; return; }
+    const rc = this.anchor.getBoundingClientRect();
+    const qx = this.ptr[0] - rc.left, qy = -(this.ptr[1] - rc.top), d = Math.hypot(qx, qy);
+    const reach = (this.open ? g.subOut : g.ro) + g.slack;
+    // tilt: toward the pointer, growing from nothing at the centre to full at the ring's midline
+    if (d > reach){ this.tgt = [0,0]; }
+    else {
+      let m = Math.min(d/g.R, 1); m = m*m*(3 - 2*m);
+      const th = (+S.tilt)*Math.PI/180*m, ux = qx/(d||1), uy = qy/(d||1);
+      this.tgt = [-uy*th, ux*th];            // axis = z × u, so the side under the pointer sinks
+    }
+    const [mx, my] = this.unproject(qx, qy, B ? g.r*K : 0, g), rm = Math.hypot(mx, my);
+    this.child = -1; this.onSecond = false;
+    if (rm < g.ri){ this.hover = -1; this.open = false; return; }                  // hole
+    if (rm <= g.ro){                                                                  // a slice
+      const i = Math.floor(cwAngle(mx, my)/STEP) % N;
+      this.hover = i;
+      if (ACTIONS[i].children){ if (this.parent !== i){ this.parent = i; this.unf = 0; this.unfV = 0; } this.open = true; }
+      else this.open = false;
+      return;
+    }
+    if (!this.open){ this.hover = -1; return; }                                       // outside
+    const sh = this.subShape();
+    const [sx, sy] = this.unproject(qx, qy, B ? sh.r*K : 0, g), rs = Math.hypot(sx, sy);
+    if (rs > g.subOut + g.slack){ this.hover = -1; this.open = false; return; }       // outside
+    this.onSecond = true;
+    if (rs <= g.subIn) return;                                                        // seam: keep
+    // the second ring is not live while it is still moving (app: settledAt)
+    if (Math.abs(1 - this.unf) > .02 || Math.abs(this.unfV) > .3) return;
+    const dd = wrapPI(cwAngle(sx, sy) - sh.mid);
+    if (Math.abs(dd) > sh.spanFull/2) return;
+    this.child = Math.min(sh.n - 1, Math.floor((dd + sh.spanFull/2)/(sh.spanFull/sh.n)));
+  }
+
+  step(dt){
+    this.sense();
+    let moving = false;
+    const k = 190, c = 2*Math.sqrt(k)*.72;   // slightly under-damped: one small settle, no wobble
+    for (let j = 0; j < 2; j++){
+      const acc = k*(this.tgt[j] - this.w[j]) - c*this.v[j];
+      this.v[j] += acc*dt; this.w[j] += this.v[j]*dt;
+      if (Math.abs(this.v[j]) > 1e-4 || Math.abs(this.tgt[j] - this.w[j]) > 1e-4) moving = true;
+    }
+    { const to = this.open ? 1 : 0, acc = OPEN_K*(to - this.unf) - OPEN_C*this.unfV;
+      this.unfV += acc*dt; this.unf += this.unfV*dt;
+      if (Math.abs(to - this.unf) > 1e-4 || Math.abs(this.unfV) > 1e-3) moving = true;
+      else { this.unf = to; this.unfV = 0; } }
+    const f = 1 - Math.exp(-dt*16);
+    const ease = (arr, i, to) => { const nv = arr[i] + (to - arr[i])*f; if (Math.abs(nv - arr[i]) > 1e-4) moving = true; arr[i] = Math.abs(to - nv) < 1e-4 ? to : nv; };
+    // while the pointer is out on the second ring, the parent keeps a softer tint (as in the app)
+    for (let i = 0; i < N; i++) ease(this.sel, i, i === this.hover ? (this.onSecond ? .55 : 1) : 0);
+    for (let i = 0; i < SUBMAX; i++) ease(this.subSel, i, i === this.child ? 1 : 0);
+    { const ka = 260, ca = 2*Math.sqrt(ka)*.8, acc = ka*(1 - this.appear) - ca*this.appearV;
+      this.appearV += acc*dt; this.appear += this.appearV*dt;
+      if (Math.abs(1 - this.appear) > 1e-4 || Math.abs(this.appearV) > 1e-4) moving = true; }
+    return moving || this.dirty;
+  }
+
+  syncSubLabels(kids){
+    if (this.subKids === kids) return;
+    this.subKids = kids;
+    this.subLabels.forEach(d => d.remove());
+    this.subLabels = (kids || []).map(act => { const d = makeLabel(act); this.tLabels.appendChild(d); return d; });
+    this.layout();
+  }
+
+  render(){
+    this.dirty = false;
+    const g = this.geo(), R = this.R = rotFrom(this.w[0], this.w[1]);
+    const theme = S.theme, mat = MAT[S.material], mc = mat[theme];
+    const liftPx = S.lift === 'up' ? 5*g.z : S.lift === 'down' ? -3.5*g.z : 0;
+    const K = +S.round, B = this.mode === 'B';
+    const css = cssMatrix(R, g.P);
+    for (const el of [this.tGlass, this.tCanvas, this.tLabels]) if (el) el.style.transform = css;
+    const sc = .86 + .14*this.appear;
+    this.anchor.style.transform = `scale(${sc})`; this.anchor.style.opacity = Math.min(1, Math.max(0, (this.appear - .1)/.6));
+    const sub = this.subShape(), subOn = !!sub && sub.u > .002;
+    this.syncSubLabels(sub ? sub.kids : null);
+    // glass: the frosted backdrop is plain CSS (what NSVisualEffectView would give the app)
+    const glass = S.material === 'glass';
+    this.glass.classList.toggle('on', glass);
+    this.glassSub.classList.toggle('on', glass && subOn);
+    if (glass){
+      const bf = `blur(${6*g.z}px) saturate(1.6)`, bg = theme === 'dark' ? 'rgba(18,20,26,.24)' : 'rgba(255,255,255,.10)';
+      for (const el of [this.glass, this.glassSub]){ el.style.backdropFilter = el.style.webkitBackdropFilter = bf; el.style.background = bg; }
+      if (subOn){
+        // the submenu's outline is a thick arc with round caps — draw exactly that as an SVG mask
+        const C = this.glassSubR, hl = Math.max(sub.span/2 - sub.r/sub.R, 0), a0 = sub.mid - hl, a1 = sub.mid + hl;
+        const pt = a => `${(C + Math.sin(a)*sub.R).toFixed(2)} ${(C - Math.cos(a)*sub.R).toFixed(2)}`;
+        const path = hl > 1e-3 ? `M${pt(a0)} A${sub.R} ${sub.R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(a1)}` : `M${pt(sub.mid)} l0.01 0`;
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${2*C}' height='${2*C}'><path d='${path}' fill='none' stroke='black' stroke-width='${2*sub.r - 1}' stroke-linecap='round'/></svg>`;
+        const url = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
+        const ss = this.glassSub.style; ss.webkitMaskImage = ss.maskImage = url; ss.opacity = sub.u;
+      }
+    }
+    // labels sit on the tube's top surface (B) / on the plane (A)
+    this.labels.forEach((d, i) => {
+      const a = (i + .5)*STEP, x = Math.sin(a)*g.R, y = -Math.cos(a)*g.R;
+      const z = (B ? g.r*K : 0) + liftPx*this.sel[i]*(B ? 1 : .6) + .5;
+      d.style.transform = `translate3d(${x}px,${y}px,${z}px) translate(-50%,-50%)`;
+      d.classList.toggle('hot', i === this.hover && !this.onSecond);
+      d.classList.toggle('soft', i === this.hover && this.onSecond);
+    });
+    if (sub) this.subLabels.forEach((d, j) => {
+      const st = sub.span/sub.n, a = sub.mid - sub.span/2 + (j + .5)*st;
+      const x = Math.sin(a)*sub.R, y = -Math.cos(a)*sub.R, z = (B ? sub.r*K : 0) + liftPx*this.subSel[j]*(B ? 1 : .6) + .5;
+      d.style.transform = `translate3d(${x}px,${y}px,${z}px) translate(-50%,-50%)`;
+      d.style.opacity = Math.max(0, (sub.u - .35)/.65);
+      d.classList.toggle('hot', j === this.child);
+    });
+    // A's shadow: a blurred ring on the page, nudged toward the side that sinks
+    if (this.shadow){
+      const lean = [this.w[1], -this.w[0]];  // (x right, y up) direction of the sinking side, scaled by the angle
+      const sx = lean[0]*40*g.z, sy = -lean[1]*40*g.z + 7*g.z;
+      const al = theme === 'dark' ? .5 : .24, mul = glass ? .55 : 1;
+      this.shadow.style.background = `radial-gradient(circle closest-side, transparent ${g.ri - 10*g.z}px, rgba(0,0,0,${al*mul}) ${g.ri + 6*g.z}px, rgba(0,0,0,${al*mul}) ${g.ro - 6*g.z}px, transparent ${g.ro + 12*g.z}px)`;
+      this.shadow.style.transform = `translate(${sx}px,${sy}px)`;
+    }
+    const gl = this.gl; if (!gl) return;
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+    const u = this.u;
+    gl.uniform2f(u.uCenter, this.canvas.width/2, this.canvas.height/2);
+    gl.uniform1f(u.uDpr, this.dpr);
+    gl.uniform1f(u.uR, g.R); gl.uniform1f(u.ur, g.r); gl.uniform1f(u.uK, K);
+    gl.uniformMatrix3fv(u.uM, true, new Float32Array(R));  // R is row-major
+    gl.uniform1f(u.uP, g.P);
+    gl.uniform1i(u.uMode, B ? 1 : 0);
+    gl.uniform1i(u.uMat, mat.id);
+    gl.uniform1f(u.uDark, theme === 'dark' ? 1 : 0);
+    gl.uniform1fv(u.uSel, this.sel);
+    gl.uniform1f(u.uLift, liftPx);
+    gl.uniform1f(u.uGroove, S.groove === 'on' ? 1 : 0);
+    gl.uniform3fv(u.uBase, hexLin(mc.base)); gl.uniform1f(u.uBaseA, mc.a);
+    gl.uniform3fv(u.uAccent, hexLin(ACCENT[theme]));
+    gl.uniform1f(u.uGround, g.r*K + 16*g.z);
+    gl.uniform1f(u.uSubOn, subOn ? 1 : 0);
+    if (sub){
+      gl.uniform1f(u.uSubMid, sub.mid); gl.uniform1f(u.uSubSpan, sub.span);
+      gl.uniform1f(u.uSubR, sub.R); gl.uniform1f(u.uSubr, sub.r); gl.uniform1i(u.uSubN, sub.n);
+    }
+    gl.uniform1fv(u.uSubSel, this.subSel);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    this.frames++;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+const stages = [...document.querySelectorAll('.desk')].map(d => new Stage(d, d.dataset.stage));
+
+function applyTheme(){
+  const r = document.documentElement; r.dataset.theme = S.theme;
+  const dark = S.theme === 'dark', glassy = S.material === 'glass', lacquer = S.material === 'glossy' && dark;
+  r.style.setProperty('--glyph', dark || lacquer ? '#F2F3F6' : '#1E2A3F');
+  r.style.setProperty('--glyphHot', dark ? '#FFFFFF' : '#1F5FD9');
+  r.style.setProperty('--haloC', dark ? 'rgba(0,0,0,.55)' : (glassy ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.55)'));
+  r.style.setProperty('--halo', (dark ? 1.5 : 2)*(+S.zoom) + 'px');
+}
+const stagesEl = document.getElementById('stages');
+function syncBar(){
+  document.querySelectorAll('.grp[data-k]').forEach(gp => gp.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(S[gp.dataset.k]) === b.dataset.v)));
+  tilt.value = S.tilt; tiltO.textContent = S.tilt + '°';
+  round.value = S.round; roundO.textContent = Math.round(S.round*100) + '%';
+  secA.style.display = S.view === 'B' ? 'none' : ''; secB.style.display = S.view === 'A' ? 'none' : '';
+  stagesEl.classList.toggle('only', S.view !== 'both');
+}
+function changed(relayout){ save(); syncBar(); applyTheme(); stages.forEach(s => { if (relayout) s.layout(); s.dirty = true; }); kick(); }
+document.querySelectorAll('.grp[data-k] button').forEach(b => b.addEventListener('click', () => {
+  const k = b.parentElement.dataset.k; S[k] = b.dataset.v; changed(k === 'zoom' || k === 'view');
+}));
+tilt.addEventListener('input', () => { S.tilt = +tilt.value; changed(false); });
+round.addEventListener('input', () => { S.round = +round.value; changed(false); });
+replay.addEventListener('click', () => { stages.forEach(s => { s.appear = 0; s.appearV = 0; }); kick(); });
+addEventListener('pointermove', kick);
+addEventListener('resize', () => { stages.forEach(s => s.layout()); kick(); });
+
+let running = false, last = 0;
+function kick(){ if (!running){ running = true; last = performance.now(); requestAnimationFrame(frame); } }
+function frame(now){
+  let dt = Math.min((now - last)/1000, 1/30); last = now;
+  if (S.slow === 'on') dt *= .25;
+  let any = false;
+  for (const s of stages) if (s.step(dt)){ s.render(); any = true; }
+  // frame-rate readout: frames actually rendered per second while animating
+  for (const s of stages){
+    s.fpsT += (now - (s.fpsLast || now))/1000; s.fpsLast = now;
+    if (s.fpsT >= .5){ if (s.frames > 3 && s.fpsEl) s.fpsEl.textContent = `最近动画 ${Math.round(s.frames/s.fpsT)} fps`; s.frames = 0; s.fpsT = 0; }
+  }
+  if (any) requestAnimationFrame(frame); else { running = false; stages.forEach(s => { s.fpsLast = 0; s.fpsT = 0; s.frames = 0; }); }
+}
+
+// Headless screenshot hook: ?aim=<cw degrees from top>,<distance px at 1x>[&aim2=<deg>,<dist>] —
+// aim first, then (after the submenu has had time to unfold) move to aim2.
+function aimAt(spec){
+  const [deg, dist] = spec.split(',').map(Number);
+  stages.forEach(s => { const rc = s.anchor.getBoundingClientRect(), a = deg*Math.PI/180, z = +S.zoom;
+    s.ptr = [rc.left + Math.sin(a)*dist*z, rc.top - Math.cos(a)*dist*z]; });
+  // headless Chrome barely runs animation frames, so let the springs settle synchronously
+  if (Q.has('settle')) stages.forEach(s => { for (let i = 0, n = +Q.get('settle') || 240; i < n; i++) s.step(1/60); s.render(); });
+  kick();
+}
+if (!Q.has('still')) stages.forEach(s => { s.appear = 0; });
+changed(true);
+if (Q.has('aim')) aimAt(Q.get('aim'));
+if (Q.has('aim2')) Q.has('settle') ? aimAt(Q.get('aim2')) : setTimeout(() => aimAt(Q.get('aim2')), 900);
+</script>
+</body>
+</html>

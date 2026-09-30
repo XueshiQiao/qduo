@@ -63,7 +63,12 @@
 "popbar.style.capsule" = "Capsule";
 "popbar.style.wheel" = "Wheel";
 "popbar.style.liquid" = "Liquid";
-"popbar.style.footer" = "Capsule shows a horizontal bar above the selection; Wheel and Liquid show a ring centered on the cursor (Liquid is a bright frosted-glass skin).";
+"popbar.style.donut" = "3D";
+"popbar.donut.material" = "Material";
+"popbar.donut.ceramic" = "Ceramic";
+"popbar.donut.glass" = "Glass";
+"popbar.donut.dividers" = "Show dividers between slices";
+"popbar.style.footer" = "Capsule shows a horizontal bar above the selection; Wheel, Liquid and 3D show a ring centered on the cursor (Liquid is a bright frosted-glass skin; 3D is a solid ring that leans toward the pointer).";
 "popbar.wheel.outer" = "Outer radius";
 "popbar.wheel.inner" = "Inner radius";
 "popbar.wheel.subSeam" = "Submenu gap";

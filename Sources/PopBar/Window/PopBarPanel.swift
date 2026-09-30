@@ -42,7 +42,7 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
         // behind, and the hover exit there IS the real auto-hide signal. While a
         // submenu ring is unfolded the wheel genuinely reaches further, so the edge
         // moves out with it and snaps back the moment it folds shut.
-        let outer = max(ring.outer, wheelHitRegion?.outerRadius ?? 0)
+        let outer = max(ring.outer, wheelHitRegion?.outerRadius ?? 0) + (wheelHitRegion?.drawnOverhang ?? 0)
         if dist > outer { return nil }
 
         // The hollow CENTRE must stay transparent to EVERYTHING the app behind might
@@ -272,6 +272,8 @@ final class PopBarPanel {
         model.style = PopBarPreferences.style
         model.wheelLayout = PopBarPreferences.wheelLayout   // user-adjustable radii + icon/label toggles
         model.autoHideOnExitRing = PopBarPreferences.wheelAutoHideOnExit   // wheel: hide when pointer leaves the ring
+        model.donutMaterial = PopBarPreferences.wheelDonutMaterial
+        model.donutDividers = PopBarPreferences.wheelDonutDividers
         // Pick up the current auto-expand preference for this show (the user may
         // have toggled it in settings since the last popup).
         model.autoExpandHeight = PopBarPreferences.autoExpandHeight

@@ -47,8 +47,8 @@ enum ConfigSchema {
           "properties": {
             "style": {
               "type": "string",
-              "enum": ["capsule", "wheel", "liquidGlass"],
-              "description": "capsule = a bar above the selection. wheel / liquidGlass = a ring centred on the cursor."
+              "enum": ["capsule", "wheel", "liquidGlass", "donut"],
+              "description": "capsule = a bar above the selection. wheel / liquidGlass / donut = a ring centred on the cursor (donut is the 3D ring; its surface is wheel.donutMaterial)."
             },
             "autoExpandHeight": {
               "type": "boolean",
@@ -106,7 +106,11 @@ enum ConfigSchema {
             "showIcons": { "type": "boolean", "description": "Draw each action's icon." },
             "showLabels": { "type": "boolean", "description": "Draw each action's name." },
             "autoHideOnExit": { "type": "boolean",
-              "description": "Dismiss the ring when the pointer leaves it." }
+              "description": "Dismiss the ring when the pointer leaves it." },
+            "donutMaterial": { "type": "string", "enum": ["ceramic", "glass"],
+              "description": "Surface of the 3D (donut) style." },
+            "donutDividers": { "type": "boolean",
+              "description": "3D style: carve a groove between neighbouring slices." }
           },
           "additionalProperties": true
         },

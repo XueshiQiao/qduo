@@ -493,6 +493,11 @@ final class WheelHitRegion {
     /// That difference is a whole frame of travel, which is the difference between
     /// knowing someone left and guessing.
     var cursorRadius: (() -> CGFloat?)?
+
+    /// How far past the flat ring's edge its drawing may reach. The 3D ring leans
+    /// toward the pointer, and the side rising toward the eye is drawn a couple of
+    /// points wider than the flat ring; a click there must still be ours.
+    var drawnOverhang: CGFloat = 0
 }
 
 /// One item on the second ring. Deliberately a plain value (not a

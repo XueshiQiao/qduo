@@ -60,6 +60,10 @@ final class PopBarPanelModel: ObservableObject {
     /// Auto-hide the ring when the pointer leaves it (wheel + liquid-glass only;
     /// the capsule ignores it). Seeded from prefs on each show.
     var autoHideOnExitRing = false
+    /// The 3D style's surface. Seeded from prefs on each show.
+    @Published var donutMaterial: DonutMaterial = .ceramic
+    /// Whether the 3D style carves a groove between slices. Seeded on each show.
+    @Published var donutDividers = true
 
     /// Wired by the controller.
     var onAction: ((PopBarActionConfig) -> Void)?
@@ -127,7 +131,7 @@ struct PopBarContentView: View {
                 // rounded-rect glass the capsule/loading/result share. `.liquidGlass`
                 // is the same wheel with the bright Liquid Glass skin.
                 WheelActionsView(actions: model.actions, layout: model.wheelLayout,
-                                 skin: model.style == .liquidGlass ? .liquid : .classic,
+                                 skin: wheelSkin,
                                  autoHideOnExit: model.autoHideOnExitRing,
                                  hitRegion: model.wheelHitRegion,
                                  onExitRing: { model.onExitRing?() }) { action in
@@ -140,6 +144,16 @@ struct PopBarContentView: View {
             }
         }
         .fixedSize()
+    }
+
+    /// The wheel skin for the current style. The 3D ring falls back to the liquid
+    /// skin on a Mac where Metal could not be set up, rather than drawing nothing.
+    private var wheelSkin: WheelSkin {
+        switch model.style {
+        case .liquidGlass: return .liquid
+        case .donut: return DonutSupport.isAvailable ? .donut(model.donutMaterial, dividers: model.donutDividers) : .liquid
+        case .wheel, .capsule: return .classic
+        }
     }
 
     /// Loading and results (text and the reading window) sit on Liquid Glass,

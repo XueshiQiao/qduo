@@ -8,10 +8,13 @@ enum PopBarStyle: String, CaseIterable, Hashable {
     case capsule
     case wheel
     case liquidGlass
-    /// Ring-based styles (wheel + liquid glass): centered on the cursor, only the
-    /// ring hit-tests. The shell treats them the same for placement / hit-testing;
-    /// they differ only in their SwiftUI skin.
-    var isWheel: Bool { self == .wheel || self == .liquidGlass }
+    /// The 3D ring (ray-marched with Metal) that leans toward the pointer. Its
+    /// surface is `wheel.donutMaterial`.
+    case donut
+    /// Ring-based styles (wheel, liquid glass, donut): centered on the cursor, only
+    /// the ring hit-tests. The shell treats them the same for placement /
+    /// hit-testing; they differ only in their SwiftUI skin.
+    var isWheel: Bool { self == .wheel || self == .liquidGlass || self == .donut }
 }
 
 /// The popup's own persistence. App-wide prefs live in `Preferences`.
@@ -36,6 +39,8 @@ enum PopBarPreferences {
         static let wheelShowIcons     = "wheel.showIcons"
         static let wheelShowLabels    = "wheel.showLabels"
         static let wheelAutoHideOnExit = "wheel.autoHideOnExit"
+        static let wheelDonutMaterial = "wheel.donutMaterial"
+        static let wheelDonutDividers = "wheel.donutDividers"
         static let wheelSubSeam       = "wheel.subSeam"
         static let wheelSubThickness  = "wheel.subThickness"
         static let previewFallback    = "webPreview.fallbackToSearch"
@@ -127,6 +132,18 @@ enum PopBarPreferences {
     static var wheelAutoHideOnExit: Bool {
         get { config.bool(P.wheelAutoHideOnExit, default: true) }
         set { config.set(P.wheelAutoHideOnExit, newValue) }
+    }
+
+    /// The 3D style's surface. Unknown values fall back to ceramic.
+    static var wheelDonutMaterial: DonutMaterial {
+        get { DonutMaterial(rawValue: config.string(P.wheelDonutMaterial, default: "")) ?? .ceramic }
+        set { config.set(P.wheelDonutMaterial, newValue.rawValue) }
+    }
+
+    /// Whether the 3D style carves a groove between neighbouring slices. Default on.
+    static var wheelDonutDividers: Bool {
+        get { config.bool(P.wheelDonutDividers, default: true) }
+        set { config.set(P.wheelDonutDividers, newValue) }
     }
 
     /// Gap between the main ring and the submenu ring.

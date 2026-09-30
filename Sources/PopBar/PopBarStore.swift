@@ -15,6 +15,8 @@ final class PopBarStore: ObservableObject {
     @Published var wheelShowIcons: Bool
     @Published var wheelShowLabels: Bool
     @Published var wheelAutoHideOnExit: Bool
+    @Published var wheelDonutMaterial: DonutMaterial
+    @Published var wheelDonutDividers: Bool
     @Published var wheelSubSeam: Double
     @Published var wheelSubThickness: Double
     @Published private(set) var isTrusted: Bool
@@ -55,6 +57,8 @@ final class PopBarStore: ObservableObject {
         self.wheelShowIcons = PopBarPreferences.wheelShowIcons
         self.wheelShowLabels = PopBarPreferences.wheelShowLabels
         self.wheelAutoHideOnExit = PopBarPreferences.wheelAutoHideOnExit
+        self.wheelDonutMaterial = PopBarPreferences.wheelDonutMaterial
+        self.wheelDonutDividers = PopBarPreferences.wheelDonutDividers
         self.wheelSubSeam = PopBarPreferences.wheelSubSeam
         self.wheelSubThickness = PopBarPreferences.wheelSubThickness
         self.isTrusted = AccessibilityAuthorizer.isTrusted
@@ -185,6 +189,19 @@ final class PopBarStore: ObservableObject {
     func setWheelAutoHideOnExit(_ on: Bool) {
         wheelAutoHideOnExit = on
         PopBarPreferences.wheelAutoHideOnExit = on
+    }
+    /// The 3D style's surface (ceramic / glass). Shown live in the preview.
+    func setWheelDonutMaterial(_ m: DonutMaterial) {
+        if m != wheelDonutMaterial { Analytics.trackPreferenceChanged(key: "wheel_donut_material", value: m.rawValue) }
+        wheelDonutMaterial = m
+        PopBarPreferences.wheelDonutMaterial = m
+        controller.previewStyleLive()
+    }
+    /// Whether the 3D style shows the grooves between slices. Shown live.
+    func setWheelDonutDividers(_ on: Bool) {
+        wheelDonutDividers = on
+        PopBarPreferences.wheelDonutDividers = on
+        controller.previewStyleLive()
     }
 
     // MARK: - Paused

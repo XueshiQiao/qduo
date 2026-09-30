@@ -82,8 +82,9 @@ struct WheelLayout: Equatable {
 /// `.liquid` = the locked "Liquid Glass" look (`docs/popbar-wheel-liquid.html`): a
 /// translucent frosted ring (no borders) with soft volumetric depth that adapts to the
 /// popup's appearance — bright ring + dark glyphs in light mode, dark ring + light
-/// glyphs in dark mode.
-enum WheelSkin { case classic, liquid }
+/// glyphs in dark mode. `.donut` = the ray-marched 3D ring (`docs/wheel-3d-donut.html`,
+/// stage B) that leans toward the pointer; see `Donut/`.
+enum WheelSkin: Equatable { case classic, liquid, donut(DonutMaterial, dividers: Bool) }
 
 /// One equal slice of the ring as an annular sector. Used BOTH to fill the wedge
 /// and (critically) as its `.contentShape`, so the WHOLE wedge hit-tests — never
@@ -218,22 +219,36 @@ struct WheelActionsView: View {
     /// genuine outward exit from a spurious one: only a pointer that was actually
     /// at/past the ring's outer edge when the hover ended counts as leaving.
     @State private var lastHover: CGPoint?
+    /// Donut skin only: the springs behind its tilt, unfold and highlights. Plain
+    /// `@State`, not `@StateObject`, on purpose — this view must not re-render on
+    /// every animation frame; only the donut's own overlay observes it.
+    @State private var motion = DonutMotion()
+    /// Whether the pointer is on the wheel at all (cleared only by a genuine exit),
+    /// so the donut can settle back to flat once it has gone.
+    @State private var pointerOnWheel = false
 
     var body: some View {
         let d = canvas
         ZStack {
-            // The submenu ring is drawn UNDER the main ring, so unfolding reads as
-            // the second ring sliding out from beneath the first rather than being
-            // pasted on top of it.
-            submenuVisuals
-                .allowsHitTesting(false)
+            if case .donut(let material, let dividers) = skin {
+                // One ray-marched scene draws both rings (and their shadow), so the
+                // donut replaces the whole flat stack below rather than a layer of it.
+                donutVisuals(material, dividers: dividers)
+                    .allowsHitTesting(false)
+            } else {
+                // The submenu ring is drawn UNDER the main ring, so unfolding reads as
+                // the second ring sliding out from beneath the first rather than being
+                // pasted on top of it.
+                submenuVisuals
+                    .allowsHitTesting(false)
 
-            // Decorative ring — strictly non-interactive. A wedge `Shape` fills the
-            // whole square frame (it only DRAWS its sector), so if it hit-tested, the
-            // topmost wedge would swallow every hover (the "stuck on 复制" bug). All
-            // interaction lives on the dedicated clear layer below, never here.
-            ringVisuals
-                .allowsHitTesting(false)
+                // Decorative ring — strictly non-interactive. A wedge `Shape` fills the
+                // whole square frame (it only DRAWS its sector), so if it hit-tested, the
+                // topmost wedge would swallow every hover (the "stuck on 复制" bug). All
+                // interaction lives on the dedicated clear layer below, never here.
+                ringVisuals
+                    .allowsHitTesting(false)
+            }
 
             interactiveSurface
         }
@@ -241,6 +256,7 @@ struct WheelActionsView: View {
         .onAppear {
             // Re-arm the auto-hide and start closed for each fresh wheel.
             enteredRing = false
+            pointerOnWheel = false
             submenu = nil
             expanded = false
             settledAt = nil
@@ -249,6 +265,8 @@ struct WheelActionsView: View {
             aimRunParent = nil
             openToken &+= 1
             hitRegion?.outerRadius = 0
+            // The 3D ring's rising side is drawn ~2pt past the flat edge at full tilt.
+            hitRegion?.drawnOverhang = isDonut ? 4 : 0
         }
     }
 
@@ -317,6 +335,7 @@ struct WheelActionsView: View {
                 // wheel clamped near a screen edge — where the cursor can start
                 // outside it — doesn't vanish on appear.
                 enteredRing = true
+                if !pointerOnWheel { pointerOnWheel = true }
                 lastHover = loc
                 updateAim(at: loc)
                 let result = hit(at: loc)
@@ -376,6 +395,7 @@ struct WheelActionsView: View {
                 // the pointer moving steadily outward and not going anywhere near the
                 // real edge at 174.
                 guard genuineExit else { break }
+                pointerOnWheel = false
 
                 // A real exit, but not acted on yet: nothing is torn down until the
                 // grace has run out, so a pointer that overshot and came straight
@@ -404,6 +424,101 @@ struct WheelActionsView: View {
         })
     }
 
+    // MARK: - Donut (3D)
+
+    private var isDonut: Bool {
+        if case .donut = skin { return true }
+        return false
+    }
+
+    /// Everything the donut needs to know about the wheel's state, as one value.
+    private var donutTargets: DonutTargets {
+        var t = DonutTargets()
+        t.pointer = pointerOnWheel ? lastHover : nil
+        if let id = hovered {
+            t.hoveredIndex = actions.firstIndex { $0.id == id }
+            t.parentSoft = pointerOnSecondRing(of: id)
+        }
+        t.expanded = expanded
+        if let open = submenu {
+            t.subMidDegrees = open.midDegrees
+            t.subCount = open.children.count
+            t.subSpanDegrees = open.plan.span
+            t.subFull = open.plan.isFullRing
+            if let c = hoveredChild { t.hoveredChild = open.children.firstIndex { $0.id == c } }
+        }
+        return t
+    }
+
+    /// DONUT: a ray-marched ring (and second ring) drawn by Metal, with the icons and
+    /// names laid over it at their PROJECTED positions — moved with the tilt, never
+    /// skewed by it, so the text stays as crisp as on the flat skins. Glass puts the
+    /// system blur underneath, cut to the ring's projected outline.
+    private func donutVisuals(_ material: DonutMaterial, dividers: Bool) -> some View {
+        let d = canvas
+        let dark = isDark
+        return ZStack {
+            if material == .glass {
+                DonutMotionReader(motion: motion) { m in
+                    LiquidGlassBlur(dark: dark)
+                        .frame(width: d, height: d)
+                        .mask(m.outlinePath())
+                }
+            }
+            DonutRingView(motion: motion, targets: donutTargets, material: material, dark: dark, dividers: dividers,
+                          canvas: d, layout: layout, sliceCount: actions.count)
+                .frame(width: d, height: d)
+            DonutMotionReader(motion: motion) { m in donutGlyphs(m) }
+        }
+        .frame(width: d, height: d)
+        // Every bit of motion here is driven frame by frame from `DonutMotion`. The
+        // wheel changes its state inside `withAnimation(openSpring)`, and letting
+        // SwiftUI animate the same things on top made switching groups leave the
+        // previous group's names fading out on the far side of the wheel.
+        .transaction { $0.animation = nil }
+    }
+
+    private func donutGlyphs(_ m: DonutMotion) -> some View {
+        let n = Double(max(actions.count, 1))
+        return ZStack {
+            ForEach(Array(actions.enumerated()), id: \.element.id) { idx, action in
+                let a = (Double(idx) + 0.5) * 2 * .pi / n            // clockwise from twelve
+                let hot = hovered == action.id
+                donutGlyph(action, hot: hot, soft: hot && pointerOnSecondRing(of: action.id))
+                    .position(m.project(x: sin(a) * m.tubeCentre, y: cos(a) * m.tubeCentre, z: m.crest))
+            }
+            if let open = submenu, let s = m.sub, !open.children.isEmpty {
+                let step = s.span / Double(open.children.count)
+                ForEach(Array(open.children.enumerated()), id: \.element.id) { j, child in
+                    let a = s.mid - s.span / 2 + (Double(j) + 0.5) * step
+                    donutGlyph(child, hot: hoveredChild == child.id, soft: false)
+                        .opacity(max(0, (m.unfold - 0.35) / 0.65))
+                        .position(m.project(x: sin(a) * s.centre, y: cos(a) * s.centre,
+                                            z: s.tube * DonutMotion.squash))
+                }
+            }
+        }
+        .frame(width: canvas, height: canvas)
+    }
+
+    /// One slice's icon + name, painted like the liquid skin's (dark ink on the light
+    /// surfaces, near-white on the dark ones, the brand gradient when hovered).
+    private func donutGlyph(_ action: PopBarActionConfig, hot: Bool, soft: Bool) -> some View {
+        let dark = isDark
+        return VStack(spacing: 2) {
+            if layout.showIcons {
+                Image(systemName: action.iconSymbol)
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(height: 18)
+            }
+            if layout.showLabels {
+                sliceLabel(action, weight: hot ? .bold : .medium)
+            }
+        }
+        .foregroundStyle(glyphStyle(hot: hot, dark: dark).opacity(soft ? 0.55 : 1))
+        .shadow(color: dark ? .black.opacity(0.55) : .white.opacity(0.6), radius: dark ? 1.5 : 2)
+    }
+
     // MARK: - Visuals (skin-specific; geometry shared)
 
     @ViewBuilder
@@ -411,7 +526,7 @@ struct WheelActionsView: View {
         ZStack {
             switch skin {
             case .classic: classicVisuals
-            case .liquid:  liquidVisuals
+            case .liquid, .donut: liquidVisuals   // .donut never gets here (see body)
             }
             // With labels shown, a group says so with a › after its name (see
             // `sliceLabel`); only an icons-only ring still needs the rim tick.
@@ -485,7 +600,7 @@ struct WheelActionsView: View {
     private var tickColor: Color {
         switch skin {
         case .classic: return Color.primary.opacity(0.45)
-        case .liquid:  return isDark ? Color.white.opacity(0.55)
+        case .liquid, .donut: return isDark ? Color.white.opacity(0.55)
                                      : Color(red: 0.10, green: 0.13, blue: 0.20).opacity(0.5)
         }
     }
@@ -736,7 +851,11 @@ struct WheelActionsView: View {
         case outside
     }
 
-    private func hit(at p: CGPoint) -> WheelHit {
+    private func hit(at raw: CGPoint) -> WheelHit {
+        // The donut leans toward the pointer, so what is under the pointer is read
+        // off the ring the user is looking at — un-projected through the current
+        // tilt onto the tube's crest — and only then run through the flat geometry.
+        let p = isDonut ? motion.unproject(raw, height: motion.crest) : raw
         let c = canvas / 2
         let dx = p.x - c, dy = p.y - c
         let dist = (dx * dx + dy * dy).squareRoot()
@@ -1080,7 +1199,7 @@ struct WheelActionsView: View {
         switch skin {
         case .classic:
             return .fill(Color.accentColor)
-        case .liquid:
+        case .liquid, .donut:
             return .glyphTint   // the child's icon + label take the tint (childGlyphColor)
         }
     }
@@ -1097,7 +1216,7 @@ struct WheelActionsView: View {
                 shape.fill(Color.primary.opacity(0.06))
                 shape.stroke(Color.primary.opacity(0.12), lineWidth: 0.75)
             }
-        case .liquid:
+        case .liquid, .donut:
             ZStack {
                 submenuLiquidMaterial(shape)
                 if isDark {
@@ -1140,7 +1259,7 @@ struct WheelActionsView: View {
     private func childGlyphColor(hot: Bool, dark: Bool) -> AnyShapeStyle {
         switch skin {
         case .classic: return AnyShapeStyle(hot ? Color.white : Color.primary)
-        case .liquid:  return glyphStyle(hot: hot, dark: dark)
+        case .liquid, .donut: return glyphStyle(hot: hot, dark: dark)
         }
     }
 
