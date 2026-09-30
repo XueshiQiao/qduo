@@ -388,6 +388,9 @@
 "popbar.excluded.choose" = "从「应用程序」中选择…";
 "popbar.excluded.remove" = "移除";
 "popbar.excluded.footer" = "在这些 app 里选中文字不会弹出弹框。截图 OCR 快捷键在这些 app 里照常可用。";
+"popbar.terminals.header" = "终端";
+"popbar.terminals.empty" = "名单里的终端都没有安装。";
+"popbar.terminals.footer" = "有些在终端里运行的程序（herdr、开了鼠标模式的 tmux、vim）会自己选中文字、自己复制到剪贴板，终端本身并没有选中任何东西。在这些 app 里，如果你选择的过程中剪贴板变了，弹框就用刚复制的内容。";
 
 /* 暂停 */
 "menu.pause.format" = "暂停 %@";

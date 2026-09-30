@@ -74,6 +74,7 @@ final class PopBarSession {
         self.element = element
         self.elementPID = element.flatMap { var pid: pid_t = 0; return AXUIElementGetPid($0, &pid) == .success ? pid : nil }
         panel.model.canReplace = source?.canReplace ?? false
+        panel.model.readVia = source?.via
     }
 
     /// Show (or recycle) this window's capsule in its `.actions` phase, anchored at
@@ -88,6 +89,7 @@ final class PopBarSession {
         self.element = element
         self.elementPID = element.flatMap { var pid: pid_t = 0; return AXUIElementGetPid($0, &pid) == .success ? pid : nil }
         panel.model.canReplace = source?.canReplace ?? false
+        panel.model.readVia = source?.via
         stopReading()
         panelGeneration &+= 1
         actionTask?.cancel()

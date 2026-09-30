@@ -23,6 +23,7 @@ final class PopBarStore: ObservableObject {
     @Published private(set) var simulateCopy: Bool
     @Published private(set) var ignoreAddressBars: Bool
     @Published private(set) var excludedApps: [String]
+    @Published private(set) var terminalApps: [String]
 
     // Screenshot OCR
     @Published var screenOCREnabled: Bool
@@ -53,6 +54,7 @@ final class PopBarStore: ObservableObject {
         self.simulateCopy = PopBarPreferences.simulateCopy
         self.ignoreAddressBars = PopBarPreferences.ignoreAddressBars
         self.excludedApps = PopBarPreferences.excludedApps
+        self.terminalApps = PopBarPreferences.terminalApps
         self.screenOCREnabled = PopBarPreferences.screenOCREnabled
         self.screenOCRAutoCopy = PopBarPreferences.screenOCRAutoCopy
         self.screenOCRHotKey = PopBarPreferences.screenOCRHotKey
@@ -205,6 +207,18 @@ final class PopBarStore: ObservableObject {
     func includeApp(_ bundleID: String) {
         excludedApps.removeAll { $0 == bundleID }
         PopBarPreferences.excludedApps = excludedApps
+    }
+
+    /// Read at trigger time, so the next selection honors it.
+    func addTerminalApp(_ bundleID: String) {
+        guard !terminalApps.contains(bundleID) else { return }
+        terminalApps.append(bundleID)
+        PopBarPreferences.terminalApps = terminalApps
+    }
+
+    func removeTerminalApp(_ bundleID: String) {
+        terminalApps.removeAll { $0 == bundleID }
+        PopBarPreferences.terminalApps = terminalApps
     }
 
     func requestPermission() { AccessibilityAuthorizer.prompt() }

@@ -201,7 +201,10 @@ final class PopBarController {
             mouseLocation: loc,
             clipboardChangeCountAtGestureStart: monitor.gestureStartClipboardChangeCount,
             resolvesLinks: resolvesLinks,
-            allowsSimulatedCopy: PopBarPreferences.simulateCopy)
+            allowsSimulatedCopy: PopBarPreferences.simulateCopy,
+            isTerminalApp: frontID.map { id in
+                PopBarPreferences.terminalApps.contains { $0.caseInsensitiveCompare(id) == .orderedSame }
+            } ?? false)
         Self.log.debug("trigger — front=\(front?.bundleIdentifier ?? front?.localizedName ?? "nil") inPlace=\(inPlace) resolvesLinks=\(resolvesLinks)")
 
         resolveTask?.cancel()
@@ -240,7 +243,7 @@ final class PopBarController {
             // Where the text came from, for putting a result back in its place.
             // Read here, off the main thread, like the link: it is one or two AX
             // calls against the app that owns the selection.
-            let source = SelectionSource.capture(element: result?.sourceElement, pid: context.pid)
+            let source = SelectionSource.capture(element: result?.sourceElement, pid: context.pid, via: result?.via)
             if Task.isCancelled { return }
             await MainActor.run {
                 guard generation == self.resolveGeneration, self.running else { return }

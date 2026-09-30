@@ -28,15 +28,19 @@ import ApplicationServices
 /// would let a non-text drag (a Finder icon, a window) that merely coincides with
 /// a background clipboard write pop the wheel. The terminals this targets — OTTY —
 /// report a text-bearing `AXTextArea` role, so they pass (verified in logs); a
-/// genuinely-opaque terminal would warrant a per-app allow path, not relaxing the
-/// gate for everyone.
+/// genuinely-opaque terminal gets a per-app allow path — the terminal list below —
+/// not a gate relaxed for everyone.
 ///
 /// Programs that own the mouse inside a terminal (issue #8: herdr; likewise tmux
 /// with mouse mode, vim, zellij) select and copy by themselves, so the terminal
-/// has no selection of its own and reports a 0-length range — guard 3 reads that
-/// as "caret, no selection". For the terminals in `mouseOwningTerminals` a
-/// text-bearing role is enough, whatever the range says. Limited to that list on
-/// purpose: in an ordinary text field a 0-length range really means nothing is
+/// has no selection of its own — Ghostty reports a 0-length range, which guard 3
+/// reads as "caret, no selection", and a GPU-drawn terminal may not report a text
+/// role at all. So in the apps on the user's terminal list
+/// (`PopBarPreferences.terminalApps`) guard 3 is skipped: a clipboard write during
+/// this one drag is taken as the selection. What is given up is guard 3's
+/// protection there — a window or tab dragged in a listed terminal while some
+/// other program happens to write the clipboard would open the popup. Limited to
+/// that list on purpose: elsewhere a 0-length range really means nothing is
 /// selected.
 ///
 /// Unlike the ⌘C strategy this does **not** back up / restore the clipboard: the
@@ -46,12 +50,6 @@ final class CopyOnSelectStrategy: SelectionStrategy {
 
     let id = SelectionStrategyID.copyOnSelect
     private static let log = FileLog("PopBar.CopyOnSelect")
-
-    /// Terminals where a program running inside may do its own selecting and
-    /// copying (see the type comment). Bundle IDs, compared case-insensitively.
-    static let mouseOwningTerminals: Set<String> = [
-        "com.mitchellh.ghostty",
-    ]
 
     func selectedText(_ context: SelectionContext) async throws -> SelectionResult? {
         guard AXIsProcessTrusted() else { throw SelectionError.permissionDenied }
@@ -63,10 +61,10 @@ final class CopyOnSelectStrategy: SelectionStrategy {
 
         // (3) Focus must plausibly hold a text selection (same gate the ⌘C path
         // uses). Rejects a non-text drag that happened to race a background copy.
+        // Skipped in a listed terminal, where the program inside made the
+        // selection and the terminal itself knows nothing about it.
         let decision = await MainActor.run { AXSelectionProbe.shouldAttemptCopy() }
-        let terminalOwnsSelection = !decision.shouldCopy
-            && AXSelectionProbe.isTextBearingRole(decision.role)
-            && context.bundleID.map { Self.mouseOwningTerminals.contains($0.lowercased()) } == true
+        let terminalOwnsSelection = !decision.shouldCopy && context.isTerminalApp
         guard decision.shouldCopy || terminalOwnsSelection else {
             Self.log.debug("clipboard changed during gesture but focus not text-like (role=\(decision.role)) — skip")
             return nil

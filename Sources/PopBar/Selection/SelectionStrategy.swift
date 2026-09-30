@@ -46,6 +46,10 @@ struct SelectionContext {
     /// Whether the user allows the synthetic-⌘C fallback (`popup.simulateCopy`).
     /// Sampled on main at trigger time, since the config is main-thread only.
     var allowsSimulatedCopy: Bool = true
+    /// Whether the app is in the user's terminal list (`popup.terminalApps`): a
+    /// clipboard write during the gesture counts as the selection there even when
+    /// the app reports none. Sampled on main at trigger time.
+    var isTerminalApp: Bool = false
 
     var bundleID: String? { frontmostApp?.bundleIdentifier }
     var pid: pid_t? { frontmostApp?.processIdentifier }
@@ -92,20 +96,22 @@ struct SelectionSource {
     }
 
     let origin: Origin
+    /// Which strategy read the text; nil for OCR. Shown on the popup in Debug builds.
+    var via: SelectionStrategyID? = nil
     let pid: pid_t?
     let element: AXUIElement?
     /// The selected range at trigger time, in the element's own units.
     let range: CFRange?
 
-    static let ocr = SelectionSource(origin: .ocr, pid: nil, element: nil, range: nil)
+    static let ocr = SelectionSource(origin: .ocr, via: nil, pid: nil, element: nil, range: nil)
 
     var canReplace: Bool {
         origin == .selection && pid != nil && element != nil && (range?.length ?? 0) > 0
     }
 
     /// Read the selected range of `element`. Off the main thread is fine.
-    static func capture(element: AXUIElement?, pid: pid_t?) -> SelectionSource {
-        SelectionSource(origin: .selection, pid: pid, element: element,
+    static func capture(element: AXUIElement?, pid: pid_t?, via: SelectionStrategyID? = nil) -> SelectionSource {
+        SelectionSource(origin: .selection, via: via, pid: pid, element: element,
                         range: element.flatMap(selectedRange(of:)))
     }
 

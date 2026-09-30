@@ -86,11 +86,6 @@ enum AXSelectionProbe {
         "AXSearchField",      // some apps expose this distinct role
     ]
 
-    /// Whether `role` is one of the text-bearing roles above.
-    static func isTextBearingRole(_ role: String) -> Bool {
-        textBearingRoles.contains(role)
-    }
-
     /// Roles that hold a SELECTION but not free / editable text — table, list and
     /// outline containers and their rows/cells/columns. Their Copy command is enabled
     /// when a row/cell is selected, so the `copyMenuItemEnabled` second chance must
@@ -170,7 +165,7 @@ enum AXSelectionProbe {
         }
         // Range unreadable: fall back to the role signal so we don't regress real
         // text fields that hide their range.
-        let textBearing = isTextBearingRole(roleName)
+        let textBearing = textBearingRoles.contains(roleName)
         return Decision(shouldCopy: textBearing, role: roleName, rangeLength: -1)
     }
 

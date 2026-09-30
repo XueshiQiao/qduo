@@ -70,6 +70,10 @@ enum ConfigSchema {
               "type": "boolean",
               "description": "Selecting text in a browser's address bar (Chrome and other Chromium browsers, Safari) does not open the popup. Default true."
             },
+            "terminalApps": {
+              "type": "array", "items": { "type": "string" },
+              "description": "Bundle IDs of terminals where a program running inside (herdr, tmux with mouse mode, vim) may select and copy text by itself. Selecting there reads the clipboard when it changes during the drag. Written with the built-in list the first time it is missing."
+            },
             "excludedApps": {
               "type": "array", "items": { "type": "string" },
               "description": "Bundle IDs of apps where selecting text never opens the popup, e.g. \\"com.microsoft.Excel\\". The screenshot-OCR hotkey still works in them."

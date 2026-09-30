@@ -80,6 +80,9 @@ final class PopBarPanelModel: ObservableObject {
     /// Whether the selection this popup acts on can be replaced — decides whether
     /// the Replace button is offered at all (see `SelectionSource.canReplace`).
     @Published var canReplace = false
+    /// How the selection was read. Debug builds show it under the popup
+    /// (`DebugReadViaBadge`).
+    @Published var readVia: SelectionStrategyID?
     /// Whether the text in the result panel is a FINISHED result an action
     /// produced — not an error message, and not an answer still streaming in.
     /// Only that is offered for Replace.

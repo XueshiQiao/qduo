@@ -41,6 +41,7 @@ struct GeneralPage: View {
             appSection
             readingSection
             excludedAppsSection
+            terminalAppsSection
             diagnosticsSection
         }
         .formStyle(.grouped)
@@ -88,21 +89,7 @@ struct GeneralPage: View {
             ForEach(store.excludedApps, id: \.self) { id in
                 ExcludedAppRow(bundleID: id) { store.includeApp(id) }
             }
-            Menu(L("popbar.excluded.add")) {
-                let running = Self.runningApps(excluding: store.excludedApps)
-                ForEach(running, id: \.bundleID) { app in
-                    Button {
-                        store.excludeApp(app.bundleID)
-                    } label: {
-                        // Menus drop a Label's icon unless the style asks for it.
-                        Label { Text(app.name) } icon: { Image(nsImage: app.icon) }
-                            .labelStyle(.titleAndIcon)
-                    }
-                }
-                if !running.isEmpty { Divider() }
-                Button(L("popbar.excluded.choose")) { chooseApp() }
-            }
-            .fixedSize()
+            addAppMenu(skipping: store.excludedApps) { store.excludeApp($0) }
         } header: {
             Text(L("popbar.excluded.header"))
         } footer: {
@@ -110,6 +97,51 @@ struct GeneralPage: View {
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    // MARK: - Terminals
+
+    private var terminalAppsSection: some View {
+        Section {
+            // Only the installed ones: the built-in list names terminals most
+            // people don't have. The others stay in the config file untouched.
+            let installed = store.terminalApps.filter {
+                NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
+            }
+            if installed.isEmpty {
+                Text(L("popbar.terminals.empty"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(installed, id: \.self) { id in
+                ExcludedAppRow(bundleID: id) { store.removeTerminalApp(id) }
+            }
+            addAppMenu(skipping: store.terminalApps) { store.addTerminalApp($0) }
+        } header: {
+            Text(L("popbar.terminals.header"))
+        } footer: {
+            Text(L("popbar.terminals.footer"))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// "Add App…": the running apps not on the list yet, then a file chooser.
+    private func addAppMenu(skipping listed: [String], add: @escaping (String) -> Void) -> some View {
+        Menu(L("popbar.excluded.add")) {
+            let running = Self.runningApps(excluding: listed)
+            ForEach(running, id: \.bundleID) { app in
+                Button {
+                    add(app.bundleID)
+                } label: {
+                    // Menus drop a Label's icon unless the style asks for it.
+                    Label { Text(app.name) } icon: { Image(nsImage: app.icon) }
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+            if !running.isEmpty { Divider() }
+            Button(L("popbar.excluded.choose")) { chooseApp(add) }
+        }
+        .fixedSize()
     }
 
     private struct RunningApp {
@@ -139,14 +171,14 @@ struct GeneralPage: View {
     }
 
     /// For an app that is not running right now.
-    private func chooseApp() {
+    private func chooseApp(_ add: (String) -> Void) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.application]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowsMultipleSelection = true
         guard panel.runModal() == .OK else { return }
         for url in panel.urls {
-            if let id = Bundle(url: url)?.bundleIdentifier { store.excludeApp(id) }
+            if let id = Bundle(url: url)?.bundleIdentifier { add(id) }
         }
     }
 
@@ -251,9 +283,9 @@ struct GeneralPage: View {
     }
 }
 
-/// One excluded app: its icon and name when it is installed, the bare bundle ID
-/// when it is not (a hand-edited config, or an app since deleted) — still
-/// removable either way.
+/// One app on a list (excluded apps, terminals): its icon and name when it is
+/// installed, the bare bundle ID when it is not (a hand-edited config, an app
+/// since deleted, a default terminal never installed) — still removable either way.
 private struct ExcludedAppRow: View {
     let bundleID: String
     let remove: () -> Void

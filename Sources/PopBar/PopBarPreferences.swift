@@ -27,6 +27,7 @@ enum PopBarPreferences {
         static let enabled            = "popup.enabled"
         static let simulateCopy       = "popup.simulateCopy"
         static let excludedApps       = "popup.excludedApps"
+        static let terminalApps       = "popup.terminalApps"
         static let ignoreAddressBars  = "popup.ignoreAddressBars"
         static let wheelOuterRadius   = "wheel.outerRadius"
         static let wheelInnerRadius   = "wheel.innerRadius"
@@ -205,6 +206,39 @@ enum PopBarPreferences {
         get { config.stringArray(P.excludedApps) }
         set { config.set(P.excludedApps, newValue) }
     }
+
+    /// Terminals in which a program running inside may make the selection and
+    /// copy it by itself (herdr, tmux with mouse mode, vim — issue #8). In these
+    /// apps a clipboard write during the selecting drag is taken as the selection,
+    /// whatever the app itself reports (see `CopyOnSelectStrategy`).
+    ///
+    /// Not in the file yet → the built-in list is written into it, and from then
+    /// on the file is what counts: a terminal the user removed stays removed.
+    static var terminalApps: [String] {
+        get {
+            guard config.value(P.terminalApps) != nil else {
+                config.set(P.terminalApps, defaultTerminalApps)
+                return defaultTerminalApps
+            }
+            return config.stringArray(P.terminalApps)
+        }
+        set { config.set(P.terminalApps, newValue) }
+    }
+
+    /// Attaché is the author's own app. Ghostty, Terminal, iTerm2 and OTTY are
+    /// installed on the development Mac; the other bundle IDs are the vendors'
+    /// published ones, not checked here.
+    static let defaultTerminalApps = [
+        "com.mitchellh.ghostty",
+        "com.apple.Terminal",
+        "com.googlecode.iterm2",
+        "io.appmakes.otty",
+        "com.github.wez.wezterm",
+        "net.kovidgoyal.kitty",
+        "org.alacritty",
+        "dev.warp.Warp-Stable",
+        "me.xueshi.attache",
+    ]
 
     // MARK: - Screenshot OCR
 

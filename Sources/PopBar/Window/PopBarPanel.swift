@@ -108,6 +108,9 @@ final class PopBarPanel {
     private let panel: NSPanel
     /// The capsule's dropdown for groups.
     private let submenu = CapsuleSubmenu()
+    #if DEBUG
+    private lazy var readViaBadge = DebugReadViaBadge(model: model)
+    #endif
     /// Kept so `show` can switch its AppKit hit-test region per style (wheel → ring
     /// only; capsule → whole view).
     private let hosting: FirstMouseHostingView<PopBarContentView>
@@ -201,6 +204,9 @@ final class PopBarPanel {
         ) { [weak self] _ in
             guard let self, !self.repositioning else { return }
             self.userMoved = true
+            #if DEBUG
+            self.placeReadViaBadge()
+            #endif
         }
 
         // SwiftUI reports the result content's natural height here; we clamp it
@@ -285,8 +291,28 @@ final class PopBarPanel {
         DispatchQueue.main.async { [weak self] in
             self?.fitAndPlace()
             self?.panel.orderFront(nil)
+            #if DEBUG
+            self?.placeReadViaBadge()
+            #endif
         }
     }
+
+    #if DEBUG
+    /// Under the visible popup: the ring's bottom for the wheel styles (the
+    /// window is a larger square that leaves room for the submenu ring), the
+    /// window's bottom otherwise.
+    private func placeReadViaBadge() {
+        guard panel.isVisible else { readViaBadge.hide(); return }
+        let f = panel.frame
+        let bottom: CGFloat
+        if case .actions = model.phase, model.style.isWheel {
+            bottom = f.midY - model.wheelLayout.outerRadius
+        } else {
+            bottom = f.minY
+        }
+        readViaBadge.place(under: CGPoint(x: f.midX, y: bottom))
+    }
+    #endif
 
     /// Switch the capsule's content (e.g. to loading / result) and re-fit. When
     /// entering `.result`, seed the live `streamingText` with the phase's text so
@@ -422,6 +448,9 @@ final class PopBarPanel {
     func hide() {
         submenu.close()
         panel.orderOut(nil)
+        #if DEBUG
+        readViaBadge.hide()
+        #endif
         model.phase = .actions
         model.streamingText = ""
         resultTopY = nil   // released so the next presentation re-anchors (issue #12)
@@ -473,6 +502,9 @@ final class PopBarPanel {
         repositioning = false
 
         panel.invalidateShadow()   // recompute the native shadow for the new rounded size
+        #if DEBUG
+        placeReadViaBadge()
+        #endif
     }
 
     /// Keep the popup at the position the user dragged it to while it resizes: hold
