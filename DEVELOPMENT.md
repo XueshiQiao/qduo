@@ -58,6 +58,7 @@ check passes), `SPARKLE_EDDSA_KEY` (keychain account `qduo`; public half in
 ```
 project.yml            ← the name, and only here
 design/icon/           the two 1024 masters
+docs/KNOWN_ISSUES.md   problems we know about and left open, with the options
 Sources/
 ├─ App/                main · AppDelegate · MenuBarController · UpdateController
 ├─ Core/               Brand · FileLog · Preferences · Analytics · LocalizationOverride · LLM/ · Speech/ (TTS provider adapters)
