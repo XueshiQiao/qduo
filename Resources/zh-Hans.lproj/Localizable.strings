@@ -400,6 +400,7 @@
 "speech.reader.system" = "系统语音";
 "speech.key.hint.qwen" = "阿里云百炼的 API Key，以 sk- 开头。存在钥匙串里；所有 Qwen-Audio 朗读员共用这一个 key。";
 "speech.key.hint.minimax" = "MiniMax 开放平台的 API Key（国内站 platform.minimax.cn → 账户管理 → 接口密钥）。存在钥匙串里；所有 MiniMax 朗读员共用这一个 key。按字符计费：turbo ¥2.0 / 万字符，hd ¥3.5 / 万字符，1 个汉字算 2 个字符。";
+"speech.key.hint.elevenlabs" = "ElevenLabs 的 API Key（在 elevenlabs.io 的 API Keys 页面创建）。存在钥匙串里；所有 ElevenLabs 朗读员共用这一个 key。按字符计费。flash v2.5 大约半秒开始出声；v3 音质更好，但要 2 秒左右才出声。免费账号只能用这里列出的音色。";
 "speech.error.noKey" = "这个朗读员还没有 API Key。请到 设置 › 朗读 里填写。";
 "speech.error.unavailable" = "这个朗读员用的服务在当前版本里不可用。";
 "speech.error.noAudio" = "服务没有返回音频。";

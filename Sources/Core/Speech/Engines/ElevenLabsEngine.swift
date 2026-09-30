@@ -26,7 +26,8 @@ struct ElevenLabsEngine: TTSEngine {
         var body: [String: Any] = [
             "text": request.text,
             "model_id": settings.string("model", "eleven_flash_v2_5"),
-            "voice_settings": ["speed": settings.double("speed", 1)],
+            // The API takes 0.7–1.2 and answers 400 to anything else.
+            "voice_settings": ["speed": min(1.2, max(0.7, settings.double("speed", 1)))],
         ]
         body.merge(settings.extra) { _, new in new }
         var req = URLRequest(url: url)

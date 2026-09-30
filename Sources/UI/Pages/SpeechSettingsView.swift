@@ -87,7 +87,7 @@ struct SpeechSettingsView: View {
                     if reader.id == store.defaultReaderID { badge(L("speech.reader.default.badge"), .secondary) }
                     if !store.hasKey(for: reader.engine) { badge(L("speech.reader.missingKey"), .orange) }
                 }
-                Text("\(voice) · \(reader.model) · \(String(format: "%.2f×", reader.speed))")
+                Text("\(voice) · \(reader.model) · \(String(format: "%.2f×", reader.effectiveSpeed))")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }
             // VoiceOver: the name is the row's "open the editor" button; the
@@ -236,6 +236,8 @@ private struct ReaderEditor: View {
     private func form(_ reader: SpeechReader) -> some View {
         let provider = SpeechProviders.find(reader.engine)
         let voices = provider?.voices[reader.model] ?? []
+        let speedRange = provider?.speedRange ?? 0.5...2
+        let speed = reader.effectiveSpeed
         func set(_ change: (inout SpeechReader) -> Void) {
             var copy = reader
             change(&copy)
@@ -271,21 +273,26 @@ private struct ReaderEditor: View {
 
             LabeledContent(L("speech.reader.speed")) {
                 HStack {
-                    Slider(value: Binding(get: { reader.speed }, set: { v in set { $0.speed = (v * 20).rounded() / 20 } }),
-                           in: 0.5...2)
+                    Slider(value: Binding(get: { speed }, set: { v in set { $0.speed = (v * 20).rounded() / 20 } }),
+                           in: speedRange)
                         .frame(maxWidth: 200)
-                    Text(String(format: "%.2f×", reader.speed))
+                    Text(String(format: "%.2f×", speed))
                         .font(.system(size: 11, design: .monospaced)).frame(width: 44, alignment: .trailing)
                 }
             }
 
-            Picker(L("speech.reader.region"), selection: Binding(get: { reader.region }, set: { v in set { $0.region = v } })) {
-                Text(L("speech.reader.region.cn")).tag("cn")
-                Text(L("speech.reader.region.intl")).tag("intl")
+            if provider?.hasRegions ?? true {
+                Picker(L("speech.reader.region"), selection: Binding(get: { reader.region }, set: { v in set { $0.region = v } })) {
+                    Text(L("speech.reader.region.cn")).tag("cn")
+                    Text(L("speech.reader.region.intl")).tag("intl")
+                }
             }
         }
         .formStyle(.grouped)
-        .frame(height: customVoice || !voices.contains(where: { $0.id == reader.voice }) ? 300 : 262)
+        // One row is 38 pt: the custom voice id field adds one, a provider
+        // without regions has one fewer.
+        .frame(height: (customVoice || !voices.contains(where: { $0.id == reader.voice }) ? 300 : 262)
+                       - (provider?.hasRegions ?? true ? 0 : 38))
     }
 }
 

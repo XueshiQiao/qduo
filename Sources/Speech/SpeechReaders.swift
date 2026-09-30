@@ -6,8 +6,9 @@ import SwiftUI
 /// pick a reader by `id`; the macOS system voice is always available as the
 /// reader `SpeechReader.systemID` and is not stored.
 ///
-/// Only providers that meet all three hard requirements (streaming, first sound
-/// ≤ 800 ms, word timings in real time) are offered — see
+/// Only providers that stream and send word timings in real time are offered
+/// (word highlighting is a hard requirement). First sound ≤ 800 ms is not: a
+/// slower model such as ElevenLabs v3 is offered and the user picks — see
 /// design/cloud-tts/provider-decisions.html.
 struct SpeechReader: Identifiable, Equatable {
     static let systemID = "system"
@@ -38,8 +39,15 @@ struct SpeechReader: Identifiable, Equatable {
         ])
     }
 
+    /// The speed the provider actually reads at: a stored speed outside the
+    /// provider's range (ElevenLabs takes 0.7–1.2) counts as the nearest end.
+    var effectiveSpeed: Double {
+        let range = SpeechProviders.find(engine)?.speedRange ?? 0.5...2
+        return min(max(speed, range.lowerBound), range.upperBound)
+    }
+
     /// What decides whether two reads sound the same — the cache key's reader half.
-    var cacheIdentity: String { [engine, model, voice, String(format: "%.2f", speed), region].joined(separator: "|") }
+    var cacheIdentity: String { [engine, model, voice, String(format: "%.2f", effectiveSpeed), region].joined(separator: "|") }
 
     // MARK: - Config file
 
@@ -91,6 +99,10 @@ struct SpeechProvider {
     /// Settings-page icon tile for this provider's rows.
     let symbol: String
     let tint: Color
+    /// The speeds the provider accepts; the settings slider covers exactly this.
+    var speedRange: ClosedRange<Double> = 0.5...2
+    /// Whether it has a mainland and an international endpoint to choose from.
+    var hasRegions = true
 }
 
 enum SpeechProviders {
@@ -161,7 +173,50 @@ enum SpeechProviders {
         keyHint: L("speech.key.hint.minimax"),
         symbol: "waveform", tint: .pink)
 
-    static let all = [qwenAudio, miniMax]
+    /// ElevenLabs. flash v2.5 is the default: first sound 450–900 ms, where v3
+    /// takes 1.7–2.7 s (measured 2026-09-30), at about half v3's price. v3 is
+    /// offered for its voice quality; the user picks. Only the premade voices:
+    /// a free account gets 402 for any other voice over the API. Every one of
+    /// them reads Chinese too, with both models.
+    private static let elevenLabsVoices: [SpeechProvider.Voice] = [
+        .init(id: "EXAVITQu4vr4xnSDxMaL", label: "Sarah · Female · US"),
+        .init(id: "FGY2WhTYpPnrIDTdsKH5", label: "Laura · Female · US"),
+        .init(id: "cgSgspJ2msm6clMCkdW9", label: "Jessica · Female · US"),
+        .init(id: "XrExE9yKIg1WjnnlVkGX", label: "Matilda · Female · US"),
+        .init(id: "hpp4J3VqNfWAUOO0d1Us", label: "Bella · Female · US"),
+        .init(id: "Xb7hH8MSUJpSbSDYk0k2", label: "Alice · Female · UK"),
+        .init(id: "pFZP5JQG7iQjIQuC4Bku", label: "Lily · Female · UK"),
+        .init(id: "SAz9YHcvj6GT2YYXdXww", label: "River · Neutral · US"),
+        .init(id: "CwhRBWXzGAHq8TQ4Fs17", label: "Roger · Male · US"),
+        .init(id: "N2lVS1w4EtoT3dr4eOWO", label: "Callum · Male · US"),
+        .init(id: "SOYHLrjzK2X1ezoPC6cr", label: "Harry · Male · US"),
+        .init(id: "TX3LPaxmHKxFdv7VOQHJ", label: "Liam · Male · US"),
+        .init(id: "bIHbv24MWmeRgasZH58o", label: "Will · Male · US"),
+        .init(id: "cjVigY5qzO86Huf0OWal", label: "Eric · Male · US"),
+        .init(id: "iP95p4xoKVk53GoZ742B", label: "Chris · Male · US"),
+        .init(id: "nPczCjzI2devNBz1zQrb", label: "Brian · Male · US"),
+        .init(id: "pNInz6obpgDQGcFmaJgB", label: "Adam · Male · US"),
+        .init(id: "pqHfZKP75CvOlQylNhV4", label: "Bill · Male · US"),
+        .init(id: "JBFqnCBsd6RMkjVDRZzb", label: "George · Male · UK"),
+        .init(id: "onwK4e9ZLuTAKqWW03F9", label: "Daniel · Male · UK"),
+        .init(id: "IKne3meq5aSn9XLyUdCD", label: "Charlie · Male · Australian"),
+    ]
+
+    static let elevenLabs = SpeechProvider(
+        id: "elevenlabs",
+        displayName: "ElevenLabs",
+        shortName: "ElevenLabs",
+        models: ["eleven_flash_v2_5", "eleven_v3"],
+        defaultModel: "eleven_flash_v2_5",
+        voices: ["eleven_flash_v2_5": elevenLabsVoices, "eleven_v3": elevenLabsVoices],
+        defaultVoice: "EXAVITQu4vr4xnSDxMaL",
+        keyHint: L("speech.key.hint.elevenlabs"),
+        symbol: "waveform.path", tint: .indigo,
+        // The API refuses anything outside 0.7–1.2 (HTTP 400, checked 2026-09-30).
+        speedRange: 0.7...1.2,
+        hasRegions: false)
+
+    static let all = [qwenAudio, miniMax, elevenLabs]
 
     static func find(_ id: String) -> SpeechProvider? { all.first { $0.id == id } }
 }

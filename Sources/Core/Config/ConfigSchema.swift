@@ -153,12 +153,13 @@ enum ConfigSchema {
                 "properties": {
                   "id": { "type": "string" },
                   "name": { "type": "string", "description": "What the settings and the reading window show." },
-                  "engine": { "type": "string", "enum": ["qwen-audio", "minimax"] },
-                  "model": { "type": "string", "description": "e.g. qwen-audio-3.0-tts-flash, speech-2.8-turbo" },
+                  "engine": { "type": "string", "enum": ["qwen-audio", "minimax", "elevenlabs"] },
+                  "model": { "type": "string", "description": "e.g. qwen-audio-3.0-tts-flash, speech-2.8-turbo, eleven_flash_v2_5" },
                   "voice": { "type": "string", "description": "The provider's voice id, e.g. longanhuan_v3.6" },
-                  "speed": { "type": "number", "minimum": 0.5, "maximum": 2 },
+                  "speed": { "type": "number", "minimum": 0.5, "maximum": 2,
+                    "description": "ElevenLabs accepts 0.7–1.2 only; a value outside is read at the nearest end." },
                   "region": { "type": "string", "enum": ["cn", "intl"],
-                    "description": "cn = mainland China endpoint, intl = international endpoint." }
+                    "description": "cn = mainland China endpoint, intl = international endpoint. Not used by ElevenLabs." }
                 },
                 "required": ["id", "engine"],
                 "additionalProperties": true

@@ -38,7 +38,7 @@ pre code{background:none;padding:0}
 <p class="muted">2026-09-28，2026-09-29 更新 · 记录每家朗读服务为什么考虑、为什么用或不用。数字全部来自 <code>scripts/speech-bench.sh</code> 实测（说明见 <code>Tools/SpeechBench/README.md</code>），除非标明「文档」。</p>
 
 <div class="card rec">
-<b>结论：</b><b>阿里 Qwen-Audio</b> 和 <b>MiniMax</b>（speech-2.8-turbo，2026-09-29 实测）同时满足三条硬要求，都已接入为云端朗读员。系统语音保留。豆包、CosyVoice、Gemini、OpenAI 暂不启用，代码保留（豆包、CosyVoice、Gemini 的适配代码在 <code>Sources/Core/Speech/Engines/</code>，在 <code>TTSEngineRegistry.paused</code> 里标为暂停）。ElevenLabs 已测（2026-09-29）：流式和逐字时间都满足，但首音 1.2–2.4 秒、价格约为 Qwen 的 5 倍，暂不采用。MiniMax 等 key。
+<b>结论：</b><b>阿里 Qwen-Audio</b> 和 <b>MiniMax</b>（speech-2.8-turbo，2026-09-29 实测）同时满足三条硬要求，都已接入为云端朗读员。系统语音保留。豆包、CosyVoice、Gemini、OpenAI 暂不启用，代码保留（豆包、CosyVoice、Gemini 的适配代码在 <code>Sources/Core/Speech/Engines/</code>，在 <code>TTSEngineRegistry.paused</code> 里标为暂停）。<b>ElevenLabs</b>（2026-09-30 接入）：<code>eleven_flash_v2_5</code>（默认）和 <code>eleven_v3</code> 两个模型都提供，由用户自己选。
 </div>
 
 <h2>一、硬要求（不满足就不开启）</h2>
@@ -48,7 +48,7 @@ pre code{background:none;padding:0}
 <tr><td>2</td><td><b>足够快</b></td><td>「实际首音」（按下到听见声音，包括为了不卡顿需要多攒的缓冲）≤ 800 毫秒；并且首包之后等 300 毫秒开播，全程不断。</td></tr>
 <tr><td>3</td><td><b>实时字幕</b></td><td>每个字（词）的时间要在它被念出来之前到手，才能逐字高亮。「一句念完才给」「整段合成完才给」都不算。判定：字的时间覆盖原文 ≥ 90%，且没有「念过了时间才到」的字。</td></tr>
 </table></div>
-<p class="muted">不满足的宁愿先不开启，不做「凑合能用」的版本。</p>
+<p class="muted">不满足的宁愿先不开启，不做「凑合能用」的版本。<br><b>2026-09-30 调整：</b>第 2 条（首音 ≤ 800 ms）改为参考项，不再是硬要求——慢一点的模型也提供，写清楚快慢，让用户自己选。第 1、3 条仍是硬要求。</p>
 
 <h2>二、总表</h2>
 <div class="tw"><table>
@@ -58,7 +58,8 @@ pre code{background:none;padding:0}
 <tr><td>阿里 CosyVoice<br><span class="muted">cosyvoice-v3-flash</span></td><td>文档明确支持逐字时间；最便宜（约 ¥0.8/万字）</td><td class="y">是</td><td class="y">首音 350–460 ms</td><td class="x">首包后 0.9–2.6 秒才到</td><td class="x">暂停（试听效果也一般）</td></tr>
 <tr><td>Google Gemini TTS</td><td>排行榜第 2；便宜</td><td class="y">是</td><td class="muted">未测</td><td class="x">任何接口都没有逐字时间（文档）</td><td class="x">暂停</td></tr>
 <tr><td>OpenAI gpt-4o-mini-tts</td><td>接入最简单</td><td class="y">是</td><td class="muted">未测</td><td class="x">没有逐字时间（文档）</td><td class="x">不做</td></tr>
-<tr><td>ElevenLabs<br><span class="muted">eleven_v3</span></td><td>国际知名度最高；逐字符时间</td><td class="y">是</td><td class="x">首音 1.2–2.4 s</td><td class="y">字的时间和音频同时到</td><td class="x">暂不采用（慢、贵：约 $80/百万字符）</td></tr>
+<tr><td><b>ElevenLabs</b><br><span class="muted">eleven_flash_v2_5</span></td><td>国际知名度最高；逐字符时间</td><td class="y">是</td><td class="y">首音 450–900 ms（偶尔 2.3 s）</td><td class="y">字的时间和音频同时到</td><td class="y">采用，默认模型（约 $40/百万字符）</td></tr>
+<tr><td><b>ElevenLabs</b><br><span class="muted">eleven_v3</span></td><td>音质更好</td><td class="y">是</td><td class="x">首音 1.7–2.9 s</td><td class="m">字的时间和音频同时到；长英文句会卡顿</td><td class="m">提供，用户自选（约 $80/百万字符）</td></tr>
 <tr><td><b>MiniMax</b><br><span class="muted">speech-2.8-turbo</span></td><td>中英混读口碑顶尖；英文音色多</td><td class="y">是</td><td class="y">首音 320–520 ms</td><td class="y">字的时间和音频同时到（晚约 30 ms）</td><td class="y">采用（¥2.0/万字符）</td></tr>
 </table></div>
 
@@ -110,7 +111,7 @@ pre code{background:none;padding:0}
 <p><b>什么情况下重新考虑：</b>豆包推出随音频实时返回的字幕；或者我们接受「开头先估算高亮，字幕到了再校正」的做法。</p>
 <p class="muted">代码：<code>VolcengineEngine.swift</code>（HTTP）、<code>VolcengineBidirectional.swift</code>（WebSocket 双向，二进制协议已实现并实测可用）。你配置文件里豆包的 key 没动。</p>
 
-<h3>ElevenLabs：暂不采用</h3>
+<h3>ElevenLabs：采用（flash v2.5 默认，v3 可选）</h3>
 <p><b>为什么考虑：</b>国际上知名度最高，音色库最大；接口按字符给时间，对中文正好一个字一个时间。</p>
 <p><b>实测（2026-09-29，模型 <code>eleven_v3</code>，预置音色 Sarah，9 段测试文字 × 2 次，接口 <code>/v1/text-to-speech/{voice}/stream/with-timestamps</code>，PCM 24 kHz）：</b></p>
 <div class="tw"><table>
@@ -129,8 +130,17 @@ pre code{background:none;padding:0}
 <tr><td>对比：阿里 Qwen-Audio flash</td><td>约 ¥100</td><td>约 ¥1</td></tr>
 </table></div>
 <p><b>免费账号的限制（实测）：</b>每月 1 万字符；不能通过接口使用音色库里的音色（报 402「paid_plan_required」），只能用账号自带的预置音色。</p>
-<p><b>结论：</b>满足流式和逐字时间，但首音不达标，而且 v3 的价格约是 Qwen 的 5–6 倍，用不起。暂不采用，代码保留（<code>ElevenLabsEngine.swift</code>）。</p>
-<p><b>什么情况下重新考虑：</b>测 <code>eleven_flash_v2_5</code> 的首音能进 800 毫秒，且价格能接受。</p>
+<p><b>2026-09-29 的结论（已被下面取代）：</b>首音不达标、v3 太贵，暂不采用。</p>
+<p><b>复测（2026-09-30，预置音色 Sarah，2 段文字 <code>mixed</code>、<code>en-news</code> × 3 次）：</b></p>
+<table>
+<tr><th>模型</th><th>文字</th><th>冷启动首音</th><th>热连接首音</th><th>RTF</th><th>跟得上实时</th><th>逐字高亮</th></tr>
+<tr><td><code>eleven_flash_v2_5</code></td><td>中英混排</td><td>830 ms</td><td class="y">444–468 ms</td><td>0.08–0.20</td><td class="y">✓</td><td class="y">100%，无晚到</td></tr>
+<tr><td><code>eleven_flash_v2_5</code></td><td>英文新闻句</td><td>875 ms</td><td class="m">501 ms；有一次 2284 ms（那次光建连接就花了 2.1 s）</td><td>0.06–0.24</td><td class="y">✓</td><td class="y">100%，无晚到</td></tr>
+<tr><td><code>eleven_v3</code></td><td>中英混排</td><td>2592 ms</td><td class="x">约 2.0 s</td><td>1.1–1.2</td><td class="y">✓</td><td class="y">100%，无晚到</td></tr>
+<tr><td><code>eleven_v3</code></td><td>英文新闻句</td><td>2554 ms</td><td class="x">2.4–2.9 s</td><td>约 0.95</td><td class="x">✗ 按 300 ms 缓冲会卡</td><td class="m">100%；冷启动那次有 1 个字晚到 87 ms</td></tr>
+</table>
+<p><b>结论（2026-09-30）：</b>首音不再是硬要求后，两个模型都提供。<code>eleven_flash_v2_5</code> 是默认：快、跟得上、字全对上，价格约为 v3 的一半。<code>eleven_v3</code> 音质取向，但慢，而且合成速度只和念的速度差不多（RTF 约 1），长一点的英文会中途卡顿；用户自选。</p>
+<p><b>接入细节：</b>只列 21 个预置音色（免费账号用其他音色会被拒，HTTP 402，2026-09-30 再次确认）。语速只接受 0.7–1.2（超出返回 400，已实测），设置页的滑块按这个范围，配置里超出范围的值按最近的一端念。没有国内/国际两个地址，设置页不显示「地区」。</p>
 
 <h3>阿里 CosyVoice：暂停</h3>
 <p><b>为什么考虑：</b>文档明确支持逐字时间；和 Qwen-Audio 同一个 key、同一套协议，接入成本几乎为零；最便宜。</p>
