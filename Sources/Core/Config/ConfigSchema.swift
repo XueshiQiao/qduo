@@ -186,8 +186,8 @@ enum ConfigSchema {
             "kind": {
               "type": "string",
               "enum": ["ai", "copy", "webPreview", "quickLook", "revealInFinder", "openURL", "speak",
-                       "transform", "shortcut", "script", "pause", "inspect", "settings", "group"],
-              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). settings = open the app's settings window. group = hold children. The rest act on links and paths."
+                       "transform", "shortcut", "script", "systemTranslate", "pause", "inspect", "settings", "group"],
+              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. systemTranslate = translate with macOS's own on-device translator into targetLanguage (macOS 15+). pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). settings = open the app's settings window. group = hold children. The rest act on links and paths."
             },
             "prompt": { "type": "string",
               "description": "For \\"ai\\": the instruction sent with the selection." },
@@ -205,7 +205,9 @@ enum ConfigSchema {
             "script": { "type": "string",
               "description": "For \\"script\\": a shell command, run by your login shell. The selection is on standard input and in $QDUO_TEXT; what it prints is the result. Times out after 10 seconds." },
             "output": { "type": "string", "enum": ["panel", "replace", "append", "copy"],
-              "description": "For ai, transform, shortcut and script: where the result goes. panel (default) shows it in the popup, which offers a Replace button; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
+              "description": "For ai, transform, shortcut, script and systemTranslate: where the result goes. panel (default) shows it in the popup, which offers a Replace button; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
+            "targetLanguage": { "type": "string",
+              "description": "For \\"systemTranslate\\": the language to translate into, as macOS names it, e.g. \\"zh\\" (Simplified Chinese), \\"zh-TW\\" (Traditional Chinese), \\"en\\", \\"en-GB\\", \\"ja\\", \\"fr\\"." },
             "reader": { "type": "string",
               "description": "For \"speak\": the id of the reader (see speech.readers, or \"system\"). Absent = speech.defaultReader." },
             "modelOverride": {

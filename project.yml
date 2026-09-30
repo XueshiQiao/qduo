@@ -95,6 +95,13 @@ targets:
         product: Aptabase
       - package: MarkdownUI
         product: MarkdownUI
+      # macOS 15+ only, and the app runs on 13: weak, or dyld refuses to launch
+      # it on 13/14. `_Translation_SwiftUI` is the overlay `.translationTask`
+      # lives in, linked implicitly by Swift, so it is weakened the same way.
+      - sdk: Translation.framework
+        weak: true
+      - sdk: _Translation_SwiftUI.framework
+        weak: true
 
   # Unit tests for the parts that are pure calculation. Deliberately NOT hosted
   # in the app: QDuo installs global input monitors at launch, so a test host

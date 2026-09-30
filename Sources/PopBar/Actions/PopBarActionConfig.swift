@@ -86,6 +86,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case transform      // local: a `TextTransform` named by `op`
         case shortcut       // run the macOS Shortcut named `shortcut` on the selection
         case script         // run the shell command `script` on the selection
+        case systemTranslate // local: macOS's on-device translator (macOS 15+), no model
         case pause          // pause the popup, like the menu bar's Pause (the selection is ignored)
         case inspect        // debug: show the selection's accessibility element and its path
         case settings       // open the app's settings window (the selection is ignored)
@@ -126,7 +127,10 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// `speak`: the id of the reader to use (`SpeechSettingsStore`). nil = the
     /// default reader chosen in settings.
     var reader: String?
-    /// `ai`, `transform`, `shortcut`, `script`: an `ActionOutput` raw value.
+    /// `systemTranslate`: the language to translate into, as the system names
+    /// it ("zh", "zh-TW", "en-GB"). Chosen by the user; nil until they do.
+    var targetLanguage: String?
+    /// `ai`, `transform`, `shortcut`, `script`, `systemTranslate`: an `ActionOutput` raw value.
     /// nil = the panel.
     var output: String?
 
@@ -138,7 +142,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     }
 
     /// Whether this kind produces text that `output` applies to.
-    var hasOutput: Bool { [.ai, .transform, .shortcut, .script].contains(kind) }
+    var hasOutput: Bool { [.ai, .transform, .shortcut, .script, .systemTranslate].contains(kind) }
 
     var openTarget: OpenURLTarget { openIn.flatMap(OpenURLTarget.init(rawValue:)) ?? .browser }
 
@@ -203,7 +207,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, id, title, iconSymbol, kind, prompt, modelOverride, children
-        case url, openIn, op, shortcut, script, output, reader
+        case url, openIn, op, shortcut, script, output, reader, targetLanguage
     }
     private static let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
     init(from decoder: Decoder) throws {
@@ -228,6 +232,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         script = try? c.decodeIfPresent(String.self, forKey: .script)
         output = try? c.decodeIfPresent(String.self, forKey: .output)
         reader = try? c.decodeIfPresent(String.self, forKey: .reader)
+        targetLanguage = try? c.decodeIfPresent(String.self, forKey: .targetLanguage)
         // Flatten anything deeper than one level (see `children`). Decoding is
         // deliberately lenient here for the same reason every other field is: a
         // malformed children array must not throw away the whole action list.
@@ -279,6 +284,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(script, forKey: key(.script))
         try c.encodeIfPresent(output, forKey: key(.output))
         try c.encodeIfPresent(reader, forKey: key(.reader))
+        try c.encodeIfPresent(targetLanguage, forKey: key(.targetLanguage))
         // Only written when there is something to write, so an action that never
         // had children does not grow an empty array.
         if !children.isEmpty { try c.encode(children, forKey: key(.children)) }
@@ -362,6 +368,12 @@ enum DefaultActions {
         PopBarActionConfig(title: L("popbar.action.speak"), iconSymbol: "speaker.wave.2.fill", kind: .speak)
     }
 
+    /// Translate with macOS's own translator. From the templates, on macOS 15+.
+    /// No target language: the user picks one before it can be saved.
+    static func systemTranslateAction() -> PopBarActionConfig {
+        PopBarActionConfig(title: L("template.systemTranslate"), iconSymbol: "translate", kind: .systemTranslate)
+    }
+
     /// Pause the popup from the popup itself. Not in the seed: it is there for
     /// whoever wants a one-tap pause on their ring, from the templates.
     static func pauseAction() -> PopBarActionConfig {
@@ -425,7 +437,7 @@ enum ActionTemplates {
                 DefaultActions.ai(L("template.analyze"), "graduationcap", Prompts.analyze),
                 DefaultActions.ai(L("template.explainCode"), "chevron.left.forwardslash.chevron.right", Prompts.explainCode),
             ]),
-            Section(id: "text", title: L("template.section.text"), actions: [
+            Section(id: "text", title: L("template.section.text"), actions: systemTranslateTemplates() + [
                 DefaultActions.transform(L("transform.uppercase"), "textformat.size.larger", .uppercase),
                 DefaultActions.transform(L("transform.lowercase"), "textformat.size.smaller", .lowercase),
                 DefaultActions.transform(L("transform.titleCase"), "textformat", .titleCase),
@@ -472,6 +484,13 @@ enum ActionTemplates {
                 DefaultActions.settingsAction(),
             ]),
         ]
+    }
+
+    /// Offered only where the kind can run: macOS 13/14 have no API that hands
+    /// a translation back to the app.
+    private static func systemTranslateTemplates() -> [PopBarActionConfig] {
+        if #available(macOS 15.0, *) { return [DefaultActions.systemTranslateAction()] }
+        return []
     }
 
     private static func toneGroup() -> PopBarActionConfig {

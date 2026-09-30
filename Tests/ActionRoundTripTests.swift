@@ -90,6 +90,23 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(try roundTrip(json).arrayValue?.first?[path: "kind"]?.stringValue, "pause")
     }
 
+    func testTheSystemTranslateKindKeepsItsKindAndOutput() throws {
+        let json = """
+        [{ "id": "t", "title": "Translate", "iconSymbol": "translate", "kind": "systemTranslate",
+           "targetLanguage": "zh-TW", "output": "replace" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertEqual(action.kind, .systemTranslate)
+        XCTAssertFalse(action.isUnsupported)
+        XCTAssertTrue(action.hasOutput)
+        XCTAssertEqual(action.outputMode, .replace)
+        XCTAssertEqual(action.targetLanguage, "zh-TW")
+        let out = try roundTrip(json).arrayValue?.first
+        XCTAssertEqual(out?[path: "kind"]?.stringValue, "systemTranslate")
+        XCTAssertEqual(out?[path: "output"]?.stringValue, "replace")
+        XCTAssertEqual(out?[path: "targetLanguage"]?.stringValue, "zh-TW")
+    }
+
     func testAKnownFieldIsNeverShadowedByAStrayExtra() throws {
         // If a decode ever let a known name into `extra`, encoding it again would
         // write the key twice. Belt and braces: the title must be the real one.

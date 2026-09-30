@@ -7,6 +7,9 @@ struct ActionEditorView: View {
     @State private var draft: PopBarActionConfig
     @ObservedObject private var llm: LLMService
     @ObservedObject private var speech = SpeechSettingsStore.shared
+    /// The system translator's languages, loaded when the editor shows a
+    /// `systemTranslate` action (the list comes from an async system call).
+    @State private var translateTargets: [SystemTranslator.Target] = []
     let onSave: (PopBarActionConfig) -> Void
     let onCancel: () -> Void
 
@@ -46,6 +49,11 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.transform")).tag(PopBarActionConfig.Kind.transform)
                         Text(L("popbar.editor.kind.shortcut")).tag(PopBarActionConfig.Kind.shortcut)
                         Text(L("popbar.editor.kind.script")).tag(PopBarActionConfig.Kind.script)
+                        // Offered on macOS 15+ only — but an action that already
+                        // is one keeps its entry, so the picker never shows blank.
+                        if SystemTranslator.isAvailable || draft.kind == .systemTranslate {
+                            Text(L("popbar.editor.kind.systemTranslate")).tag(PopBarActionConfig.Kind.systemTranslate)
+                        }
                         Text(L("popbar.editor.kind.pause")).tag(PopBarActionConfig.Kind.pause)
                         Text(L("popbar.editor.kind.inspect")).tag(PopBarActionConfig.Kind.inspect)
                         Text(L("popbar.editor.kind.settings")).tag(PopBarActionConfig.Kind.settings)
@@ -106,6 +114,7 @@ struct ActionEditorView: View {
         case .transform: return titleOK && (draft.op == nil || draft.op.flatMap(TextTransform.init(rawValue:)) != nil)
         case .shortcut:  return titleOK && filled(draft.shortcut)
         case .script:    return titleOK && filled(draft.script)
+        case .systemTranslate: return titleOK && filled(draft.targetLanguage)
         default:         return titleOK
         }
     }
@@ -189,6 +198,30 @@ struct ActionEditorView: View {
                 Text(L("popbar.editor.script"))
             } footer: {
                 Text(L("popbar.editor.script.hint")).fixedSize(horizontal: false, vertical: true)
+            }
+        case .systemTranslate:
+            Section {
+                Picker(L("popbar.editor.targetLanguage"), selection: Binding(
+                    get: { draft.targetLanguage ?? "" },
+                    set: { draft.targetLanguage = $0.isEmpty ? nil : $0 })) {
+                    Text(L("popbar.editor.targetLanguage.choose")).tag("")
+                    Divider()
+                    ForEach(translateTargets) { Text($0.name).tag($0.id) }
+                    // A language this action names that this system does not
+                    // list: keep it visible rather than silently clearing it.
+                    // Also while the list is still loading, so the picker
+                    // never flashes "Choose" for an action that has one.
+                    if let id = draft.targetLanguage,
+                       !translateTargets.contains(where: { $0.id == id }) {
+                        Text(SystemTranslator.displayName(of: id)).tag(id)
+                    }
+                }
+                .task { if translateTargets.isEmpty { translateTargets = await SystemTranslator.supportedTargets() } }
+                outputPicker
+            } footer: {
+                Text(L(SystemTranslator.isAvailable ? "popbar.editor.systemTranslate.hint"
+                                                    : "systemTranslate.error.needsNewerSystem"))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         case .ai:
             Section { outputPicker }

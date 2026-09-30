@@ -468,3 +468,19 @@
 "template.settings" = "设置";
 "popbar.editor.kind.settings" = "打开设置";
 "popbar.editor.settings.hint.format" = "打开 %@ 的设置窗口，不使用选中的文字。";
+
+"popbar.editor.kind.systemTranslate" = "系统翻译";
+"popbar.editor.systemTranslate.hint" = "用 macOS 自带的本地翻译：不用模型、不用 API key、断网也能用。原文语言自动识别；列表里是 macOS 能译成的全部语言。某个语言第一次用时，macOS 可能会要求先下载。";
+"template.systemTranslate" = "系统翻译";
+"systemTranslate.window.title" = "翻译语言";
+"systemTranslate.window.body" = "macOS 需要先下载语言才能翻译这段文字。请在弹出的面板里点「下载」，下载完成后译文会自动出现。";
+"systemTranslate.error.needsNewerSystem" = "系统翻译需要 macOS 15 或更高版本。这台 Mac 上请使用 AI 翻译动作。";
+"systemTranslate.error.unsupported" = "macOS 的翻译不支持 %@ → %@。";
+"systemTranslate.error.didNotStart" = "macOS 的翻译没有启动。请再试一次，或使用 AI 翻译动作。";
+"systemTranslate.error.closed" = "翻译已取消。";
+"systemTranslate.error.prefix" = "系统翻译失败。";
+"popbar.editor.targetLanguage" = "译成";
+"popbar.editor.targetLanguage.choose" = "请选择语言";
+"systemTranslate.error.noTarget" = "这个动作还没有选目标语言。请到「设置 → 动作」里选择。";
+"systemTranslate.error.alreadyInTarget" = "这段文字已经是%@了。";
+"systemTranslate.error.notDownloaded" = "语言还没下载好，macOS 暂时翻译不了。如果正在下载，请等下载完成后再试；下载进度可以在「系统设置 → 通用 → 语言与地区 → 翻译语言」里查看。";

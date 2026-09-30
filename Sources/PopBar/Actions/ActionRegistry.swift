@@ -78,6 +78,36 @@ enum ActionRegistry {
             }
             return processPresentation(await ProcessRunner.runScript(script, input: text))
 
+        case .systemTranslate:
+            let translated = await SystemTranslator.translate(text, to: action.targetLanguage)
+            // Given up on while it ran (popup closed, another action): nothing
+            // to show, and above all nothing to write into a document.
+            if Task.isCancelled { return .none }
+            switch translated {
+            case .success(let out):
+                return out.isEmpty ? .result(L("popbar.error.empty")) : .output(out)
+            case .failure(.needsNewerSystem):
+                return .result("⚠️ \(L("systemTranslate.error.needsNewerSystem"))")
+            case .failure(.noTarget):
+                return .result("⚠️ \(L("systemTranslate.error.noTarget"))")
+            case .failure(.alreadyInTarget(let target)):
+                let name = SystemTranslator.displayName(of: target)
+                return .result("⚠️ \(String(format: L("systemTranslate.error.alreadyInTarget"), name))")
+            case .failure(.unsupportedPair(let source, let target)):
+                let names = [source, target].map(SystemTranslator.displayName(of:))
+                return .result("⚠️ \(String(format: L("systemTranslate.error.unsupported"), names[0], names[1]))")
+            case .failure(.cancelled):
+                // Superseded by another popup's translation (a pinned one still
+                // waiting), or the window closed by hand: say so.
+                return .result("⚠️ \(L("systemTranslate.error.closed"))")
+            case .failure(.notDownloaded):
+                return .result("⚠️ \(L("systemTranslate.error.notDownloaded"))")
+            case .failure(.didNotStart):
+                return .result("⚠️ \(L("systemTranslate.error.didNotStart"))")
+            case .failure(.failed(let reason)):
+                return .result("⚠️ \(L("systemTranslate.error.prefix"))" + (reason.isEmpty ? "" : "\n\n\(reason)"))
+            }
+
         case .group:
             // A group is not runnable. The wheel never sends one here (tapping a
             // group just keeps its ring open) and the capsule shows its children

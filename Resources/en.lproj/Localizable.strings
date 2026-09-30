@@ -469,3 +469,19 @@
 "template.settings" = "Settings";
 "popbar.editor.kind.settings" = "Open settings";
 "popbar.editor.settings.hint.format" = "Opens the %@ settings window. The selected text is not used.";
+
+"popbar.editor.kind.systemTranslate" = "System Translate";
+"popbar.editor.systemTranslate.hint" = "Translates with macOS's own on-device translator: no model, no API key, works offline. The language of the text is detected; the list shows every language macOS can translate into. The first time a language pair is used, macOS may ask to download it.";
+"template.systemTranslate" = "System Translate";
+"systemTranslate.window.title" = "Translation Languages";
+"systemTranslate.window.body" = "macOS needs to download a language before it can translate this. Choose Download in the sheet; the translation appears once it is done.";
+"systemTranslate.error.needsNewerSystem" = "System Translate needs macOS 15 or later. On this Mac, use the AI Translate action instead.";
+"systemTranslate.error.unsupported" = "macOS's translator can't translate %@ → %@.";
+"systemTranslate.error.didNotStart" = "macOS's translator did not start. Try again, or use the AI Translate action.";
+"systemTranslate.error.closed" = "The translation was cancelled.";
+"systemTranslate.error.prefix" = "System translation failed.";
+"popbar.editor.targetLanguage" = "Translate into";
+"popbar.editor.targetLanguage.choose" = "Choose a language";
+"systemTranslate.error.noTarget" = "This action has no target language. Choose one in Settings → Actions.";
+"systemTranslate.error.alreadyInTarget" = "The text is already in %@.";
+"systemTranslate.error.notDownloaded" = "The language isn't downloaded yet, so macOS couldn't translate this. If a download is running, try again when it finishes; downloads are listed in System Settings → General → Language & Region → Translation Languages.";
