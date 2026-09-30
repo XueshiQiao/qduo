@@ -31,6 +31,14 @@ import ApplicationServices
 /// genuinely-opaque terminal would warrant a per-app allow path, not relaxing the
 /// gate for everyone.
 ///
+/// Programs that own the mouse inside a terminal (issue #8: herdr; likewise tmux
+/// with mouse mode, vim, zellij) select and copy by themselves, so the terminal
+/// has no selection of its own and reports a 0-length range — guard 3 reads that
+/// as "caret, no selection". For the terminals in `mouseOwningTerminals` a
+/// text-bearing role is enough, whatever the range says. Limited to that list on
+/// purpose: in an ordinary text field a 0-length range really means nothing is
+/// selected.
+///
 /// Unlike the ⌘C strategy this does **not** back up / restore the clipboard: the
 /// selected text is there because the *user's* app put it there on purpose
 /// (copy-on-select), so leaving it is the correct, expected behavior — we only read.
@@ -38,6 +46,12 @@ final class CopyOnSelectStrategy: SelectionStrategy {
 
     let id = SelectionStrategyID.copyOnSelect
     private static let log = FileLog("PopBar.CopyOnSelect")
+
+    /// Terminals where a program running inside may do its own selecting and
+    /// copying (see the type comment). Bundle IDs, compared case-insensitively.
+    static let mouseOwningTerminals: Set<String> = [
+        "com.mitchellh.ghostty",
+    ]
 
     func selectedText(_ context: SelectionContext) async throws -> SelectionResult? {
         guard AXIsProcessTrusted() else { throw SelectionError.permissionDenied }
@@ -50,7 +64,10 @@ final class CopyOnSelectStrategy: SelectionStrategy {
         // (3) Focus must plausibly hold a text selection (same gate the ⌘C path
         // uses). Rejects a non-text drag that happened to race a background copy.
         let decision = await MainActor.run { AXSelectionProbe.shouldAttemptCopy() }
-        guard decision.shouldCopy else {
+        let terminalOwnsSelection = !decision.shouldCopy
+            && AXSelectionProbe.isTextBearingRole(decision.role)
+            && context.bundleID.map { Self.mouseOwningTerminals.contains($0.lowercased()) } == true
+        guard decision.shouldCopy || terminalOwnsSelection else {
             Self.log.debug("clipboard changed during gesture but focus not text-like (role=\(decision.role)) — skip")
             return nil
         }
@@ -59,7 +76,7 @@ final class CopyOnSelectStrategy: SelectionStrategy {
         let clipboard = await MainActor.run { NSPasteboard.general.string(forType: .string) }
         guard let text = clipboard, !text.isEmpty else { return nil }
 
-        Self.log.info("copy-on-select hit — read \(text.count) char(s) from clipboard (role=\(decision.role))")
+        Self.log.info("copy-on-select hit — read \(text.count) char(s) from clipboard (role=\(decision.role)\(terminalOwnsSelection ? ", selection made by a program inside the terminal" : ""))")
         var result = SelectionResult(text: text, via: id, bounds: nil)
         if context.resolvesLinks {
             // The app's copy-on-select may have put rich text on the clipboard too;
