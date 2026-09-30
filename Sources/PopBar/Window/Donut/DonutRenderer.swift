@@ -28,7 +28,7 @@ private struct DonutPalette {
         case (.ceramic, false): base = (0xEC, 0xEA, 0xE6); baseAlpha = 1
         case (.ceramic, true):  base = (0x3B, 0x3C, 0x42); baseAlpha = 1
         case (.glass, false):   base = (0xFF, 0xFF, 0xFF); baseAlpha = 0.05
-        case (.glass, true):    base = (0x12, 0x15, 0x1C); baseAlpha = 0.30
+        case (.glass, true):    base = (0x12, 0x15, 0x1C); baseAlpha = 0.05   // no tint of our own: the user found it made the ring grey
         }
         base = (base.0 / 255, base.1 / 255, base.2 / 255)
         switch material {
@@ -281,8 +281,11 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
         // The page sits a little below the tube's underside.
         u[U.ground] = Float(m.crest + 16)
         u[U.shadow] = pal.shadow
-        // How far past the solid the shadow may reach before it fades to nothing.
-        u[U.reach] = 40
+        // How far past the solid the shadow may reach before it fades to nothing —
+        // never past the canvas edge, or it ends in a hard line there (a wheel with
+        // no submenus has only `pad` = 10pt around the ring).
+        let solid = max(m.tubeCentre + m.tubeRadius, m.sub.map { $0.centre + $0.tube } ?? 0)
+        u[U.reach] = Float(max(4, min(40, canvas / 2 - solid - 2)))
         // The hovered slice (and child) is pressed in a little, like a button — it
         // must not grow, which a raised slice would (it comes toward the eye).
         u[U.lift] = -3.5

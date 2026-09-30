@@ -144,14 +144,16 @@ static float4 shade(thread const Ctx &c, float3 N, float3 V, float3 nL, float t,
     } else {                   // glass: the frosted backdrop is an NSVisualEffectView below; here tint + light
         float edge = smoothstep(0.62, 0.98, abs(t));
         float3 body = base * (0.85 + 0.35 * max(NL, 0.0));
-        body = mix(body, mix(float3(0.40, 0.42, 0.48), float3(0.62, 0.66, 0.74), dark), edge);
-        float aB = u[U_BASEA] + edge * mix(0.30, 0.22, dark) + 0.10 * sel;
+        // The edge only deepens a little: the system glass underneath already
+        // draws a rim, and a strong grey band on top read as a grey ring.
+        body = mix(body, mix(float3(0.78, 0.80, 0.86), float3(0.62, 0.66, 0.74), dark), edge);
+        float aB = u[U_BASEA] + edge * mix(0.12, 0.22, dark) + 0.10 * sel;
         float F = 0.04 + 0.96 * Fr;
         float3 refl = F * env(R, dark) + F * softbox(R) * 8;
         float3 spec = float3(1.8 * pow(NH, 650.0) + 0.22 * pow(NH, 55.0));
         float2 cd = -normalize(L.xy);
         float cau = pow(max(dot(N.xy / max(length(N.xy), 1e-4), cd), 0.0), 3.0) * (1 - edge) * smoothstep(0.15, 0.7, abs(t)) * 0.28;
-        float3 add = (refl * 0.85 + spec + cau) * (1 - 0.5 * seam);
+        float3 add = (refl * 0.55 + spec + cau) * (1 - 0.5 * seam);
         float3 pm = body * aB * ao + add;
         a = clamp(aB + dot(add, float3(0.3333)) * 0.85, 0.0, 1.0);
         col = pm / max(a, 1e-4);

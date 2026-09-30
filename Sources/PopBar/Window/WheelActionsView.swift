@@ -462,12 +462,10 @@ struct WheelActionsView: View {
         // All of it is drawn in a mouse-transparent window under the popup: see
         // `DonutLayerWindow` for why drawing it here would swallow every click in
         // the wheel's square, the hole included.
-        return DonutLayerWindow(content: ZStack {
+        return DonutLayerWindow(appearance: NSAppearance(named: surfaceDark ? .darkAqua : .aqua), content: ZStack {
             if material == .glass {
                 DonutMotionReader(motion: motion) { m in
-                    LiquidGlassBlur(dark: dark)
-                        .frame(width: d, height: d)
-                        .mask(m.outlinePath())
+                    donutGlassBackdrop(m.outlinePath(), dark: surfaceDark, side: d)
                 }
             }
             DonutRingView(motion: motion, targets: donutTargets, material: material,
@@ -485,12 +483,35 @@ struct WheelActionsView: View {
         .frame(width: d, height: d)
     }
 
-    /// Whether the donut's SURFACE is dark. Only glass follows the system into dark
-    /// mode: ceramic stays white in both, because that is what ceramic looks like —
-    /// the user tried the dark version and asked for it back (a dark ring read as
-    /// black plastic, not porcelain).
+    /// What sits under the glass donut's lighting. On macOS 26 the system's own
+    /// Liquid Glass, in its ADAPTIVE variant (`.regular`): it looks at what is behind
+    /// it and darkens over dark content by itself. Tried against the alternatives on
+    /// a half-dark, half-light test page: the clearest variant pinned light was grey
+    /// over dark content, following the system's appearance was grey on both halves,
+    /// and choosing light/dark from a screenshot of the backdrop was still grey over
+    /// dark. Older systems, and toolchains without the macOS 26 SDK, keep the frost.
+    @ViewBuilder
+    private func donutGlassBackdrop(_ outline: Path, dark: Bool, side d: CGFloat) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            Color.clear
+                .frame(width: d, height: d)
+                .glassEffect(.regular, in: DonutPathShape(path: outline))
+        } else {
+            LiquidGlassBlur(dark: dark).frame(width: d, height: d).mask(outline)
+        }
+        #else
+        // The frost follows the SURFACE, not the system: in dark mode the dark frost
+        // alone turned the ring grey.
+        LiquidGlassBlur(dark: dark).frame(width: d, height: d).mask(outline)
+        #endif
+    }
+
+    /// Whether the donut's SURFACE is dark. Never: dark ceramic read as black
+    /// plastic, not porcelain, and glass is left to the system's adaptive glass,
+    /// which darkens over dark content by itself.
     private func donutSurfaceDark(_ material: DonutMaterial) -> Bool {
-        isDark && material == .glass
+        false
     }
 
     /// The icons and names, laid out FLAT (where the flat wheel would put them) and
@@ -1338,4 +1359,10 @@ private struct LiquidGlassBlur: NSViewRepresentable {
     func updateNSView(_ v: NSVisualEffectView, context: Context) {
         v.appearance = pinned
     }
+}
+
+/// A fixed path as a `Shape`, for APIs that want one (the donut's projected outline).
+private struct DonutPathShape: Shape {
+    let path: Path
+    func path(in rect: CGRect) -> Path { path }
 }

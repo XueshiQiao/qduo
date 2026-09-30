@@ -16,6 +16,10 @@ import SwiftUI
 /// A child window moves, hides and re-shows with its parent (also measured), so the
 /// popup's own show/hide/drag logic needs no changes.
 struct DonutLayerWindow<Content: View>: NSViewRepresentable {
+    /// The appearance the drawing is made in. System materials (the Liquid Glass
+    /// under the glass donut) follow it: left to inherit a dark system, the glass
+    /// itself turned grey over a light page.
+    var appearance: NSAppearance?
     let content: Content
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -28,7 +32,9 @@ struct DonutLayerWindow<Content: View>: NSViewRepresentable {
     }
 
     func updateNSView(_ a: Anchor, context: Context) {
-        context.coordinator.hosting.rootView = AnyView(content)
+        let c = context.coordinator
+        if c.window.appearance != appearance { c.window.appearance = appearance }
+        c.hosting.rootView = AnyView(content)
         a.sync()
     }
 
@@ -58,7 +64,6 @@ struct DonutLayerWindow<Content: View>: NSViewRepresentable {
             guard window.parent !== parent else { return }
             detach()
             window.collectionBehavior = parent.collectionBehavior
-            window.appearance = parent.appearance
             parent.addChildWindow(window, ordered: .below)
             // Moving or resizing the popup moves this view on screen without re-running
             // SwiftUI. A child window is meant to follow its parent by itself, but not
@@ -67,7 +72,10 @@ struct DonutLayerWindow<Content: View>: NSViewRepresentable {
             // had been created). So follow explicitly.
             for name in [NSWindow.didResizeNotification, NSWindow.didMoveNotification] {
                 observers.append(NotificationCenter.default.addObserver(
-                    forName: name, object: parent, queue: .main) { [weak self] _ in
+                    // queue nil = delivered synchronously, while the popup is still
+                    // being placed; on `.main` it would run a turn later, after the
+                    // popup had already been shown with the ring at its old spot.
+                    forName: name, object: parent, queue: nil) { [weak self] _ in
                         self?.onParentChange?()
                     })
             }
@@ -116,7 +124,8 @@ struct DonutLayerWindow<Content: View>: NSViewRepresentable {
         }
 
         func sync() {
-            guard let c = coordinator, let w = window else { return }
+            // Before SwiftUI's first layout the anchor is 0×0: nothing to copy yet.
+            guard let c = coordinator, let w = window, !bounds.isEmpty else { return }
             if c.window.parent == nil { c.attach(to: w) }
             let r = w.convertToScreen(convert(bounds, to: nil))
             if c.window.frame != r { c.window.setFrame(r, display: false) }
