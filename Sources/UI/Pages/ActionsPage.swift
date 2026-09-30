@@ -9,6 +9,9 @@ struct ActionsPage: View {
     @ObservedObject private var llm: LLMService
 
     @State private var editingAction: PopBarActionConfig?
+    /// Where the action in the editor came from, for analytics: set when a new
+    /// one is opened, nil when an existing one is.
+    @State private var editingSource: Analytics.ActionSource?
     @State private var previewFallback = PopBarPreferences.previewFallbackToSearch
     @State private var previewEngine = PopBarPreferences.previewSearchEngine
 
@@ -32,10 +35,12 @@ struct ActionsPage: View {
                 // saving an action that lives inside a group used to fall through to
                 // `add` and append a SECOND copy of it at the root, with the same id
                 // — after which deletes and drags resolved whichever came first.
-                if actions.action(id: saved.id) != nil {
+                if let old = actions.action(id: saved.id) {
                     actions.update(saved)
+                    if old.kind != saved.kind { Analytics.trackActionAdded(kind: saved.kind.rawValue, from: .changed) }
                 } else {
                     actions.add(saved)
+                    Analytics.trackActionAdded(kind: saved.kind.rawValue, from: editingSource ?? .custom)
                 }
                 editingAction = nil
             } onCancel: {
@@ -55,7 +60,7 @@ struct ActionsPage: View {
     private var actionsSection: some View {
         PopBarActionListSection(
             actions: actions,
-            onEdit: { editingAction = $0 },
+            onEdit: { editingSource = nil; editingAction = $0 },
             rowContent: { AnyView(actionRow($0)) },
             footerRow: { AnyView(actionsFooterRow) }
         )
@@ -65,6 +70,7 @@ struct ActionsPage: View {
     private var actionsFooterRow: some View {
         HStack(spacing: 14) {
             Button {
+                editingSource = .custom
                 editingAction = PopBarActionConfig(title: "", iconSymbol: "sparkles", kind: .ai)
             } label: {
                 Label(L("popbar.actions.add"), systemImage: "plus")
@@ -74,6 +80,7 @@ struct ActionsPage: View {
             // would otherwise create one is already spoken for (dropping onto a
             // group row means "put it in THAT group").
             Button {
+                editingSource = .custom
                 editingAction = PopBarActionConfig(title: "", iconSymbol: "square.grid.2x2", kind: .group)
             } label: {
                 Label(L("popbar.actions.addGroup"), systemImage: "rectangle.stack.badge.plus")
@@ -86,6 +93,7 @@ struct ActionsPage: View {
                     Section(section.title) {
                         ForEach(section.actions) { template in
                             Button {
+                                editingSource = .template
                                 editingAction = template
                             } label: {
                                 Label(template.title, systemImage: template.iconSymbol)

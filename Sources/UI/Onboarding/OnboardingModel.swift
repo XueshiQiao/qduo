@@ -262,7 +262,10 @@ final class OnboardingModel: ObservableObject {
     private func commitAIPage() {
         _ = saveDraftKey()
         let chosen = aiTemplates.filter { picks.contains($0.id) }
-        for action in chosen { appState.actions.add(action) }
+        for action in chosen {
+            appState.actions.add(action)
+            Analytics.trackActionAdded(kind: action.kind.rawValue, from: .template)
+        }
         if !chosen.isEmpty {
             Self.log.info("added \(chosen.count) template action(s)")
             picks = []

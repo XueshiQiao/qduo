@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Preferences.applyLanguageOverride()
 
         // Inert until a real Aptabase key is configured.
-        Analytics.start()
+        Analytics.start(launchProps: ["style": PopBarPreferences.style.rawValue])
 
         Self.log.info("launch — \(Brand.name) v\(Brand.version) (\(Brand.build)), id \(Brand.bundleID)")
 

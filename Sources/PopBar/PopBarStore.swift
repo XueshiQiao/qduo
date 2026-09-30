@@ -116,6 +116,7 @@ final class PopBarStore: ObservableObject {
     /// reflected live in the centered preview (so flipping capsule ↔ wheel ↔ liquid in
     /// settings shows the new style immediately).
     func setStyle(_ s: PopBarStyle) {
+        if s != style { Analytics.trackPreferenceChanged(key: "popup_style", value: s.rawValue) }
         style = s
         PopBarPreferences.style = s
         controller.previewStyleLive()   // show/refresh the preview so the new style is visible live

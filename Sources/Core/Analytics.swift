@@ -13,6 +13,8 @@ import Aptabase
 ///
 /// Privacy contract:
 /// - No bundle IDs, process names, or paths ever leave the device.
+/// - Actions are reported by KIND only (`ai`, `transform`, …) — never a title,
+///   prompt, script, URL, Shortcut name, language or the selected text.
 /// - All events are gated on `Preferences.Key.analyticsEnabled` (default true)
 ///   EXCEPT the meta-event recording the toggle itself, so an OFF→ON re-enable
 ///   stays observable.
@@ -32,7 +34,9 @@ enum Analytics {
 
     // MARK: - Lifecycle
 
-    static func start() {
+    /// `launchProps`: fixed values describing the setup, sent with
+    /// `app_launched` (e.g. the popup style) — never anything the user typed.
+    static func start(launchProps: [String: String] = [:]) {
         guard !started else { return }
         guard isConfigured else {
             log.info("analytics inert — placeholder appKey; events are no-ops")
@@ -41,7 +45,7 @@ enum Analytics {
         started = true
         Aptabase.shared.initialize(appKey: appKey)
         startSending()
-        track("app_launched")
+        if launchProps.isEmpty { track("app_launched") } else { track("app_launched", with: launchProps) }
         trackUpdateInstalledIfNeeded()
     }
 
@@ -83,6 +87,22 @@ enum Analytics {
             return
         }
         track("preference_changed", with: ["key": key, "value": value])
+    }
+
+    /// Where an added action came from.
+    enum ActionSource: String {
+        /// Picked from the templates (the Actions page menu, or onboarding).
+        case template
+        /// Made from scratch with Add Action / Add Group.
+        case custom
+        /// An existing action saved with a different kind.
+        case changed
+    }
+
+    /// An action was added, or saved as a different kind. Only its kind — a
+    /// fixed identifier from `PopBarActionConfig.Kind` — and where it came from.
+    static func trackActionAdded(kind: String, from source: ActionSource) {
+        track("action_added", with: ["kind": kind, "from": source.rawValue])
     }
 
     // MARK: - Update detection
