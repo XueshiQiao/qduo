@@ -26,13 +26,20 @@ private struct DonutPalette {
     init(dark: Bool, pageDark: Bool) {
         // Barely any body colour of our own: the system glass underneath does the
         // work, and a tint of ours made the ring grey (the user tried it).
-        base = dark ? (0x12 / 255.0, 0x15 / 255.0, 0x1C / 255.0) : (1, 1, 1)
+        base = dark ? Self.rgb(0x12, 0x15, 0x1C) : (1, 1, 1)
         baseAlpha = 0.05
         // The hovered slice takes the app icon's blue (#2563EB, #60A5FA in dark mode).
-        accent = dark ? (0x60 / 255.0, 0xA5 / 255.0, 0xFA / 255.0) : (0x25 / 255.0, 0x63 / 255.0, 0xEB / 255.0)
+        accent = dark ? Self.rgb(0x60, 0xA5, 0xFA) : Self.rgb(0x25, 0x63, 0xEB)
         tint = 1
         // A shadow has to be darker to read on a dark page; glass casts a light one.
         shadow = (pageDark ? 0.5 : 0.24) * 0.55
+    }
+
+    /// An 8-bit colour as 0…1 floats. Spelled as a function, not inline literal
+    /// division: the CI compiler (Xcode 26.6) timed out type-checking the tuple
+    /// ternary of literals.
+    private static func rgb(_ r: Int, _ g: Int, _ b: Int) -> (Float, Float, Float) {
+        (Float(r) / 255, Float(g) / 255, Float(b) / 255)
     }
 }
 
