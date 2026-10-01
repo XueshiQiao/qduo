@@ -71,6 +71,15 @@ enum ConfigSeed {
         bool("wheel.showIcons", "popbar.wheel.showIcons", default: true)
         bool("wheel.showLabels", "popbar.wheel.showLabels", default: true)
         bool("wheel.autoHideOnExit", "popbar.wheel.autoHideOnExit", default: true)
+        // 3D Glass keeps its own copy of the same knobs, starting from Liquid's.
+        for name in PopBarPreferences.RingPrefs.knobNames {
+            if let v = doc[path: "wheel.\(name)"] { doc.set(path: "donut.\(name)", to: v) }
+        }
+
+        // ── Capsule ───────────────────────────────────────────────────────────
+        doc.set(path: "capsule.iconSize", to: .number(PopBarPreferences.capsuleIconSizeDefault))
+        doc.set(path: "capsule.labelSize", to: .number(PopBarPreferences.capsuleLabelSizeDefault))
+        doc.set(path: "capsule.border", to: .bool(true))
 
         // ── Screenshot OCR ────────────────────────────────────────────────────
         bool("ocr.enabled", "popbar.ocr.enabled", default: false)

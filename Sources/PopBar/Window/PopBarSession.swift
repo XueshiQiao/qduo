@@ -138,6 +138,10 @@ final class PopBarSession {
         panel.setWheelLayout(layout)
     }
 
+    func setCapsuleSizes(icon: Double, label: Double) {
+        panel.setCapsuleSizes(icon: icon, label: label)
+    }
+
     // MARK: - Actions (self-contained per window)
 
     /// Run a tapped action inside THIS window, streaming into THIS window's panel.

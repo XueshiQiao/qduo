@@ -63,6 +63,13 @@
 "popbar.style.capsule" = "Capsule";
 "popbar.style.liquid" = "Liquid";
 "popbar.style.donut" = "3D Glass";
+"popbar.capsule.iconSize" = "Icon size";
+"popbar.capsule.labelSize" = "Text size";
+"popbar.capsule.border" = "Show a thin outline";
+"popbar.reset.button" = "Restore Defaults";
+"popbar.reset.confirm" = "Restore the %@ settings to their defaults? Only this style is affected, and the values you tuned can't be brought back.";
+"popbar.reset.action" = "Restore Defaults";
+"popbar.reset.cancel" = "Cancel";
 "popbar.donut.dividers" = "Show dividers between slices";
 "popbar.style.footer" = "Liquid and 3D Glass show a ring centered on the cursor; Capsule shows a horizontal bar above the selection (Liquid is a bright frosted-glass skin; 3D Glass is a glass ring that leans toward the pointer).";
 "popbar.wheel.outer" = "Outer radius";

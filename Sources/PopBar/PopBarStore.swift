@@ -19,6 +19,9 @@ final class PopBarStore: ObservableObject {
     @Published var wheelLiquidDividers: Bool
     @Published var wheelSubSeam: Double
     @Published var wheelSubThickness: Double
+    @Published var capsuleIconSize: Double
+    @Published var capsuleLabelSize: Double
+    @Published var capsuleBorder: Bool
     @Published private(set) var isTrusted: Bool
     /// False while paused. See `PopBarPreferences.popupEnabled`.
     @Published private(set) var popupEnabled: Bool
@@ -52,15 +55,19 @@ final class PopBarStore: ObservableObject {
         self.resultFontSize = PopBarPreferences.resultFontSize
         self.readingHighlight = PopBarPreferences.readingHighlight
         self.style = PopBarPreferences.style
-        self.wheelOuterRadius = PopBarPreferences.wheelOuterRadius
-        self.wheelInnerRadius = PopBarPreferences.wheelInnerRadius
-        self.wheelShowIcons = PopBarPreferences.wheelShowIcons
-        self.wheelShowLabels = PopBarPreferences.wheelShowLabels
-        self.wheelAutoHideOnExit = PopBarPreferences.wheelAutoHideOnExit
+        let ring = PopBarPreferences.ring(PopBarPreferences.style)
+        self.wheelOuterRadius = ring.outerRadius
+        self.wheelInnerRadius = ring.innerRadius
+        self.wheelShowIcons = ring.showIcons
+        self.wheelShowLabels = ring.showLabels
+        self.wheelAutoHideOnExit = ring.autoHideOnExit
         self.wheelDonutDividers = PopBarPreferences.wheelDonutDividers
         self.wheelLiquidDividers = PopBarPreferences.wheelLiquidDividers
-        self.wheelSubSeam = PopBarPreferences.wheelSubSeam
-        self.wheelSubThickness = PopBarPreferences.wheelSubThickness
+        self.wheelSubSeam = ring.subSeam
+        self.wheelSubThickness = ring.subThickness
+        self.capsuleIconSize = PopBarPreferences.capsuleIconSize
+        self.capsuleLabelSize = PopBarPreferences.capsuleLabelSize
+        self.capsuleBorder = PopBarPreferences.capsuleBorder
         self.isTrusted = AccessibilityAuthorizer.isTrusted
         self.popupEnabled = PopBarPreferences.popupEnabled
         self.simulateCopy = PopBarPreferences.simulateCopy
@@ -138,15 +145,60 @@ final class PopBarStore: ObservableObject {
         if s != style { Analytics.trackPreferenceChanged(key: "popup_style", value: s.rawValue) }
         style = s
         PopBarPreferences.style = s
+        reloadStyleSettings()   // each ring style has its own knobs
         controller.previewStyleLive()   // show/refresh the preview so the new style is visible live
     }
 
-    /// Wheel geometry / content settings (wheel + liquid-glass styles). Persisted;
+    /// The settings controls below show the SELECTED style's own values.
+    private var ring: PopBarPreferences.RingPrefs { PopBarPreferences.ring(style) }
+
+    /// Re-read every per-style value for the selected style (after a switch or a reset).
+    private func reloadStyleSettings() {
+        let r = ring
+        wheelOuterRadius = r.outerRadius
+        wheelInnerRadius = r.innerRadius
+        wheelShowIcons = r.showIcons
+        wheelShowLabels = r.showLabels
+        wheelAutoHideOnExit = r.autoHideOnExit
+        wheelSubSeam = r.subSeam
+        wheelSubThickness = r.subThickness
+        wheelDonutDividers = PopBarPreferences.wheelDonutDividers
+        wheelLiquidDividers = PopBarPreferences.wheelLiquidDividers
+        capsuleIconSize = PopBarPreferences.capsuleIconSize
+        capsuleLabelSize = PopBarPreferences.capsuleLabelSize
+        capsuleBorder = PopBarPreferences.capsuleBorder
+    }
+
+    /// Put the selected style's own settings back to their defaults, and show it.
+    func resetStyleSettings() {
+        PopBarPreferences.resetStyleSettings(style)
+        reloadStyleSettings()
+        controller.previewStyleLive()
+    }
+
+    /// Capsule icon / caption sizes. Shown live in the preview.
+    func setCapsuleIconSize(_ v: Double) {
+        capsuleIconSize = v
+        PopBarPreferences.capsuleIconSize = v
+        controller.previewCapsuleLive()
+    }
+    func setCapsuleBorder(_ on: Bool) {
+        capsuleBorder = on
+        PopBarPreferences.capsuleBorder = on
+        controller.previewStyleLive()
+    }
+    func setCapsuleLabelSize(_ v: Double) {
+        capsuleLabelSize = v
+        PopBarPreferences.capsuleLabelSize = v
+        controller.previewCapsuleLive()
+    }
+
+    /// Ring geometry / content settings of the selected ring style. Persisted;
     /// the next popup / Preview reads them at show time. Inner is kept at least
     /// `wheelMinThickness` below outer so the ring stays valid.
     func setWheelOuterRadius(_ r: Double) {
         wheelOuterRadius = r
-        PopBarPreferences.wheelOuterRadius = r
+        ring.outerRadius = r
         if wheelInnerRadius > r - PopBarPreferences.wheelMinThickness {
             setWheelInnerRadius(r - PopBarPreferences.wheelMinThickness)
         }
@@ -155,20 +207,20 @@ final class PopBarStore: ObservableObject {
     func setWheelInnerRadius(_ r: Double) {
         let capped = min(r, wheelOuterRadius - PopBarPreferences.wheelMinThickness)
         wheelInnerRadius = capped
-        PopBarPreferences.wheelInnerRadius = capped
+        ring.innerRadius = capped
         controller.previewWheelLive()
     }
     func setWheelShowIcons(_ on: Bool) {
         // Don't let the user hide BOTH icon and label (a slice would be blank).
         if !on && !wheelShowLabels { setWheelShowLabels(true) }
         wheelShowIcons = on
-        PopBarPreferences.wheelShowIcons = on
+        ring.showIcons = on
         controller.previewWheelLive()
     }
     func setWheelShowLabels(_ on: Bool) {
         if !on && !wheelShowIcons { setWheelShowIcons(true) }
         wheelShowLabels = on
-        PopBarPreferences.wheelShowLabels = on
+        ring.showLabels = on
         controller.previewWheelLive()
     }
     /// Submenu ring (second level) geometry. Same live-preview treatment as the
@@ -176,19 +228,19 @@ final class PopBarStore: ObservableObject {
     /// moves, so the two rings can be sized against each other by eye.
     func setWheelSubSeam(_ v: Double) {
         wheelSubSeam = v
-        PopBarPreferences.wheelSubSeam = v
+        ring.subSeam = v
         controller.previewWheelLive()
     }
     func setWheelSubThickness(_ v: Double) {
         wheelSubThickness = v
-        PopBarPreferences.wheelSubThickness = v
+        ring.subThickness = v
         controller.previewWheelLive()
     }
     /// Auto-hide the ring when the pointer leaves it (wheel + liquid-glass only).
     /// Persisted; the next popup / preview reads it at show time.
     func setWheelAutoHideOnExit(_ on: Bool) {
         wheelAutoHideOnExit = on
-        PopBarPreferences.wheelAutoHideOnExit = on
+        ring.autoHideOnExit = on
     }
     /// Whether the liquid style shows dividers between slices. Shown live.
     func setWheelLiquidDividers(_ on: Bool) {

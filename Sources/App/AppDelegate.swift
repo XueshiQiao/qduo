@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // including the language override, which has to be installed before any
         // localized string is read.
         _ = ConfigStore.shared
+        PopBarPreferences.migrateRingSections()   // 3D Glass gets its own copy of the ring knobs
         Preferences.applyLanguageOverride()
 
         // Inert until a real Aptabase key is configured.

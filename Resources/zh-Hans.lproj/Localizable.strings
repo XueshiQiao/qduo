@@ -62,6 +62,13 @@
 "popbar.style.capsule" = "胶囊";
 "popbar.style.liquid" = "水玻璃";
 "popbar.style.donut" = "立体玻璃";
+"popbar.capsule.iconSize" = "图标大小";
+"popbar.capsule.labelSize" = "文字大小";
+"popbar.capsule.border" = "显示细边框";
+"popbar.reset.button" = "恢复默认";
+"popbar.reset.confirm" = "把「%@」的设置恢复为默认值？只影响这一种样式，调过的值无法找回。";
+"popbar.reset.action" = "恢复默认";
+"popbar.reset.cancel" = "取消";
 "popbar.donut.dividers" = "显示扇区之间的分隔缝";
 "popbar.style.footer" = "水玻璃 / 立体玻璃以光标为圆心成环，胶囊在选区上方横向展开（水玻璃是明亮磨砂玻璃皮肤；立体玻璃是一个会朝鼠标方向微微倾斜的立体玻璃圆环）。";
 "popbar.wheel.outer" = "外环半径";

@@ -270,8 +270,12 @@ final class PopBarPanel {
         // Pick up the current presentation style for this show (capsule vs wheel).
         // Read here so toggling it in settings affects the next popup/preview.
         model.style = PopBarPreferences.style
-        model.wheelLayout = PopBarPreferences.wheelLayout   // user-adjustable radii + icon/label toggles
-        model.autoHideOnExitRing = PopBarPreferences.wheelAutoHideOnExit   // wheel: hide when pointer leaves the ring
+        let ring = PopBarPreferences.ring(model.style)   // this ring style's own knobs
+        model.wheelLayout = ring.layout   // user-adjustable radii + icon/label toggles
+        model.autoHideOnExitRing = ring.autoHideOnExit   // wheel: hide when pointer leaves the ring
+        model.capsuleIconSize = PopBarPreferences.capsuleIconSize
+        model.capsuleLabelSize = PopBarPreferences.capsuleLabelSize
+        model.capsuleBorder = PopBarPreferences.capsuleBorder
         model.donutDividers = PopBarPreferences.wheelDonutDividers
         model.liquidDividers = PopBarPreferences.wheelLiquidDividers
         // Pick up the current auto-expand preference for this show (the user may
@@ -353,8 +357,9 @@ final class PopBarPanel {
     /// between ring and backdrop (shadow off).
     ///
     /// A rectangular window never shows this, because its alpha is 1 everywhere
-    /// inside and the shadow stays behind it. The capsule and the result chrome are
-    /// rectangular, so they keep their shadow.
+    /// inside and the shadow stays behind it. The result chrome keeps its shadow.
+    /// The capsule's action bar drops it too: it is styled after the Liquid ring,
+    /// and the window shadow's dark rim was the heavy outline the bar used to have.
     private func updateWheelChrome() {
         let onWheel = model.style.isWheel && isShowingActions
         hosting.ringHitTest = onWheel
@@ -363,8 +368,9 @@ final class PopBarPanel {
         hosting.wheelHitRegion = onWheel ? model.wheelHitRegion : nil
         if !onWheel { model.wheelHitRegion.outerRadius = 0 }
 
-        if panel.hasShadow == onWheel {
-            panel.hasShadow = !onWheel
+        let shadow = !isShowingActions
+        if panel.hasShadow != shadow {
+            panel.hasShadow = shadow
             panel.invalidateShadow()
         }
     }
@@ -411,6 +417,15 @@ final class PopBarPanel {
         model.wheelLayout = layout
         guard panel.isVisible, model.style.isWheel, isShowingActions else { return }
         updateWheelChrome()
+        DispatchQueue.main.async { [weak self] in self?.fitAndPlace() }
+    }
+
+    /// Apply a live capsule icon / caption size change onto the showing capsule
+    /// preview and re-fit the window to the new button size.
+    func setCapsuleSizes(icon: Double, label: Double) {
+        model.capsuleIconSize = icon
+        model.capsuleLabelSize = label
+        guard panel.isVisible, !model.style.isWheel, isShowingActions else { return }
         DispatchQueue.main.async { [weak self] in self?.fitAndPlace() }
     }
 

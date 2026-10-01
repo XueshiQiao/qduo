@@ -815,23 +815,12 @@ struct WheelActionsView: View {
     /// next, but it follows whatever the user picked in System Settings and does not
     /// always sit well on the cool glass; the brand colours always do.)
     private func glyphStyle(hot: Bool, dark: Bool) -> AnyShapeStyle {
-        if hot { return AnyShapeStyle(brandGradient) }
-        return AnyShapeStyle(dark ? Color.white.opacity(0.92) : Color(red: 0.17, green: 0.21, blue: 0.27))
+        LiquidInk.glyph(hot: hot, dark: dark)
     }
 
-    /// The app icon's own gradient (`scripts/make-icon.py`: #2563EB above, #06B6D4
-    /// below, leaning slightly right). Lifted a step in dark mode so it reads on the
-    /// dark glass.
-    private var brandGradient: LinearGradient {
-        let c = brandGradientColors
-        return LinearGradient(colors: [c.top, c.bottom], startPoint: .top, endPoint: UnitPoint(x: 0.35, y: 1))
-    }
+    private var brandGradient: LinearGradient { LiquidInk.brandGradient(dark: isDark) }
 
-    private var brandGradientColors: (top: Color, bottom: Color) {
-        isDark
-            ? (Color(red: 0.376, green: 0.647, blue: 0.980), Color(red: 0.133, green: 0.827, blue: 0.933))   // #60A5FA → #22D3EE
-            : (Color(red: 0.145, green: 0.388, blue: 0.922), Color(red: 0.024, green: 0.714, blue: 0.831))   // #2563EB → #06B6D4
-    }
+    private var brandGradientColors: (top: Color, bottom: Color) { LiquidInk.brandColors(dark: isDark) }
 
     private var depthGradient: RadialGradient {
         let o = layout.outerRadius, ir = layout.innerRadius, tube = o - ir, mid = layout.midRadius

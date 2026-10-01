@@ -61,9 +61,15 @@ final class PopBarPanelModel: ObservableObject {
     /// the capsule ignores it). Seeded from prefs on each show.
     var autoHideOnExitRing = false
     /// Whether the 3D style carves a groove between slices. Seeded on each show.
-    @Published var donutDividers = true
+    @Published var donutDividers = false
     /// Whether the liquid style draws dividers between slices. Seeded on each show.
     @Published var liquidDividers = false
+    /// Capsule icon / caption point sizes. Seeded on each show; `@Published` so a
+    /// settings slider re-renders the showing preview.
+    @Published var capsuleIconSize = PopBarPreferences.capsuleIconSizeDefault
+    @Published var capsuleLabelSize = PopBarPreferences.capsuleLabelSizeDefault
+    /// Capsule: draw the very thin outline. Seeded on each show.
+    @Published var capsuleBorder = true
 
     /// Wired by the controller.
     var onAction: ((PopBarActionConfig) -> Void)?
@@ -157,12 +163,13 @@ struct PopBarContentView: View {
         }
     }
 
-    /// Loading and results (text and the reading window) sit on Liquid Glass,
-    /// like the wheel; the capsule's action bar keeps the menu material.
+    /// Everything sits on Liquid Glass, like the Liquid ring. The capsule's action
+    /// bar takes the ring's treatment exactly: no outline and no window shadow (see
+    /// `PopBarPanel.updateWheelChrome`), and the same dark scrim in dark mode.
     @ViewBuilder
     private var panelBackground: some View {
         if case .actions = model.phase {
-            VisualEffectBlur(cornerRadius: cornerRadius)
+            LiquidBarBackground(cornerRadius: cornerRadius, bordered: model.capsuleBorder)
         } else {
             GlassPanelBackground(cornerRadius: cornerRadius)
         }
@@ -196,15 +203,19 @@ struct PopBarContentView: View {
         return HStack(spacing: 2) {
             ForEach(Array(row.enumerated()), id: \.element.id) { index, action in
                 if index > 0 { separator }
-                CapsuleActionButton(action: action, model: model)
+                CapsuleActionButton(action: action, model: model,
+                                    iconSize: model.capsuleIconSize, labelSize: model.capsuleLabelSize)
             }
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 5)
     }
 
+    /// The same hairline as the Liquid ring's dividers, scaled with the buttons.
     private var separator: some View {
-        Divider().frame(height: 26).opacity(0.4)
+        Rectangle()
+            .fill(Color.primary.opacity(0.16))
+            .frame(width: 0.75, height: model.capsuleIconSize * 1.2 + model.capsuleLabelSize * 0.9)
     }
 
     // MARK: - Loading
@@ -433,15 +444,26 @@ private extension Theme {
 
 /// A single capsule action button: icon over a tiny caption. The WHOLE tile
 /// hit-tests (`.contentShape(Rectangle())`), not just the glyph.
+///
+/// Marked the way the Liquid ring marks a slice: no fill behind the hovered
+/// button, its icon and name take the brand gradient instead.
 private struct CapsuleActionButton: View {
     let action: PopBarActionConfig
     let model: PopBarPanelModel
+    let iconSize: Double
+    let labelSize: Double
     @State private var hovering = false
     /// This button's frame in the hosting view, kept current so a group's
     /// dropdown can be placed under it.
     @State private var frame: CGRect = .zero
 
     private var isGroup: Bool { action.hasChildren }
+
+    /// The tile grows with its contents. At the default sizes (15 / 9) it is the
+    /// 52 × 40 tile the bar always had.
+    private var tileWidth: CGFloat { 52 * max(iconSize / 15, labelSize / 9) }
+    private var iconSlot: CGFloat { iconSize * 1.2 }
+    private var tileHeight: CGFloat { iconSlot + 3 + labelSize * 1.25 + 7.75 }
 
     var body: some View {
         Button {
@@ -455,26 +477,22 @@ private struct CapsuleActionButton: View {
                 // icon's vertical band keeps every icon at the same position and
                 // every caption on the same baseline, independent of the glyph.
                 Image(systemName: action.iconSymbol)
-                    .font(.system(size: 15, weight: .medium))
-                    .frame(height: 18)
+                    .font(.system(size: iconSize, weight: .medium))
+                    .frame(height: iconSlot)
                 HStack(spacing: 2) {
                     Text(action.title)
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: labelSize, weight: hovering ? .semibold : .medium))
                         .lineLimit(1)
                     // Marks a group: it opens a dropdown rather than running.
                     if isGroup {
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 6, weight: .bold))
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: labelSize * 0.67, weight: .bold))
+                            .opacity(0.7)
                     }
                 }
             }
-            .foregroundStyle(.primary)
-            .frame(width: 52, height: 40)
-            .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(hovering ? Color.primary.opacity(0.12) : Color.clear)
-            )
+            .foregroundStyle(LiquidInk.glyph(hot: hovering))
+            .frame(width: tileWidth, height: tileHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -500,6 +518,65 @@ private struct CapsuleActionButton: View {
         // A group's name is on the button already, and a tooltip would sit on
         // top of its dropdown.
         .help(isGroup ? "" : action.title)
+    }
+}
+
+/// The Liquid style's ink, shared by the ring and the capsule so the two match:
+/// dark navy (light mode) or near-white (dark mode) at rest, the app icon's
+/// gradient when hovered.
+///
+/// Dark mode is read from the raw OS setting rather than the view's colour
+/// scheme; see `WheelActionsView.isDark` for why.
+enum LiquidInk {
+    static var isDark: Bool {
+        UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+    }
+
+    /// The app icon's own gradient (`scripts/make-icon.py`: #2563EB above, #06B6D4
+    /// below, leaning slightly right). Lifted a step in dark mode so it reads on the
+    /// dark glass.
+    static func brandColors(dark: Bool = isDark) -> (top: Color, bottom: Color) {
+        dark
+            ? (Color(red: 0.376, green: 0.647, blue: 0.980), Color(red: 0.133, green: 0.827, blue: 0.933))   // #60A5FA → #22D3EE
+            : (Color(red: 0.145, green: 0.388, blue: 0.922), Color(red: 0.024, green: 0.714, blue: 0.831))   // #2563EB → #06B6D4
+    }
+
+    static func brandGradient(dark: Bool = isDark) -> LinearGradient {
+        let c = brandColors(dark: dark)
+        return LinearGradient(colors: [c.top, c.bottom], startPoint: .top, endPoint: UnitPoint(x: 0.35, y: 1))
+    }
+
+    static func glyph(hot: Bool, dark: Bool = isDark) -> AnyShapeStyle {
+        if hot { return AnyShapeStyle(brandGradient(dark: dark)) }
+        return AnyShapeStyle(dark ? Color.white.opacity(0.92) : Color(red: 0.17, green: 0.21, blue: 0.27))
+    }
+}
+
+/// The capsule bar's (and its dropdown's) backdrop: the Liquid ring's material on
+/// a rounded rectangle — system Liquid Glass with no outline, plus the ring's dark
+/// scrim in dark mode so light glyphs read on any backdrop. Older systems get the
+/// frost, also without an outline.
+struct LiquidBarBackground: View {
+    var cornerRadius: CGFloat
+    /// The optional very thin outline (`capsule.border`): a 0.5 pt line, faint
+    /// enough to sit with the ring's hairline dividers rather than frame the bar.
+    var bordered = false
+
+    var body: some View {
+        ZStack {
+            GlassPanelBackground(cornerRadius: cornerRadius, bordered: false)
+            if LiquidInk.isDark {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.black.opacity(0.34))
+                    .allowsHitTesting(false)
+            }
+            if bordered {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(LiquidInk.isDark ? Color.white.opacity(0.18) : Color.black.opacity(0.12),
+                                  lineWidth: 0.5)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
 
@@ -570,6 +647,8 @@ enum ResultTextStyle {
 /// refuses, and the panel stopped moving (2026-09-29).
 struct GlassPanelBackground: View {
     var cornerRadius: CGFloat
+    /// The pre-macOS-26 frost's hairline outline. Liquid Glass has none either way.
+    var bordered: Bool = true
 
     var body: some View {
         // `NSGlassEffectView` only exists in the macOS 26 SDK, so it is gated at
@@ -578,10 +657,10 @@ struct GlassPanelBackground: View {
         if #available(macOS 26.0, *) {
             DraggableGlass(cornerRadius: cornerRadius)
         } else {
-            VisualEffectBlur(cornerRadius: cornerRadius)
+            VisualEffectBlur(cornerRadius: cornerRadius, bordered: bordered)
         }
         #else
-        VisualEffectBlur(cornerRadius: cornerRadius)
+        VisualEffectBlur(cornerRadius: cornerRadius, bordered: bordered)
         #endif
     }
 }

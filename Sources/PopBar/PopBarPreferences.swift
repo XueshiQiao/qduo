@@ -32,15 +32,11 @@ enum PopBarPreferences {
         static let excludedApps       = "popup.excludedApps"
         static let terminalApps       = "popup.terminalApps"
         static let ignoreAddressBars  = "popup.ignoreAddressBars"
-        static let wheelOuterRadius   = "wheel.outerRadius"
-        static let wheelInnerRadius   = "wheel.innerRadius"
-        static let wheelShowIcons     = "wheel.showIcons"
-        static let wheelShowLabels    = "wheel.showLabels"
-        static let wheelAutoHideOnExit = "wheel.autoHideOnExit"
         static let wheelDonutDividers = "wheel.donutDividers"
         static let wheelLiquidDividers = "wheel.liquidDividers"
-        static let wheelSubSeam       = "wheel.subSeam"
-        static let wheelSubThickness  = "wheel.subThickness"
+        static let capsuleIconSize    = "capsule.iconSize"
+        static let capsuleLabelSize   = "capsule.labelSize"
+        static let capsuleBorder      = "capsule.border"
         static let previewFallback    = "webPreview.fallbackToSearch"
         static let previewEngine      = "webPreview.searchEngine"
         static let ocrEnabled         = "ocr.enabled"
@@ -55,7 +51,7 @@ enum PopBarPreferences {
     static let resultFontSizeRange: ClosedRange<Double> = 11...20
     static let resultFontSizeDefault: Double = 13
 
-    /// Wheel geometry knobs (apply to both the wheel + liquid-glass styles). Defaults
+    /// Ring geometry knobs (Liquid and 3D Glass each keep their own). Defaults
     /// match the locked design; inner is kept at least `wheelMinThickness` below outer.
     static let wheelOuterRadiusRange: ClosedRange<Double> = 90...170
     static let wheelInnerRadiusRange: ClosedRange<Double> = 28...140
@@ -115,33 +111,94 @@ enum PopBarPreferences {
         set { config.set(P.readingHighlight, newValue.rawValue) }
     }
 
-    // MARK: - Wheel geometry / content (wheel + liquid-glass styles)
+    // MARK: - Ring geometry / content (Liquid and 3D Glass, each its own)
 
-    private static func clamped(_ value: Double, _ range: ClosedRange<Double>) -> Double {
+    fileprivate static func clamped(_ value: Double, _ range: ClosedRange<Double>) -> Double {
         min(max(value, range.lowerBound), range.upperBound)
     }
 
-    static var wheelOuterRadius: Double {
-        get { clamped(config.double(P.wheelOuterRadius, default: wheelOuterRadiusDefault), wheelOuterRadiusRange) }
-        set { config.set(P.wheelOuterRadius, clamped(newValue, wheelOuterRadiusRange)) }
+    /// The geometry / content knobs of ONE ring style. Liquid and 3D Glass each
+    /// keep their own: Liquid in the config's original `wheel` section, 3D Glass in
+    /// `donut` (seeded once from `wheel`, see `migrateRingSections`). Tuning or
+    /// resetting one never moves the other.
+    struct RingPrefs {
+        let section: String
+
+        private func key(_ name: String) -> String { "\(section).\(name)" }
+        private var config: ConfigStore { .shared }
+
+        var outerRadius: Double {
+            get { clamped(config.double(key("outerRadius"), default: wheelOuterRadiusDefault), wheelOuterRadiusRange) }
+            nonmutating set { config.set(key("outerRadius"), clamped(newValue, wheelOuterRadiusRange)) }
+        }
+        var innerRadius: Double {
+            get { clamped(config.double(key("innerRadius"), default: wheelInnerRadiusDefault), wheelInnerRadiusRange) }
+            nonmutating set { config.set(key("innerRadius"), clamped(newValue, wheelInnerRadiusRange)) }
+        }
+        var showIcons: Bool {
+            get { config.bool(key("showIcons"), default: true) }
+            nonmutating set { config.set(key("showIcons"), newValue) }
+        }
+        var showLabels: Bool {
+            get { config.bool(key("showLabels"), default: true) }
+            nonmutating set { config.set(key("showLabels"), newValue) }
+        }
+        /// Auto-hide the ring when the pointer moves outside it. Opt-out; default ON.
+        var autoHideOnExit: Bool {
+            get { config.bool(key("autoHideOnExit"), default: true) }
+            nonmutating set { config.set(key("autoHideOnExit"), newValue) }
+        }
+        /// Gap between the main ring and the submenu ring.
+        var subSeam: Double {
+            get { clamped(config.double(key("subSeam"), default: wheelSubSeamDefault), wheelSubSeamRange) }
+            nonmutating set { config.set(key("subSeam"), clamped(newValue, wheelSubSeamRange)) }
+        }
+        /// Band width of the submenu ring.
+        var subThickness: Double {
+            get { clamped(config.double(key("subThickness"), default: wheelSubThicknessDefault), wheelSubThicknessRange) }
+            nonmutating set { config.set(key("subThickness"), clamped(newValue, wheelSubThicknessRange)) }
+        }
+
+        var layout: WheelLayout {
+            let outer = outerRadius
+            let inner = min(innerRadius, outer - wheelMinThickness)
+            return WheelLayout(outerRadius: CGFloat(outer), innerRadius: CGFloat(inner),
+                               showIcons: showIcons, showLabels: showLabels,
+                               submenuSeam: CGFloat(subSeam),
+                               submenuThickness: CGFloat(subThickness))
+        }
+
+        /// Every knob back to its default. Writes the defaults rather than deleting
+        /// the keys, so the file still shows what can be edited.
+        func reset() {
+            outerRadius = wheelOuterRadiusDefault
+            innerRadius = wheelInnerRadiusDefault
+            showIcons = true
+            showLabels = true
+            autoHideOnExit = true
+            subSeam = wheelSubSeamDefault
+            subThickness = wheelSubThicknessDefault
+        }
+
+        static let knobNames = ["outerRadius", "innerRadius", "showIcons", "showLabels",
+                                "autoHideOnExit", "subSeam", "subThickness"]
     }
-    static var wheelInnerRadius: Double {
-        get { clamped(config.double(P.wheelInnerRadius, default: wheelInnerRadiusDefault), wheelInnerRadiusRange) }
-        set { config.set(P.wheelInnerRadius, clamped(newValue, wheelInnerRadiusRange)) }
+
+    /// A ring style's own knobs. The capsule has none; asking for it gets Liquid's,
+    /// which nothing reads.
+    static func ring(_ style: PopBarStyle) -> RingPrefs {
+        RingPrefs(section: style == .donut ? "donut" : "wheel")
     }
-    static var wheelShowIcons: Bool {
-        get { config.bool(P.wheelShowIcons, default: true) }
-        set { config.set(P.wheelShowIcons, newValue) }
-    }
-    static var wheelShowLabels: Bool {
-        get { config.bool(P.wheelShowLabels, default: true) }
-        set { config.set(P.wheelShowLabels, newValue) }
-    }
-    /// Auto-hide the ring when the pointer moves outside it. Opt-out; default ON.
-    /// The capsule style ignores this.
-    static var wheelAutoHideOnExit: Bool {
-        get { config.bool(P.wheelAutoHideOnExit, default: true) }
-        set { config.set(P.wheelAutoHideOnExit, newValue) }
+
+    /// Before 3D Glass had its own section it shared Liquid's `wheel` knobs. On the
+    /// first launch without a `donut` section, copy them across, so 3D Glass looks
+    /// exactly as it did; from then on the two are tuned separately. Only knobs that
+    /// are actually in the file are copied — absent ones read as the same default.
+    static func migrateRingSections() {
+        guard config.value("donut") == nil else { return }
+        for name in RingPrefs.knobNames {
+            if let v = config.value("wheel.\(name)") { config.set("donut.\(name)", v) }
+        }
     }
 
     /// Whether the liquid style draws hairline dividers between slices. Default OFF,
@@ -151,21 +208,54 @@ enum PopBarPreferences {
         set { config.set(P.wheelLiquidDividers, newValue) }
     }
 
-    /// Whether the 3D style carves a groove between neighbouring slices. Default on.
+    /// Whether the 3D style carves a groove between neighbouring slices. Default OFF, like the Liquid ring.
     static var wheelDonutDividers: Bool {
-        get { config.bool(P.wheelDonutDividers, default: true) }
+        get { config.bool(P.wheelDonutDividers, default: false) }
         set { config.set(P.wheelDonutDividers, newValue) }
     }
 
-    /// Gap between the main ring and the submenu ring.
-    static var wheelSubSeam: Double {
-        get { clamped(config.double(P.wheelSubSeam, default: wheelSubSeamDefault), wheelSubSeamRange) }
-        set { config.set(P.wheelSubSeam, clamped(newValue, wheelSubSeamRange)) }
+    // MARK: - Capsule
+
+    /// Icon and caption sizes of the capsule's buttons. The defaults are the sizes
+    /// the bar always had; the buttons grow with them.
+    static let capsuleIconSizeRange: ClosedRange<Double> = 11...24
+    static let capsuleIconSizeDefault: Double = 15
+    static let capsuleLabelSizeRange: ClosedRange<Double> = 8...14
+    static let capsuleLabelSizeDefault: Double = 9
+
+    static var capsuleIconSize: Double {
+        get { clamped(config.double(P.capsuleIconSize, default: capsuleIconSizeDefault), capsuleIconSizeRange) }
+        set { config.set(P.capsuleIconSize, clamped(newValue, capsuleIconSizeRange)) }
     }
-    /// Band width of the submenu ring.
-    static var wheelSubThickness: Double {
-        get { clamped(config.double(P.wheelSubThickness, default: wheelSubThicknessDefault), wheelSubThicknessRange) }
-        set { config.set(P.wheelSubThickness, clamped(newValue, wheelSubThicknessRange)) }
+    static var capsuleLabelSize: Double {
+        get { clamped(config.double(P.capsuleLabelSize, default: capsuleLabelSizeDefault), capsuleLabelSizeRange) }
+        set { config.set(P.capsuleLabelSize, clamped(newValue, capsuleLabelSizeRange)) }
+    }
+
+    /// A very thin outline around the capsule bar and its dropdown. Default ON,
+    /// so the bar keeps the edge it always had, only much lighter.
+    static var capsuleBorder: Bool {
+        get { config.bool(P.capsuleBorder, default: true) }
+        set { config.set(P.capsuleBorder, newValue) }
+    }
+
+    // MARK: - Reset
+
+    /// Put one style's own settings back to their defaults. Only that style's:
+    /// the other styles, and everything outside Appearance, are left alone.
+    static func resetStyleSettings(_ style: PopBarStyle) {
+        switch style {
+        case .capsule:
+            capsuleIconSize = capsuleIconSizeDefault
+            capsuleLabelSize = capsuleLabelSizeDefault
+            capsuleBorder = true
+        case .liquidGlass:
+            ring(.liquidGlass).reset()
+            wheelLiquidDividers = false
+        case .donut:
+            ring(.donut).reset()
+            wheelDonutDividers = false
+        }
     }
 
     // MARK: - Web preview (link fallback)
@@ -187,15 +277,6 @@ enum PopBarPreferences {
     /// A `WheelLayout` built from the current settings. Inner is clamped to stay at
     /// least `wheelMinThickness` below outer, so the ring is always valid no matter
     /// what the file says.
-    static var wheelLayout: WheelLayout {
-        let outer = wheelOuterRadius
-        let inner = min(wheelInnerRadius, outer - wheelMinThickness)
-        return WheelLayout(outerRadius: CGFloat(outer), innerRadius: CGFloat(inner),
-                           showIcons: wheelShowIcons, showLabels: wheelShowLabels,
-                           submenuSeam: CGFloat(wheelSubSeam),
-                           submenuThickness: CGFloat(wheelSubThickness))
-    }
-
     // MARK: - Paused
 
     /// Whether selecting text opens the popup at all. Default ON; OFF is "paused"

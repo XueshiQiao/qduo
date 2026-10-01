@@ -45,7 +45,7 @@ final class CapsuleSubmenu {
         panel.collectionBehavior = [.canJoinAllSpaces, .ignoresCycle]
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.hasShadow = false   // like the bar it hangs from: no window-shadow rim
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
         hosting = FirstClickHostingView(rootView: CapsuleSubmenuView(items: [], model: model))
@@ -148,7 +148,7 @@ struct CapsuleSubmenuView: View {
         .padding(5)
         .frame(minWidth: 150, maxWidth: 260)
         .fixedSize()
-        .background(VisualEffectBlur(cornerRadius: 10))
+        .background(LiquidBarBackground(cornerRadius: 10, bordered: PopBarPreferences.capsuleBorder))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onHover { model.onHover?($0) }
     }
@@ -164,13 +164,10 @@ struct CapsuleSubmenuView: View {
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(.primary)
+            // Marked like the bar: no fill, the icon and name take the brand gradient.
+            .foregroundStyle(LiquidInk.glyph(hot: model.highlighted == item.id))
             .padding(.horizontal, 8)
             .frame(height: CapsuleSubmenu.rowHeight)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(model.highlighted == item.id ? Color.primary.opacity(0.12) : Color.clear)
-            )
             // The whole row is the target, not just the icon and the text.
             .contentShape(Rectangle())
         }

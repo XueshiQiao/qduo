@@ -93,7 +93,7 @@ enum ConfigSchema {
 
         "wheel": {
           "type": "object",
-          "description": "Geometry of the ring styles. Ignored by the capsule style. Sizes are in points.",
+          "description": "Geometry of the Liquid ring (popup.style liquidGlass). 3D Glass has its own copy in donut. Sizes are in points.",
           "properties": {
             "outerRadius": { "type": "number", "minimum": 90, "maximum": 170,
               "description": "Outer edge of the main ring." },
@@ -110,7 +110,36 @@ enum ConfigSchema {
             "liquidDividers": { "type": "boolean",
               "description": "Liquid style: draw hairline dividers between slices." },
             "donutDividers": { "type": "boolean",
-              "description": "3D style: carve a groove between neighbouring slices." }
+              "description": "3D style: carve a groove between neighbouring slices. Default false." }
+          },
+          "additionalProperties": true
+        },
+
+        "donut": {
+          "type": "object",
+          "description": "Geometry of the 3D Glass ring (popup.style donut), separate from Liquid's in wheel. Same knobs and ranges as wheel. Sizes are in points.",
+          "properties": {
+            "outerRadius": { "type": "number", "minimum": 90, "maximum": 170 },
+            "innerRadius": { "type": "number", "minimum": 28, "maximum": 140 },
+            "subSeam": { "type": "number", "minimum": 0, "maximum": 20 },
+            "subThickness": { "type": "number", "minimum": 34, "maximum": 72 },
+            "showIcons": { "type": "boolean" },
+            "showLabels": { "type": "boolean" },
+            "autoHideOnExit": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        },
+
+        "capsule": {
+          "type": "object",
+          "description": "The capsule bar (popup.style capsule). Sizes are in points.",
+          "properties": {
+            "iconSize": { "type": "number", "minimum": 11, "maximum": 24,
+              "description": "Size of each button's icon." },
+            "labelSize": { "type": "number", "minimum": 8, "maximum": 14,
+              "description": "Size of each button's name." },
+            "border": { "type": "boolean",
+              "description": "Draw a very thin outline around the bar and its dropdown. Default true." }
           },
           "additionalProperties": true
         },

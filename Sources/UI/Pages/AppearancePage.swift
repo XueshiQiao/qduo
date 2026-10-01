@@ -8,6 +8,7 @@ import SwiftUI
 struct AppearancePage: View {
 
     @ObservedObject private var store: PopBarStore
+    @State private var confirmingReset = false
 
     init(store: PopBarStore) {
         _store = ObservedObject(wrappedValue: store)
@@ -40,8 +41,24 @@ struct AppearancePage: View {
             } label: {
                 iconLabel("circle.hexagongrid", .indigo, L("popbar.style.label"))
             }
-            // The wheel and liquid-glass styles share these geometry/content knobs;
-            // the capsule has none of them.
+            // Each style has its own knobs, below. Liquid and 3D Glass have the same
+            // set, but each keeps its own values.
+            if store.style == .capsule {
+                radiusRow(label: L("popbar.capsule.iconSize"), symbol: "square.grid.2x2",
+                          value: store.capsuleIconSize,
+                          range: PopBarPreferences.capsuleIconSizeRange) {
+                    store.setCapsuleIconSize($0)
+                }
+                radiusRow(label: L("popbar.capsule.labelSize"), symbol: "textformat.size",
+                          value: store.capsuleLabelSize,
+                          range: PopBarPreferences.capsuleLabelSizeRange) {
+                    store.setCapsuleLabelSize($0)
+                }
+                Toggle(isOn: Binding(get: { store.capsuleBorder },
+                                     set: { store.setCapsuleBorder($0) })) {
+                    iconLabel("rectangle", .indigo, L("popbar.capsule.border"))
+                }
+            }
             if store.style == .liquidGlass {
                 Toggle(isOn: Binding(get: { store.wheelLiquidDividers },
                                      set: { store.setWheelLiquidDividers($0) })) {
@@ -88,14 +105,35 @@ struct AppearancePage: View {
                     iconLabel("cursorarrow.motionlines", .indigo, L("popbar.wheel.autoHide"))
                 }
             }
-            Button { store.showPreview() } label: {
-                Label(L("popbar.preview.button"), systemImage: "eye")
+            HStack {
+                Button { store.showPreview() } label: {
+                    Label(L("popbar.preview.button"), systemImage: "eye")
+                }
+                Spacer()
+                // Resets only the selected style's own settings. Asks first: tuned
+                // values cannot be got back once reset.
+                Button { confirmingReset = true } label: {
+                    Label(L("popbar.reset.button"), systemImage: "arrow.counterclockwise")
+                }
+                .confirmationDialog(String(format: L("popbar.reset.confirm"), styleName(store.style)),
+                                    isPresented: $confirmingReset) {
+                    Button(L("popbar.reset.action"), role: .destructive) { store.resetStyleSettings() }
+                    Button(L("popbar.reset.cancel"), role: .cancel) {}
+                }
             }
         } header: {
             Text(L("popbar.display.header"))
         } footer: {
             Text(L("popbar.style.footer"))
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func styleName(_ style: PopBarStyle) -> String {
+        switch style {
+        case .liquidGlass: return L("popbar.style.liquid")
+        case .donut: return L("popbar.style.donut")
+        case .capsule: return L("popbar.style.capsule")
         }
     }
 

@@ -481,7 +481,18 @@ final class PopBarController {
     /// bring the centered preview up (which reads the current geometry at show time).
     func previewWheelLive() {
         if windows.transientIsVisibleUnpinned && windows.transientIsShowingActions {
-            windows.setWheelLayout(PopBarPreferences.wheelLayout)
+            windows.setWheelLayout(PopBarPreferences.ring(PopBarPreferences.style).layout)
+        } else {
+            showPreview()
+        }
+    }
+
+    /// Show (or live-update) the preview as the capsule's icon / caption size
+    /// sliders move. The bar re-fits to its new button size in place.
+    func previewCapsuleLive() {
+        if windows.transientIsVisibleUnpinned && windows.transientIsShowingActions {
+            windows.setCapsuleSizes(icon: PopBarPreferences.capsuleIconSize,
+                                    label: PopBarPreferences.capsuleLabelSize)
         } else {
             showPreview()
         }

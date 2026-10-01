@@ -122,6 +122,11 @@ final class PopBarWindowManager {
         for session in pinned { session.setWheelLayout(layout) }
     }
 
+    func setCapsuleSizes(icon: Double, label: Double) {
+        transient.setCapsuleSizes(icon: icon, label: label)
+        for session in pinned { session.setCapsuleSizes(icon: icon, label: label) }
+    }
+
     // MARK: - Lifecycle
 
     /// Hide & release everything (controller stop / tool shutdown).
