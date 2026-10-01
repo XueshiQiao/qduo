@@ -60,11 +60,10 @@
 "popbar.preview.sample" = "敏捷的棕色狐狸跳过了那只懒狗。";
 "popbar.style.label" = "显示样式";
 "popbar.style.capsule" = "胶囊";
-"popbar.style.wheel" = "轮盘";
 "popbar.style.liquid" = "水玻璃";
 "popbar.style.donut" = "立体玻璃";
 "popbar.donut.dividers" = "显示扇区之间的分隔缝";
-"popbar.style.footer" = "水玻璃 / 立体玻璃 / 轮盘以光标为圆心成环，胶囊在选区上方横向展开（水玻璃是明亮磨砂玻璃皮肤；立体玻璃是一个会朝鼠标方向微微倾斜的立体玻璃圆环）。";
+"popbar.style.footer" = "水玻璃 / 立体玻璃以光标为圆心成环，胶囊在选区上方横向展开（水玻璃是明亮磨砂玻璃皮肤；立体玻璃是一个会朝鼠标方向微微倾斜的立体玻璃圆环）。";
 "popbar.wheel.outer" = "外环半径";
 "popbar.wheel.inner" = "内环半径";
 "popbar.wheel.subSeam" = "二级菜单间距";

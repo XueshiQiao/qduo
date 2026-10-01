@@ -153,7 +153,7 @@ struct PopBarContentView: View {
         switch model.style {
         case .liquidGlass: return .liquid
         case .donut: return DonutSupport.isAvailable ? .donut(dividers: model.donutDividers) : .liquid
-        case .wheel, .capsule: return .classic
+        case .capsule: return .liquid   // never shown: the capsule has no ring
         }
     }
 

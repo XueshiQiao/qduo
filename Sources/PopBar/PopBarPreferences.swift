@@ -3,17 +3,16 @@ import CoreGraphics
 
 /// How the popup presents its action row. The trigger/LLM core is identical for
 /// both — only the UI and window placement differ (capsule = horizontal bar above
-/// the selection; wheel = a ring centered on the cursor).
+/// the selection; the ring styles = a ring centered on the cursor).
 enum PopBarStyle: String, CaseIterable, Hashable {
     case capsule
-    case wheel
     case liquidGlass
     /// The 3D glass ring (ray-marched with Metal) that leans toward the pointer.
     case donut
-    /// Ring-based styles (wheel, liquid glass, donut): centered on the cursor, only
-    /// the ring hit-tests. The shell treats them the same for placement /
+    /// Ring-based styles (liquid glass, donut): centered on the cursor, only the
+    /// ring hit-tests. The shell treats them the same for placement /
     /// hit-testing; they differ only in their SwiftUI skin.
-    var isWheel: Bool { self == .wheel || self == .liquidGlass || self == .donut }
+    var isWheel: Bool { self == .liquidGlass || self == .donut }
 }
 
 /// The popup's own persistence. App-wide prefs live in `Preferences`.
@@ -84,8 +83,20 @@ enum PopBarPreferences {
     /// a hand-editable file, and a typo in one setting must not take the popup
     /// down with it. (Every seeded file writes the style out, so only a
     /// hand-trimmed file ever reaches this fallback.)
+    ///
+    /// The flat "wheel" style was folded into Liquid Glass: a file that still says
+    /// "wheel" is rewritten to "liquidGlass" with the dividers on (the closest match
+    /// to what that person saw), unless they already chose a divider setting.
     static var style: PopBarStyle {
-        get { PopBarStyle(rawValue: config.string(P.style, default: "")) ?? .liquidGlass }
+        get {
+            let raw = config.string(P.style, default: "")
+            if raw == "wheel" {
+                if config.value(P.wheelLiquidDividers) == nil { config.set(P.wheelLiquidDividers, true) }
+                config.set(P.style, PopBarStyle.liquidGlass.rawValue)
+                return .liquidGlass
+            }
+            return PopBarStyle(rawValue: raw) ?? .liquidGlass
+        }
         set { config.set(P.style, newValue.rawValue) }
     }
 

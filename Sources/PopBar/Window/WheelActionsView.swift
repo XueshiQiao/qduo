@@ -78,13 +78,12 @@ struct WheelLayout: Equatable {
 }
 
 /// Which visual skin the wheel uses. Geometry + interaction are identical for both;
-/// only the rendering differs. `.classic` = flat frosted sectors + accent fill.
-/// `.liquid` = the locked "Liquid Glass" look (`docs/popbar-wheel-liquid.html`): a
+/// only the rendering differs. `.liquid` = the locked "Liquid Glass" look (`docs/popbar-wheel-liquid.html`): a
 /// translucent frosted ring (no borders) with soft volumetric depth that adapts to the
 /// popup's appearance — bright ring + dark glyphs in light mode, dark ring + light
 /// glyphs in dark mode. `.donut` = the ray-marched 3D ring (`docs/wheel-3d-donut.html`,
 /// stage B) that leans toward the pointer; see `Donut/`.
-enum WheelSkin: Equatable { case classic, liquid, donut(dividers: Bool) }
+enum WheelSkin: Equatable { case liquid, donut(dividers: Bool) }
 
 /// One equal slice of the ring as an annular sector. Used BOTH to fill the wedge
 /// and (critically) as its `.contentShape`, so the WHOLE wedge hit-tests — never
@@ -151,7 +150,7 @@ struct WheelActionsView: View {
 
     let actions: [PopBarActionConfig]
     var layout = WheelLayout()
-    var skin: WheelSkin = .classic
+    var skin: WheelSkin = .liquid
     /// Hide the ring when the pointer moves outside it (user setting; wheel styles only).
     var autoHideOnExit: Bool = false
     /// Liquid skin only: hairline dividers between slices (user setting, off by default).
@@ -293,8 +292,7 @@ struct WheelActionsView: View {
     /// app behind before our `hitTest` ever runs — which is exactly why the Liquid
     /// Glass skin's clicks fell through (its `.glassEffect` is composited server-
     /// side and leaves the app backing clear; hover still worked because tracking
-    /// areas aren't subject to click-through). The classic skin only worked by
-    /// accident, via its opaque `VisualEffectBlur`/sector fills.
+    /// areas aren't subject to click-through).
     private var interactiveSurface: some View {
         let d = canvas
         return ZStack {
@@ -590,10 +588,7 @@ struct WheelActionsView: View {
     @ViewBuilder
     private var ringVisuals: some View {
         ZStack {
-            switch skin {
-            case .classic: classicVisuals
-            case .liquid, .donut: liquidVisuals   // .donut never gets here (see body)
-            }
+            liquidVisuals   // .donut never gets here (see body)
             // With labels shown, a group says so with a › after its name (see
             // `sliceLabel`); only an icons-only ring still needs the rim tick.
             if !layout.showLabels { submenuTicks } else { openGroupPointer }
@@ -664,52 +659,8 @@ struct WheelActionsView: View {
     }
 
     private var tickColor: Color {
-        switch skin {
-        case .classic: return Color.primary.opacity(0.45)
-        case .liquid, .donut: return isDark ? Color.white.opacity(0.55)
-                                     : Color(red: 0.10, green: 0.13, blue: 0.20).opacity(0.5)
-        }
-    }
-
-    /// CLASSIC: frosted annulus backdrop + per-wedge accent fill + light icons.
-    private var classicVisuals: some View {
-        let d = canvas
-        return ZStack {
-            VisualEffectBlur(cornerRadius: 0, bordered: false)
-                .frame(width: layout.outerRadius * 2, height: layout.outerRadius * 2)
-                .mask(Annulus(innerRadius: layout.innerRadius, outerRadius: layout.outerRadius)
-                    .fill(style: FillStyle(eoFill: true)))
-
-            ForEach(Array(actions.enumerated()), id: \.element.id) { idx, action in
-                let a = angles(idx)
-                let sector = RingSector(startAngle: a.start, endAngle: a.end,
-                                        innerRadius: layout.innerRadius, outerRadius: layout.outerRadius)
-                let hot = hovered == action.id
-                sector
-                    .fill(hot ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color.primary.opacity(0.06)))
-                    .overlay(sector.stroke(Color.primary.opacity(0.12), lineWidth: 0.75))
-            }
-
-            ForEach(Array(actions.enumerated()), id: \.element.id) { idx, action in
-                let a = angles(idx)
-                let mid = a.mid.radians
-                let hot = hovered == action.id
-                VStack(spacing: 2) {
-                    if layout.showIcons {
-                        Image(systemName: action.iconSymbol)
-                            .font(.system(size: 15, weight: .medium))
-                            .frame(height: 18)   // fixed slot — same baseline fix as the capsule
-                    }
-                    if layout.showLabels {
-                        sliceLabel(action, weight: .medium)
-                    }
-                }
-                .foregroundStyle(hot ? Color.white : Color.primary)
-                .position(x: d / 2 + cos(mid) * layout.midRadius,
-                          y: d / 2 + sin(mid) * layout.midRadius)
-            }
-        }
-        .frame(width: d, height: d)
+        isDark ? Color.white.opacity(0.55)
+               : Color(red: 0.10, green: 0.13, blue: 0.20).opacity(0.5)
     }
 
     /// LIQUID GLASS: on macOS 26+ this is the REAL system Liquid Glass material
@@ -1277,35 +1228,18 @@ struct WheelActionsView: View {
     }
 
     private var submenuHighlightStyle: SubmenuHighlight {
-        switch skin {
-        case .classic:
-            return .fill(Color.accentColor)
-        case .liquid, .donut:
-            return .glyphTint   // the child's icon + label take the tint (childGlyphColor)
-        }
+        .glyphTint   // the child's icon + label take the tint (childGlyphColor)
     }
 
     @ViewBuilder
     private func submenuMaterial(_ shape: RoundedRingSector) -> some View {
-        let d = canvas
-        switch skin {
-        case .classic:
-            ZStack {
-                VisualEffectBlur(cornerRadius: 0, bordered: false)
-                    .frame(width: d, height: d)
-                    .mask(shape.fill())
-                shape.fill(Color.primary.opacity(0.06))
-                shape.stroke(Color.primary.opacity(0.12), lineWidth: 0.75)
-            }
-        case .liquid, .donut:
-            ZStack {
-                submenuLiquidMaterial(shape)
-                if isDark {
-                    // Same reason as the main ring: macOS 26 Liquid Glass samples the
-                    // backdrop, so over dark content it goes near-black and the glyphs
-                    // lose contrast. A controlled scrim pins it to predictable glass.
-                    shape.fill(Color.black.opacity(0.34))
-                }
+        ZStack {
+            submenuLiquidMaterial(shape)
+            if isDark {
+                // Same reason as the main ring: macOS 26 Liquid Glass samples the
+                // backdrop, so over dark content it goes near-black and the glyphs
+                // lose contrast. A controlled scrim pins it to predictable glass.
+                shape.fill(Color.black.opacity(0.34))
             }
         }
     }
@@ -1338,10 +1272,7 @@ struct WheelActionsView: View {
     }
 
     private func childGlyphColor(hot: Bool, dark: Bool) -> AnyShapeStyle {
-        switch skin {
-        case .classic: return AnyShapeStyle(hot ? Color.white : Color.primary)
-        case .liquid, .donut: return glyphStyle(hot: hot, dark: dark)
-        }
+        glyphStyle(hot: hot, dark: dark)
     }
 
     private func hoveredChildIndex(_ open: OpenSubmenu) -> Int? {

@@ -33,7 +33,6 @@ struct AppearancePage: View {
                     Text(L("popbar.style.liquid")).tag(PopBarStyle.liquidGlass)
                     Text(L("popbar.style.donut")).tag(PopBarStyle.donut)
                     Text(L("popbar.style.capsule")).tag(PopBarStyle.capsule)
-                    Text(L("popbar.style.wheel")).tag(PopBarStyle.wheel)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

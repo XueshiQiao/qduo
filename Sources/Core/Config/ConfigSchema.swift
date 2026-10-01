@@ -47,8 +47,8 @@ enum ConfigSchema {
           "properties": {
             "style": {
               "type": "string",
-              "enum": ["capsule", "wheel", "liquidGlass", "donut"],
-              "description": "capsule = a bar above the selection. wheel / liquidGlass / donut = a ring centred on the cursor (donut is the 3D glass ring)."
+              "enum": ["capsule", "liquidGlass", "donut"],
+              "description": "capsule = a bar above the selection. liquidGlass / donut = a ring centred on the cursor (donut is the 3D glass ring). The old \\"wheel\\" value still loads, as liquidGlass with dividers on."
             },
             "autoExpandHeight": {
               "type": "boolean",
