@@ -39,6 +39,7 @@ enum PopBarPreferences {
         static let wheelShowLabels    = "wheel.showLabels"
         static let wheelAutoHideOnExit = "wheel.autoHideOnExit"
         static let wheelDonutDividers = "wheel.donutDividers"
+        static let wheelLiquidDividers = "wheel.liquidDividers"
         static let wheelSubSeam       = "wheel.subSeam"
         static let wheelSubThickness  = "wheel.subThickness"
         static let previewFallback    = "webPreview.fallbackToSearch"
@@ -130,6 +131,13 @@ enum PopBarPreferences {
     static var wheelAutoHideOnExit: Bool {
         get { config.bool(P.wheelAutoHideOnExit, default: true) }
         set { config.set(P.wheelAutoHideOnExit, newValue) }
+    }
+
+    /// Whether the liquid style draws hairline dividers between slices. Default OFF,
+    /// so the ring looks exactly as before for everyone who never touches it.
+    static var wheelLiquidDividers: Bool {
+        get { config.bool(P.wheelLiquidDividers, default: false) }
+        set { config.set(P.wheelLiquidDividers, newValue) }
     }
 
     /// Whether the 3D style carves a groove between neighbouring slices. Default on.

@@ -273,6 +273,7 @@ final class PopBarPanel {
         model.wheelLayout = PopBarPreferences.wheelLayout   // user-adjustable radii + icon/label toggles
         model.autoHideOnExitRing = PopBarPreferences.wheelAutoHideOnExit   // wheel: hide when pointer leaves the ring
         model.donutDividers = PopBarPreferences.wheelDonutDividers
+        model.liquidDividers = PopBarPreferences.wheelLiquidDividers
         // Pick up the current auto-expand preference for this show (the user may
         // have toggled it in settings since the last popup).
         model.autoExpandHeight = PopBarPreferences.autoExpandHeight

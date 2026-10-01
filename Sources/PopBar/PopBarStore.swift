@@ -16,6 +16,7 @@ final class PopBarStore: ObservableObject {
     @Published var wheelShowLabels: Bool
     @Published var wheelAutoHideOnExit: Bool
     @Published var wheelDonutDividers: Bool
+    @Published var wheelLiquidDividers: Bool
     @Published var wheelSubSeam: Double
     @Published var wheelSubThickness: Double
     @Published private(set) var isTrusted: Bool
@@ -57,6 +58,7 @@ final class PopBarStore: ObservableObject {
         self.wheelShowLabels = PopBarPreferences.wheelShowLabels
         self.wheelAutoHideOnExit = PopBarPreferences.wheelAutoHideOnExit
         self.wheelDonutDividers = PopBarPreferences.wheelDonutDividers
+        self.wheelLiquidDividers = PopBarPreferences.wheelLiquidDividers
         self.wheelSubSeam = PopBarPreferences.wheelSubSeam
         self.wheelSubThickness = PopBarPreferences.wheelSubThickness
         self.isTrusted = AccessibilityAuthorizer.isTrusted
@@ -187,6 +189,12 @@ final class PopBarStore: ObservableObject {
     func setWheelAutoHideOnExit(_ on: Bool) {
         wheelAutoHideOnExit = on
         PopBarPreferences.wheelAutoHideOnExit = on
+    }
+    /// Whether the liquid style shows dividers between slices. Shown live.
+    func setWheelLiquidDividers(_ on: Bool) {
+        wheelLiquidDividers = on
+        PopBarPreferences.wheelLiquidDividers = on
+        controller.previewStyleLive()
     }
     /// Whether the 3D style shows the grooves between slices. Shown live.
     func setWheelDonutDividers(_ on: Bool) {

@@ -154,6 +154,8 @@ struct WheelActionsView: View {
     var skin: WheelSkin = .classic
     /// Hide the ring when the pointer moves outside it (user setting; wheel styles only).
     var autoHideOnExit: Bool = false
+    /// Liquid skin only: hairline dividers between slices (user setting, off by default).
+    var liquidDividers: Bool = false
     /// Live bridge to the panel's AppKit hit-test, so the clickable region grows
     /// with the submenu ring and shrinks back when it closes.
     var hitRegion: WheelHitRegion?
@@ -737,6 +739,8 @@ struct WheelActionsView: View {
                     .frame(width: o * 2, height: o * 2)
             }
 
+            if liquidDividers { liquidDividerLines }
+
             liquidIcons
         }
         .frame(width: d, height: d)
@@ -795,6 +799,19 @@ struct WheelActionsView: View {
     /// Icons + labels. Light mode: dark-navy ink with a soft white halo on the bright
     /// glass. Dark mode: near-white glyphs with a soft dark halo — the mockup's dark
     /// variant — so they stay legible on the system's dark Liquid Glass.
+    /// Hairline dividers between the liquid ring's slices — drawn exactly like the
+    /// second ring's (`SubmenuDividers`): the same colour and line width, and stopping
+    /// a point short of each edge instead of running rim to rim, so the two rings'
+    /// dividers read as one design.
+    private var liquidDividerLines: some View {
+        let n = max(actions.count, 1)
+        let step = 360.0 / Double(n)
+        return SubmenuDividers(start: -90, step: step, count: n > 1 ? n : 0,
+                               innerRadius: layout.innerRadius, outerRadius: layout.outerRadius)
+            .stroke(Color.primary.opacity(0.16), lineWidth: 0.75)
+            .frame(width: canvas, height: canvas)
+    }
+
     private var liquidIcons: some View {
         let d = canvas, mid = layout.midRadius
         let dark = isDark

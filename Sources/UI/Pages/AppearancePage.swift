@@ -43,6 +43,12 @@ struct AppearancePage: View {
             }
             // The wheel and liquid-glass styles share these geometry/content knobs;
             // the capsule has none of them.
+            if store.style == .liquidGlass {
+                Toggle(isOn: Binding(get: { store.wheelLiquidDividers },
+                                     set: { store.setWheelLiquidDividers($0) })) {
+                    iconLabel("circle.dotted", .indigo, L("popbar.donut.dividers"))
+                }
+            }
             if store.style == .donut {
                 Toggle(isOn: Binding(get: { store.wheelDonutDividers },
                                      set: { store.setWheelDonutDividers($0) })) {

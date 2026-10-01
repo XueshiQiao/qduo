@@ -107,6 +107,8 @@ enum ConfigSchema {
             "showLabels": { "type": "boolean", "description": "Draw each action's name." },
             "autoHideOnExit": { "type": "boolean",
               "description": "Dismiss the ring when the pointer leaves it." },
+            "liquidDividers": { "type": "boolean",
+              "description": "Liquid style: draw hairline dividers between slices." },
             "donutDividers": { "type": "boolean",
               "description": "3D style: carve a groove between neighbouring slices." }
           },

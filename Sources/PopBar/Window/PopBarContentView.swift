@@ -62,6 +62,8 @@ final class PopBarPanelModel: ObservableObject {
     var autoHideOnExitRing = false
     /// Whether the 3D style carves a groove between slices. Seeded on each show.
     @Published var donutDividers = true
+    /// Whether the liquid style draws dividers between slices. Seeded on each show.
+    @Published var liquidDividers = false
 
     /// Wired by the controller.
     var onAction: ((PopBarActionConfig) -> Void)?
@@ -131,6 +133,7 @@ struct PopBarContentView: View {
                 WheelActionsView(actions: model.actions, layout: model.wheelLayout,
                                  skin: wheelSkin,
                                  autoHideOnExit: model.autoHideOnExitRing,
+                                 liquidDividers: model.liquidDividers,
                                  hitRegion: model.wheelHitRegion,
                                  onExitRing: { model.onExitRing?() }) { action in
                     model.onAction?(action)
