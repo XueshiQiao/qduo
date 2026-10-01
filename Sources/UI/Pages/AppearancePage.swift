@@ -30,32 +30,20 @@ struct AppearancePage: View {
         Section {
             LabeledContent {
                 Picker("", selection: Binding(get: { store.style }, set: { store.setStyle($0) })) {
-                    Text(L("popbar.style.capsule")).tag(PopBarStyle.capsule)
-                    Text(L("popbar.style.wheel")).tag(PopBarStyle.wheel)
                     Text(L("popbar.style.liquid")).tag(PopBarStyle.liquidGlass)
                     Text(L("popbar.style.donut")).tag(PopBarStyle.donut)
+                    Text(L("popbar.style.capsule")).tag(PopBarStyle.capsule)
+                    Text(L("popbar.style.wheel")).tag(PopBarStyle.wheel)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .frame(maxWidth: 290)
+                .frame(maxWidth: 320)
             } label: {
                 iconLabel("circle.hexagongrid", .indigo, L("popbar.style.label"))
             }
             // The wheel and liquid-glass styles share these geometry/content knobs;
             // the capsule has none of them.
             if store.style == .donut {
-                LabeledContent {
-                    Picker("", selection: Binding(get: { store.wheelDonutMaterial },
-                                                  set: { store.setWheelDonutMaterial($0) })) {
-                        Text(L("popbar.donut.ceramic")).tag(DonutMaterial.ceramic)
-                        Text(L("popbar.donut.glass")).tag(DonutMaterial.glass)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(maxWidth: 160)
-                } label: {
-                    iconLabel("circle.lefthalf.filled", .indigo, L("popbar.donut.material"))
-                }
                 Toggle(isOn: Binding(get: { store.wheelDonutDividers },
                                      set: { store.setWheelDonutDividers($0) })) {
                     iconLabel("circle.dotted", .indigo, L("popbar.donut.dividers"))

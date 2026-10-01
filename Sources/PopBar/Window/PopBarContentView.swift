@@ -60,8 +60,6 @@ final class PopBarPanelModel: ObservableObject {
     /// Auto-hide the ring when the pointer leaves it (wheel + liquid-glass only;
     /// the capsule ignores it). Seeded from prefs on each show.
     var autoHideOnExitRing = false
-    /// The 3D style's surface. Seeded from prefs on each show.
-    @Published var donutMaterial: DonutMaterial = .ceramic
     /// Whether the 3D style carves a groove between slices. Seeded on each show.
     @Published var donutDividers = true
 
@@ -151,7 +149,7 @@ struct PopBarContentView: View {
     private var wheelSkin: WheelSkin {
         switch model.style {
         case .liquidGlass: return .liquid
-        case .donut: return DonutSupport.isAvailable ? .donut(model.donutMaterial, dividers: model.donutDividers) : .liquid
+        case .donut: return DonutSupport.isAvailable ? .donut(dividers: model.donutDividers) : .liquid
         case .wheel, .capsule: return .classic
         }
     }

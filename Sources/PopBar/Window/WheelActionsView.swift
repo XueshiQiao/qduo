@@ -84,7 +84,7 @@ struct WheelLayout: Equatable {
 /// popup's appearance — bright ring + dark glyphs in light mode, dark ring + light
 /// glyphs in dark mode. `.donut` = the ray-marched 3D ring (`docs/wheel-3d-donut.html`,
 /// stage B) that leans toward the pointer; see `Donut/`.
-enum WheelSkin: Equatable { case classic, liquid, donut(DonutMaterial, dividers: Bool) }
+enum WheelSkin: Equatable { case classic, liquid, donut(dividers: Bool) }
 
 /// One equal slice of the ring as an annular sector. Used BOTH to fill the wedge
 /// and (critically) as its `.contentShape`, so the WHOLE wedge hit-tests — never
@@ -230,10 +230,10 @@ struct WheelActionsView: View {
     var body: some View {
         let d = canvas
         ZStack {
-            if case .donut(let material, let dividers) = skin {
+            if case .donut(let dividers) = skin {
                 // One ray-marched scene draws both rings (and their shadow), so the
                 // donut replaces the whole flat stack below rather than a layer of it.
-                donutVisuals(material, dividers: dividers)
+                donutVisuals(dividers: dividers)
                     .allowsHitTesting(false)
             } else {
                 // The submenu ring is drawn UNDER the main ring, so unfolding reads as
@@ -455,20 +455,21 @@ struct WheelActionsView: View {
     /// names laid over it at their PROJECTED positions — moved with the tilt, never
     /// skewed by it, so the text stays as crisp as on the flat skins. Glass puts the
     /// system blur underneath, cut to the ring's projected outline.
-    private func donutVisuals(_ material: DonutMaterial, dividers: Bool) -> some View {
+    private func donutVisuals(dividers: Bool) -> some View {
         let d = canvas
         let dark = isDark
-        let surfaceDark = donutSurfaceDark(material)
+        // The glass itself never goes dark: that is left to the system's adaptive
+        // glass underneath, which darkens over dark content by itself. (A dark
+        // surface of our own made the ring grey — the user tried every variant.)
+        let surfaceDark = false
         // All of it is drawn in a mouse-transparent window under the popup: see
         // `DonutLayerWindow` for why drawing it here would swallow every click in
         // the wheel's square, the hole included.
         return DonutLayerWindow(appearance: NSAppearance(named: surfaceDark ? .darkAqua : .aqua), content: ZStack {
-            if material == .glass {
-                DonutMotionReader(motion: motion) { m in
-                    donutGlassBackdrop(m.outlinePath(), dark: surfaceDark, side: d)
-                }
+            DonutMotionReader(motion: motion) { m in
+                donutGlassBackdrop(m.outlinePath(), dark: surfaceDark, side: d)
             }
-            DonutRingView(motion: motion, targets: donutTargets, material: material,
+            DonutRingView(motion: motion, targets: donutTargets,
                           surfaceDark: surfaceDark, pageDark: dark, dividers: dividers,
                           canvas: d, layout: layout, sliceCount: actions.count)
                 .frame(width: d, height: d)
@@ -505,13 +506,6 @@ struct WheelActionsView: View {
         // alone turned the ring grey.
         LiquidGlassBlur(dark: dark).frame(width: d, height: d).mask(outline)
         #endif
-    }
-
-    /// Whether the donut's SURFACE is dark. Never: dark ceramic read as black
-    /// plastic, not porcelain, and glass is left to the system's adaptive glass,
-    /// which darkens over dark content by itself.
-    private func donutSurfaceDark(_ material: DonutMaterial) -> Bool {
-        false
     }
 
     /// The icons and names, laid out FLAT (where the flat wheel would put them) and
@@ -562,7 +556,7 @@ struct WheelActionsView: View {
 
     /// One slice's icon + name, painted like the liquid skin's (dark ink on the light
     /// surfaces, near-white on the dark ones, the brand gradient when hovered).
-    /// `dark` is the SURFACE's darkness, not the system's — white ceramic keeps its
+    /// `dark` is the SURFACE's darkness, not the system's — the light glass keeps its
     /// dark ink in dark mode.
     private func donutGlyph(_ action: PopBarActionConfig, hot: Bool, soft: Bool, dark: Bool) -> some View {
         VStack(spacing: 2) {
@@ -580,7 +574,7 @@ struct WheelActionsView: View {
     }
 
     /// `glyphStyle`, but keyed on the surface: its hover gradient otherwise follows
-    /// the system, and the lifted dark-mode blues wash out on white ceramic.
+    /// the system, and the lifted dark-mode blues wash out on a light surface.
     private func donutGlyphStyle(hot: Bool, dark: Bool) -> AnyShapeStyle {
         guard hot else { return glyphStyle(hot: false, dark: dark) }
         let c: (top: Color, bottom: Color) = dark

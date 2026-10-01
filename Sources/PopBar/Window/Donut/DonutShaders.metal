@@ -2,7 +2,7 @@
 using namespace metal;
 
 // The 3D "donut" wheel: a ray-marched torus (the main ring) plus the same tube swept
-// along an arc (a group's second ring), lit as matte ceramic or glass, casting a soft
+// along an arc (a group's second ring), lit as glass, casting a soft
 // shadow onto the page below. Port of stage B of `docs/wheel-3d-donut.html`, which
 // the user approved.
 //
@@ -21,7 +21,7 @@ using namespace metal;
 #define U_K        5
 #define U_M        6    // 9 floats, row-major
 #define U_P        15
-#define U_MAT      16
+#define U_UNUSED16 16   // was the material (ceramic was removed)
 #define U_DARK     17
 #define U_GROOVE   18
 #define U_BASE     19   // 3 floats, linear
@@ -123,7 +123,6 @@ static float3 env(float3 R, float d) {
 static float4 shade(thread const Ctx &c, float3 N, float3 V, float3 nL, float t, float sel, float seam, float occ) {
     constant float *u = c.u;
     float dark = u[U_DARK];
-    int mat = int(u[U_MAT]);
     float3 L = normalize(float3(-0.45, 0.55, 0.85));
     float NL = dot(N, L), NV = max(dot(N, V), 0.0);
     float3 H = normalize(L + V); float NH = max(dot(N, H), 0.0);
@@ -136,12 +135,9 @@ static float4 shade(thread const Ctx &c, float3 N, float3 V, float3 nL, float t,
     ao *= (1 - 0.38 * seam) * occ;
     float3 base = float3(u[U_BASE], u[U_BASE + 1], u[U_BASE + 2]);
     float3 accent = float3(u[U_ACCENT], u[U_ACCENT + 1], u[U_ACCENT + 2]);
-    base = mix(base, accent, sel * u[U_TINT] * (mat == 2 ? 0.55 : mix(0.30, 0.20, dark)));
+    base = mix(base, accent, sel * u[U_TINT] * 0.55);
     float3 col; float a = 1;
-    if (mat == 0) {            // matte ceramic: wrapped diffuse, broad dull sheen
-        float w = max((NL + 0.35) / 1.35, 0.0);
-        col = base * (amb * 0.85 + w * 0.95) * ao + 0.05 * pow(NH, 14.0) + (0.03 + 0.25 * Fr) * env(R, dark) * 0.35 * ao;
-    } else {                   // glass: the frosted backdrop is an NSVisualEffectView below; here tint + light
+    {                          // glass: the system's glass is underneath; here tint + light
         float edge = smoothstep(0.62, 0.98, abs(t));
         float3 body = base * (0.85 + 0.35 * max(NL, 0.0));
         // The edge only deepens a little: the system glass underneath already

@@ -8,8 +8,7 @@ enum PopBarStyle: String, CaseIterable, Hashable {
     case capsule
     case wheel
     case liquidGlass
-    /// The 3D ring (ray-marched with Metal) that leans toward the pointer. Its
-    /// surface is `wheel.donutMaterial`.
+    /// The 3D glass ring (ray-marched with Metal) that leans toward the pointer.
     case donut
     /// Ring-based styles (wheel, liquid glass, donut): centered on the cursor, only
     /// the ring hit-tests. The shell treats them the same for placement /
@@ -39,7 +38,6 @@ enum PopBarPreferences {
         static let wheelShowIcons     = "wheel.showIcons"
         static let wheelShowLabels    = "wheel.showLabels"
         static let wheelAutoHideOnExit = "wheel.autoHideOnExit"
-        static let wheelDonutMaterial = "wheel.donutMaterial"
         static let wheelDonutDividers = "wheel.donutDividers"
         static let wheelSubSeam       = "wheel.subSeam"
         static let wheelSubThickness  = "wheel.subThickness"
@@ -132,12 +130,6 @@ enum PopBarPreferences {
     static var wheelAutoHideOnExit: Bool {
         get { config.bool(P.wheelAutoHideOnExit, default: true) }
         set { config.set(P.wheelAutoHideOnExit, newValue) }
-    }
-
-    /// The 3D style's surface. Unknown values fall back to ceramic.
-    static var wheelDonutMaterial: DonutMaterial {
-        get { DonutMaterial(rawValue: config.string(P.wheelDonutMaterial, default: "")) ?? .ceramic }
-        set { config.set(P.wheelDonutMaterial, newValue.rawValue) }
     }
 
     /// Whether the 3D style carves a groove between neighbouring slices. Default on.

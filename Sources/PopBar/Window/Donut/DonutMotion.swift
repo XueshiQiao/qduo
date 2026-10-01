@@ -4,14 +4,6 @@ import Combine
 import SwiftUI
 import QuartzCore
 
-/// The two surfaces the 3D donut wheel comes in. Locked with the user against
-/// `docs/wheel-3d-donut.html` (stage B): ceramic is opaque and matte, glass is a
-/// frosted backdrop with the same volumetric lighting on top.
-enum DonutMaterial: String, CaseIterable, Hashable {
-    case ceramic
-    case glass
-}
-
 /// What the wheel wants the donut to show right now. Handed over as one value on
 /// every SwiftUI update, so the renderer never reads the wheel's `@State` itself.
 struct DonutTargets: Equatable {

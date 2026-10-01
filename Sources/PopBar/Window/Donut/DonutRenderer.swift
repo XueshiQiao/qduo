@@ -8,13 +8,13 @@ import QuartzCore
 /// padding.
 private enum DonutUniform {
     static let cx = 0, cy = 1, scale = 2, R = 3, r = 4, K = 5, M = 6, P = 15
-    static let mat = 16, dark = 17, groove = 18, base = 19, baseA = 22, accent = 23
+    static let unused16 = 16, dark = 17, groove = 18, base = 19, baseA = 22, accent = 23
     static let ground = 26, subOn = 27, subMid = 28, subSpan = 29, subR = 30, subr = 31
     static let subN = 32, subFull = 33, n = 34, shadow = 35, reach = 36, lift = 37, tint = 38
     static let count = 39
 }
 
-/// The donut's surface colours, per material and appearance (sRGB). Tuned in the
+/// The donut's surface colours, per appearance (sRGB). Tuned in the
 /// prototype.
 private struct DonutPalette {
     var base: (Float, Float, Float)
@@ -23,28 +23,16 @@ private struct DonutPalette {
     var tint: Float
     var shadow: Float
 
-    init(material: DonutMaterial, dark: Bool, pageDark: Bool) {
-        switch (material, dark) {
-        case (.ceramic, false): base = (0xEC, 0xEA, 0xE6); baseAlpha = 1
-        case (.ceramic, true):  base = (0x3B, 0x3C, 0x42); baseAlpha = 1
-        case (.glass, false):   base = (0xFF, 0xFF, 0xFF); baseAlpha = 0.05
-        case (.glass, true):    base = (0x12, 0x15, 0x1C); baseAlpha = 0.05   // no tint of our own: the user found it made the ring grey
-        }
-        base = (base.0 / 255, base.1 / 255, base.2 / 255)
-        switch material {
-        case .ceramic:
-            // No colour on a hovered ceramic slice: blue read as a stain on white
-            // porcelain and warm grey as dirt (both tried by the user). The slice is
-            // pressed in instead, and its icon and name take the brand blue.
-            accent = (1, 1, 1)
-            tint = 0
-        case .glass:
-            // Glass can hold colour: the app icon's blue (#2563EB, #60A5FA in dark mode).
-            accent = dark ? (0x60 / 255.0, 0xA5 / 255.0, 0xFA / 255.0) : (0x25 / 255.0, 0x63 / 255.0, 0xEB / 255.0)
-            tint = 1
-        }
-        // A shadow has to be darker to read on a dark page.
-        shadow = (pageDark ? 0.5 : 0.24) * (material == .glass ? 0.55 : 1)
+    init(dark: Bool, pageDark: Bool) {
+        // Barely any body colour of our own: the system glass underneath does the
+        // work, and a tint of ours made the ring grey (the user tried it).
+        base = dark ? (0x12 / 255.0, 0x15 / 255.0, 0x1C / 255.0) : (1, 1, 1)
+        baseAlpha = 0.05
+        // The hovered slice takes the app icon's blue (#2563EB, #60A5FA in dark mode).
+        accent = dark ? (0x60 / 255.0, 0xA5 / 255.0, 0xFA / 255.0) : (0x25 / 255.0, 0x63 / 255.0, 0xEB / 255.0)
+        tint = 1
+        // A shadow has to be darker to read on a dark page; glass casts a light one.
+        shadow = (pageDark ? 0.5 : 0.24) * 0.55
     }
 }
 
@@ -79,7 +67,6 @@ final class DonutMetalView: MTKView {
 struct DonutRingView: NSViewRepresentable {
     let motion: DonutMotion
     let targets: DonutTargets
-    let material: DonutMaterial
     /// The ring's own surface is dark (dark glass). Ceramic is always light.
     let surfaceDark: Bool
     /// The system is in dark mode — what the ring's shadow falls on.
@@ -128,7 +115,6 @@ struct DonutRingView: NSViewRepresentable {
 
     func updateNSView(_ v: DonutMetalView, context: Context) {
         let r = context.coordinator
-        r.material = material
         r.surfaceDark = surfaceDark
         r.pageDark = pageDark
         r.dividers = dividers
@@ -155,7 +141,6 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
     private let pipeline: MTLRenderPipelineState?
     private let motion: DonutMotion
     weak var view: DonutMetalView?
-    var material: DonutMaterial = .ceramic
     var surfaceDark = false
     var pageDark = false
     var dividers = true
@@ -270,10 +255,9 @@ final class DonutRenderer: NSObject, MTKViewDelegate {
         u[U.K] = Float(DonutMotion.squash)
         for (i, v) in m.rotation.enumerated() { u[U.M + i] = Float(v) }
         u[U.P] = Float(DonutMotion.perspective)
-        u[U.mat] = material == .glass ? 2 : 0
         u[U.dark] = surfaceDark ? 1 : 0
         u[U.groove] = dividers ? 1 : 0
-        let pal = DonutPalette(material: material, dark: surfaceDark, pageDark: pageDark)
+        let pal = DonutPalette(dark: surfaceDark, pageDark: pageDark)
         let lin: (Float) -> Float = { powf($0, 2.2) }
         u[U.base] = lin(pal.base.0); u[U.base + 1] = lin(pal.base.1); u[U.base + 2] = lin(pal.base.2)
         u[U.baseA] = pal.baseAlpha
