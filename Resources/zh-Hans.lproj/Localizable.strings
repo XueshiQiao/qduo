@@ -36,6 +36,7 @@
 "diagnostics.log.title" = "日志文件";
 "diagnostics.log.subtitle" = "%1$@ 会把诊断日志写到 %2$@。";
 "diagnostics.revealLog" = "在访达中显示";
+"diagnostics.readViaBadge" = "弹窗下显示读取方式（AX / Clipboard / ⌘C，仅调试版）";
 "GitHub Repository" = "GitHub 仓库";
 "about.website.description" = "作者网站 —";
 "about.analytics.toggle" = "分享匿名使用统计";

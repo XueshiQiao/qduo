@@ -36,6 +36,7 @@
 "Diagnostics" = "Diagnostics";
 "diagnostics.log.title" = "Log file";
 "diagnostics.log.subtitle" = "%1$@ writes a diagnostic log to %2$@.";
+"diagnostics.readViaBadge" = "Show how the selection was read under the popup (AX / Clipboard / ⌘C, debug builds only)";
 "diagnostics.revealLog" = "Reveal in Finder";
 "GitHub Repository" = "GitHub Repository";
 "about.website.description" = "Author website —";

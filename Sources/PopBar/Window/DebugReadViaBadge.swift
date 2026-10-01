@@ -12,6 +12,14 @@ import SwiftUI
 /// ring so the wheel stays readable.
 final class DebugReadViaBadge {
 
+    /// Switched in Settings → General → Diagnostics (debug builds only). Kept in
+    /// the debug build's own UserDefaults, not the shared config file, so the
+    /// release build never sees it. Default on.
+    static let enabledKey = "debug.showReadViaBadge"
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true
+    }
+
     private let window: NSPanel
     private let model: PopBarPanelModel
     private var viaChange: AnyCancellable?
@@ -42,7 +50,7 @@ final class DebugReadViaBadge {
     /// visible bottom edge and horizontal centre), or hide it when there is
     /// nothing to say.
     func place(under popupBottom: CGPoint) {
-        guard model.readVia != nil, let content = window.contentView else { hide(); return }
+        guard Self.isEnabled, model.readVia != nil, let content = window.contentView else { hide(); return }
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize
         window.setContentSize(size)

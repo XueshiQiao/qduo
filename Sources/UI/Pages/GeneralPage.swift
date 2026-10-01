@@ -20,6 +20,9 @@ struct GeneralPage: View {
     private let openOnboarding: () -> Void
 
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
+    #if DEBUG
+    @AppStorage(DebugReadViaBadge.enabledKey) private var showReadViaBadge = true
+    #endif
     @State private var languageCode: String? = Preferences.languageOverride
     /// Set when the recorded popup hotkey could not be registered (another app,
     /// or the screenshot-OCR hotkey, has it), so the field can say so.
@@ -303,6 +306,13 @@ struct GeneralPage: View {
             Text(String(format: L("diagnostics.log.subtitle"), Brand.name, FileLog.url.path))
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            #if DEBUG
+            // Debug builds only: the AX / Clipboard / ⌘C label under the popup.
+            Toggle(isOn: $showReadViaBadge) {
+                iconLabel("tag", .orange, L("diagnostics.readViaBadge"))
+            }
+            #endif
         } header: {
             Text(L("Diagnostics"))
         }
