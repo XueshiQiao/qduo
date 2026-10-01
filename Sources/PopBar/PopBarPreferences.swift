@@ -15,6 +15,14 @@ enum PopBarStyle: String, CaseIterable, Hashable {
     var isWheel: Bool { self == .liquidGlass || self == .donut }
 }
 
+/// What a `compare` result panel shows (issue #12).
+enum CompareView: String, CaseIterable, Hashable {
+    /// The selection above the result, with the changes marked.
+    case diff
+    /// The result alone, as an ordinary result panel shows it.
+    case result
+}
+
 /// The popup's own persistence. App-wide prefs live in `Preferences`.
 enum PopBarPreferences {
 
@@ -24,6 +32,7 @@ enum PopBarPreferences {
         static let autoExpandHeight   = "popup.autoExpandHeight"
         static let resultFontSize     = "popup.resultFontSize"
         static let readingHighlight   = "popup.readingHighlight"
+        static let compareView        = "popup.compareView"
         static let style              = "popup.style"
         static let enabled            = "popup.enabled"
         static let hotKeyEnabled      = "popup.hotKeyEnabled"
@@ -72,6 +81,14 @@ enum PopBarPreferences {
     static var autoExpandHeight: Bool {
         get { config.bool(P.autoExpandHeight, default: true) }
         set { config.set(P.autoExpandHeight, newValue) }
+    }
+
+    /// What a `compare` result shows: the comparison, or the result alone. The
+    /// switch in the popup sets it, and the next comparison opens the same way.
+    /// Anything unrecognized means the comparison.
+    static var compareView: CompareView {
+        get { CompareView(rawValue: config.string(P.compareView, default: "")) ?? .diff }
+        set { config.set(P.compareView, newValue.rawValue) }
     }
 
     /// Which presentation the popup uses. A missing or unrecognized value falls

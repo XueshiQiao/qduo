@@ -95,6 +95,8 @@ final class PopBarSession {
         actionTask?.cancel()
         actionTask = nil
         panel.model.actions = actions
+        panel.model.comparison = nil
+        panel.model.compareView = PopBarPreferences.compareView
         panel.show(at: anchor)
     }
 
@@ -161,6 +163,7 @@ final class PopBarSession {
         }
         panel.model.resultIsFinalOutput = false
         panel.model.notice = nil
+        panel.model.comparison = nil
         stopReading()
 
         guard action.isAI else {
@@ -168,14 +171,14 @@ final class PopBarSession {
             // and present. Web preview opens the mini-browser window (via `present`).
             // One that produces text for the panel and may take a moment (a
             // Shortcut, a script) shows the panel straight away, with its spinner.
-            if action.hasOutput, action.outputMode == .panel, action.kind != .transform {
+            if action.hasOutput, [.panel, .compare].contains(action.outputMode), action.kind != .transform {
                 panel.applyPhase(.result(""))
             }
             actionTask = Task { [weak self] in
                 let outcome = await ActionRegistry.run(action, on: text, url: url, service: nil, config: nil)
                 await MainActor.run {
                     guard let self, isCurrent(self) else { return }
-                    self.present(outcome, for: action)
+                    self.present(outcome, for: action, input: text)
                 }
             }
             return
@@ -204,7 +207,7 @@ final class PopBarSession {
                 // FIRST: any delta still queued now fails `isCurrent` and is dropped,
                 // then apply the canonical final outcome.
                 self.actionGeneration &+= 1
-                self.present(outcome, for: action)
+                self.present(outcome, for: action, input: text)
             }
         }
     }
@@ -239,7 +242,9 @@ final class PopBarSession {
 
     /// Route a presentation to its surface — the single place output types map to UI.
     /// Adding a new `PopBarPresentation` case means adding one branch here.
-    private func present(_ presentation: PopBarPresentation, for action: PopBarActionConfig) {
+    /// `input` is the text the action ran on — the selection when it was tapped,
+    /// which a comparison is made against even if the selection has grown since.
+    private func present(_ presentation: PopBarPresentation, for action: PopBarActionConfig, input: String) {
         switch presentation {
         case .none:
             onDismissOutcome?()
@@ -247,7 +252,7 @@ final class PopBarSession {
             panel.model.resultIsFinalOutput = false
             panel.applyPhase(.result(output))
         case .output(let output):
-            deliver(output, as: action.outputMode)
+            deliver(output, as: action.outputMode, input: input)
         case .openExternal(let url):
             // Dismiss first, as for Finder: the other app comes forward.
             if !isPinned { onDismissOutcome?() }
@@ -344,11 +349,33 @@ final class PopBarSession {
     }
 
     /// Send produced text where the action's `output` says.
-    private func deliver(_ output: String, as mode: ActionOutput) {
+    private func deliver(_ output: String, as mode: ActionOutput, input: String) {
         switch mode {
         case .panel:
             panel.model.resultIsFinalOutput = true
             panel.applyPhase(.result(output))
+        case .compare:
+            // The result shows at once, as `.panel` would; the comparison takes
+            // its place when ready. Off the main thread: two long, unrelated texts
+            // take a noticeable moment to compare. Replace is offered only once
+            // the comparison is in, so it is never offered for a result that
+            // turns out to change nothing.
+            panel.applyPhase(.result(output))
+            let panelGen = panelGeneration, actionGen = actionGeneration
+            Task.detached { [weak self] in
+                let comparison = TextDiff.compare(input, output)
+                await MainActor.run {
+                    guard let self, panelGen == self.panelGeneration, actionGen == self.actionGeneration else { return }
+                    self.panel.model.comparison = comparison
+                    self.panel.model.resultIsFinalOutput = true
+                    if comparison.isUnchanged {
+                        self.panel.model.notice = L("popbar.compare.unchanged")
+                        // The notice sits above the text and adds to the window's
+                        // height: re-fit, as showing a result does.
+                        self.panel.applyPhase(.result(output))
+                    }
+                }
+            }
         case .copy:
             copyResult(output)
             if isPinned { panel.applyPhase(.result(output)) } else { onDismissOutcome?() }

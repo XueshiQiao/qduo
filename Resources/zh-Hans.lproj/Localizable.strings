@@ -204,6 +204,7 @@
 "popbar.editor.op" = "操作";
 "popbar.editor.output" = "结果";
 "popbar.editor.output.panel" = "显示在弹窗里";
+"popbar.editor.output.compare" = "先对比，再替换";
 "popbar.editor.output.replace" = "替换选中的文字";
 "popbar.editor.output.append" = "插入到选中文字后面";
 "popbar.editor.output.copy" = "复制到剪贴板";
@@ -214,6 +215,11 @@
 "popbar.replace.result" = "用这段结果替换选中的文字";
 "popbar.replace.lost" = "选区已经变了或失去了焦点，所以没有替换。结果已复制到剪贴板。";
 "popbar.replace.unavailable" = "这段文字没法替换（它不在本 app 能写入的输入框里）。结果已复制到剪贴板。";
+"popbar.compare.view.diff" = "对比";
+"popbar.compare.view.result" = "结果";
+"popbar.compare.original" = "原文";
+"popbar.compare.revised" = "结果";
+"popbar.compare.unchanged" = "没有需要修改的地方：结果和原文一样。";
 "popbar.error.noshortcut" = "这个动作没有填快捷指令名称。请到「设置 → 动作」里编辑。";
 "popbar.error.noscript" = "这个动作没有填脚本。请到「设置 → 动作」里编辑。";
 "popbar.error.badurl" = "这个动作的网址没填或者格式不对。请到「设置 → 动作」里编辑。";
@@ -289,6 +295,7 @@
 "icons.markers" = "标记";
 "popbar.tag.script" = "脚本";
 "popbar.tag.replace" = "替换";
+"popbar.tag.compare" = "对比";
 "popbar.tag.append" = "追加";
 "popbar.tag.copy" = "复制";
 

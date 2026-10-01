@@ -100,6 +100,13 @@ final class PopBarPanelModel: ObservableObject {
     /// A one-line note under the toolbar, e.g. why a result could not be put back.
     /// Cleared whenever the popup shows something new.
     @Published var notice: String?
+    /// What a `compare` result shows besides the result itself: the selection
+    /// and the result with their changes marked (issue #12). nil for any other
+    /// result, and while the result is still streaming in.
+    @Published var comparison: TextDiff.Comparison?
+    /// Whether a comparison is shown as such or as the result alone. Seeded from
+    /// `PopBarPreferences` on each show; the switch in the panel sets both.
+    @Published var compareView: CompareView = PopBarPreferences.compareView
     var onClose: (() -> Void)?
     var onTogglePin: (() -> Void)?
 
@@ -238,8 +245,22 @@ struct PopBarContentView: View {
                 ChromeButton(symbol: model.isPinned ? "pin.fill" : "pin",
                              help: L(model.isPinned ? "popbar.unpin" : "popbar.pin"),
                              active: model.isPinned) { model.onTogglePin?() }
+                if model.comparison != nil {
+                    Picker("", selection: Binding(
+                        get: { model.compareView },
+                        set: { model.compareView = $0; PopBarPreferences.compareView = $0 })) {
+                        ForEach(CompareView.allCases, id: \.self) { view in
+                            Text(L("popbar.compare.view.\(view.rawValue)")).tag(view)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .fixedSize()
+                }
                 Spacer()
-                if model.canReplace, model.resultIsFinalOutput, !text.isEmpty {
+                if model.canReplace, model.resultIsFinalOutput, !text.isEmpty,
+                   model.comparison?.isUnchanged != true {
                     ChromeButton(symbol: "arrow.2.squarepath", help: L("popbar.replace.result")) {
                         model.onReplaceResult?(text)
                     }
@@ -267,7 +288,10 @@ struct PopBarContentView: View {
                     // 1pt taller than the clip view). Measuring the stack as a whole makes
                     // the reported height == the real content, so frame == content.
                     VStack(alignment: .leading, spacing: 0) {
-                        if text.isEmpty {
+                        Color.clear.frame(height: 0).id(Self.topAnchor)
+                        if let comparison = model.comparison, model.compareView == .diff {
+                            ComparisonView(comparison: comparison, fontSize: model.resultFontSize)
+                        } else if text.isEmpty {
                             // Pre-first-token: a quiet placeholder so the chrome is
                             // visible immediately without a blank void.
                             HStack(spacing: 6) {
@@ -315,6 +339,15 @@ struct PopBarContentView: View {
                 .onChange(of: text) { _ in
                     withAnimation(.linear(duration: 0.1)) { proxy.scrollTo(Self.bottomAnchor, anchor: .bottom) }
                 }
+                // A comparison is read from the top, unlike a streaming answer
+                // followed at its bottom — so is the result it switches to.
+                // Animated like the scroll to the bottom above, so when a quick
+                // comparison lands while that one is still moving, this one takes
+                // over instead of being overtaken by it.
+                .onChange(of: model.comparison) { _ in
+                    withAnimation(.linear(duration: 0.1)) { proxy.scrollTo(Self.topAnchor, anchor: .top) }
+                }
+                .onChange(of: model.compareView) { _ in proxy.scrollTo(Self.topAnchor, anchor: .top) }
             }
         }
         .padding(ResultTextStyle.insets)
@@ -330,6 +363,77 @@ struct PopBarContentView: View {
     }
 
     private static let bottomAnchor = "popbar.result.bottom"
+    private static let topAnchor = "popbar.result.top"
+}
+
+// MARK: - Comparison
+
+/// A `compare` result (issue #12): the selection, dimmed, with what the result
+/// no longer has marked in red, above the result with what it added marked in
+/// green. Plain text, not Markdown — this is exactly what Replace writes.
+private struct ComparisonView: View {
+    let comparison: TextDiff.Comparison
+    let fontSize: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            caption(L("popbar.compare.original"))
+            Text(attributed(comparison.original, mark: .removed))
+                .opacity(0.78)
+            Divider().padding(.vertical, 4)
+            caption(L("popbar.compare.revised"))
+            Text(attributed(comparison.revised, mark: .added))
+        }
+        .font(.system(size: fontSize))
+        .lineSpacing(fontSize * ResultTextStyle.lineSpacingEm)
+        .foregroundStyle(Color.primary.opacity(ResultTextStyle.inkOpacity))
+        .textSelection(.enabled)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.bottom, 6)
+    }
+
+    private enum Mark { case removed, added }
+
+    private func caption(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.secondary)
+    }
+
+    private func attributed(_ segments: [TextDiff.Segment], mark: Mark) -> AttributedString {
+        var out = AttributedString()
+        for segment in Self.trimmingEnds(segments) {
+            var run = AttributedString(segment.text)
+            if segment.changed {
+                switch mark {
+                case .removed:
+                    run.foregroundColor = Color(nsColor: .systemRed)
+                    run.backgroundColor = Color(nsColor: .systemRed).opacity(0.16)
+                case .added:
+                    run.backgroundColor = Color(nsColor: .systemGreen).opacity(0.26)
+                }
+            }
+            out += run
+        }
+        return out
+    }
+
+    /// The segments without whitespace at the very start and end. A selection
+    /// made by triple-clicking ends in a line break, which would otherwise draw
+    /// as an empty line under the original and push the divider down.
+    static func trimmingEnds(_ segments: [TextDiff.Segment]) -> [TextDiff.Segment] {
+        var out = segments
+        while let first = out.first {
+            let text = String(first.text.drop(while: \.isWhitespace))
+            if text.isEmpty { out.removeFirst() } else { out[0].text = text; break }
+        }
+        while let last = out.last {
+            var text = last.text
+            while text.last?.isWhitespace == true { text.removeLast() }
+            if text.isEmpty { out.removeLast() } else { out[out.count - 1].text = text; break }
+        }
+        return out
+    }
 }
 
 /// Reports the result content's natural height up to the parent so the panel can

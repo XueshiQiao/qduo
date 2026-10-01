@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>先对比再替换</title>
+<style>
+:root{--page:#e9e8ee;--text:#1d1d1f;--sub:#6e6e73;--line:rgba(0,0,0,.1);--card:#fff;
+  --del-fg:#c4271c;--del-bg:rgba(255,59,48,.13);--ins-fg:#1d7a35;--ins-bg:rgba(52,199,89,.22);
+  --del-strong:rgba(255,59,48,.30);--ins-strong:rgba(52,199,89,.42);--accent:#0a84ff}
+:root[data-theme="dark"]{--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--line:rgba(255,255,255,.12);--card:#232326;
+  --del-fg:#ff7b72;--del-bg:rgba(255,69,58,.20);--ins-fg:#5be37d;--ins-bg:rgba(48,209,88,.22);
+  --del-strong:rgba(255,69,58,.40);--ins-strong:rgba(48,209,88,.42)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--line:rgba(255,255,255,.12);--card:#232326;
+  --del-fg:#ff7b72;--del-bg:rgba(255,69,58,.20);--ins-fg:#5be37d;--ins-bg:rgba(48,209,88,.22);
+  --del-strong:rgba(255,69,58,.40);--ins-strong:rgba(48,209,88,.42)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;padding:28px 16px 60px}
+.wrap{max-width:1240px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+h1{font-size:22px;margin:0 0 4px} header p{margin:0;color:var(--sub);max-width:860px}
+h2.sec{font-size:17px;margin:34px 0 4px} p.secp{color:var(--sub);margin:0 0 14px;max-width:900px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap}
+.toggle{display:flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px}
+.toggle button{border:0;background:none;color:var(--text);font:inherit;padding:5px 12px;border-radius:6px;cursor:pointer}
+.toggle button.on{background:rgba(127,127,127,.2);font-weight:600}
+.facts{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0 8px}
+.facts b{font-weight:600} .facts ul{margin:6px 0 0;padding-left:20px}
+code{font:12px ui-monospace,Menlo,monospace;background:rgba(127,127,127,.15);padding:0 4px;border-radius:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(520px,1fr));gap:22px}
+.opt h3{font-size:15px;margin:0 0 2px}.opt p{color:var(--sub);margin:0 0 8px}
+.tag{font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(52,199,89,.18);color:#248a3d;margin-left:6px;font-weight:500}
+
+/* backdrop */
+.stage{position:relative;border-radius:14px;overflow:hidden;min-height:340px;border:1px solid var(--line);padding:40px 0}
+.bd{position:absolute;inset:0;padding:18px 22px;font:14px/1.6 -apple-system,"PingFang SC",sans-serif;color:#222;
+  background:radial-gradient(circle at 18% 30%, #ffd36b 0 70px, transparent 71px),radial-gradient(circle at 78% 70%, #6fb6ff 0 90px, transparent 91px),radial-gradient(circle at 55% 20%, #ff8fb1 0 50px, transparent 51px),linear-gradient(135deg,#fafafa,#eef3f8)}
+:root[data-theme="dark"] .bd{color:#ddd;background:radial-gradient(circle at 18% 30%, #b8860b 0 70px, transparent 71px),radial-gradient(circle at 78% 70%, #1f5fa8 0 90px, transparent 91px),radial-gradient(circle at 55% 20%, #9c2f5a 0 50px, transparent 51px),linear-gradient(135deg,#1e1e22,#15171c)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bd{color:#ddd;background:radial-gradient(circle at 18% 30%, #b8860b 0 70px, transparent 71px),radial-gradient(circle at 78% 70%, #1f5fa8 0 90px, transparent 91px),radial-gradient(circle at 55% 20%, #9c2f5a 0 50px, transparent 51px),linear-gradient(135deg,#1e1e22,#15171c)}}
+.bd h4{margin:0 0 6px;font-size:20px}
+
+/* the popup: glass, 450pt wide text column like the app */
+.panel{position:relative;margin:0 auto;width:470px;max-width:calc(100% - 24px);border-radius:11px;padding:8px 10px 12px;color:#1d1d1f;
+  background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.44));backdrop-filter:blur(22px) saturate(1.8);-webkit-backdrop-filter:blur(22px) saturate(1.8);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),inset 0 0 0 .5px rgba(255,255,255,.55),0 0 0 .5px rgba(0,0,0,.10),0 16px 40px rgba(0,0,0,.16)}
+:root[data-theme="dark"] .panel{color:#f2f2f4;background:linear-gradient(180deg,rgba(40,40,44,.68),rgba(28,28,30,.58));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 .5px rgba(255,255,255,.12),0 16px 40px rgba(0,0,0,.55)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .panel{color:#f2f2f4;background:linear-gradient(180deg,rgba(40,40,44,.68),rgba(28,28,30,.58));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 .5px rgba(255,255,255,.12),0 16px 40px rgba(0,0,0,.55)}}
+.bar{display:flex;align-items:center;gap:4px;margin-bottom:6px}
+.bar .sp{flex:1}
+.cb{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:13px;opacity:.72;cursor:default;position:relative}
+.cb:hover{background:rgba(127,127,127,.18);opacity:1}
+.cb.prim{opacity:1;color:var(--accent)}
+.body{font:14px/1.62 system-ui,-apple-system,"PingFang SC",sans-serif;padding:4px 8px 2px;white-space:pre-wrap;word-break:break-word}
+.stat{font-size:11px;color:var(--sub);margin-left:4px}
+.seg{display:inline-flex;background:rgba(127,127,127,.16);border-radius:6px;padding:2px;font-size:11px}
+.seg span{padding:1px 8px;border-radius:4px;cursor:pointer}
+.seg span.on{background:rgba(255,255,255,.75);color:#1d1d1f;font-weight:600;box-shadow:0 0 0 .5px rgba(0,0,0,.08)}
+:root[data-theme="dark"] .seg span.on{background:rgba(255,255,255,.2);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .seg span.on{background:rgba(255,255,255,.2);color:#fff}}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;padding:0 4px}
+.btn{font:12px system-ui,-apple-system,"PingFang SC",sans-serif;border-radius:6px;padding:3px 12px;border:0;background:rgba(127,127,127,.18);color:inherit}
+.btn.p{background:var(--accent);color:#fff;font-weight:600}
+.kbd{font-size:10px;opacity:.6;margin-left:4px}
+
+/* --- diff styles --- */
+/* A: red strike + green fill */
+.sA del{color:var(--del-fg);background:var(--del-bg);text-decoration:line-through;text-decoration-thickness:1px;border-radius:3px;padding:0 1px}
+.sA ins{color:inherit;background:var(--ins-bg);text-decoration:none;border-radius:3px;padding:0 1px}
+/* B: underline-only, quieter */
+.sB del{color:var(--del-fg);text-decoration:line-through;opacity:.7}
+.sB ins{text-decoration:none;border-bottom:2px solid var(--ins-fg);color:inherit}
+/* C: only new text; deletions collapse to a tiny marker, hover shows what was removed */
+.sC del{font-size:0;display:inline-block;width:6px;height:14px;vertical-align:-2px;margin:0 1px;border-radius:2px;background:var(--del-strong);position:relative;text-decoration:none}
+.sC del:hover::after{content:attr(data-t);font-size:12px;position:absolute;left:0;top:18px;white-space:nowrap;background:#1d1d1f;color:#fff;padding:2px 6px;border-radius:5px;z-index:3;text-decoration:line-through}
+.sC ins{text-decoration:none;background:var(--ins-bg);border-radius:3px;padding:0 1px;color:inherit}
+/* plain new text */
+.sN del{display:none}.sN ins{text-decoration:none;color:inherit}
+/* old only */
+.sO ins{display:none}.sO del{text-decoration:none;color:inherit}
+
+/* side-by-side for reference */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cols .h{font-size:11px;color:var(--sub);padding:0 8px}
+.cols .body{font-size:13px}
+
+/* playground */
+.play{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.play textarea{width:100%;min-height:90px;font:13px/1.5 system-ui,-apple-system,"PingFang SC",sans-serif;border:1px solid var(--line);border-radius:8px;padding:8px;background:transparent;color:var(--text);resize:vertical}
+.play .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.note{color:var(--sub);font-size:12px;margin-top:6px}
+.tip{position:absolute;right:0;top:28px;background:#1d1d1f;color:#fff;font-size:11px;padding:2px 7px;border-radius:5px;white-space:nowrap;display:none;z-index:4}
+.cb:hover .tip{display:block}
+.panel.wide{width:780px}
+.panel.wide .body{font-size:14px}
+.full{grid-column:1/-1}
+.rows{display:grid;grid-template-columns:1fr 1px 1fr;column-gap:10px}
+.rows .vr{background:rgba(127,127,127,.25)}
+.rows .h{font-size:11px;color:var(--sub);padding:0 8px 2px;font-weight:600}
+.rows .body{padding-top:2px;padding-bottom:6px}
+.old{opacity:.78}
+.oldL del{text-decoration:none!important}
+.stack .h{font-size:11px;color:var(--sub);padding:0 8px;font-weight:600}
+.stack .old{max-height:96px;overflow:auto;border-bottom:1px solid rgba(127,127,127,.25);margin-bottom:6px}
+.scroll{max-height:260px;overflow:auto}
+@media (max-width:820px){.panel.wide{width:auto}.rows{grid-template-columns:1fr}.rows .vr{display:none}}
+@media (max-width:560px){.grid{grid-template-columns:1fr}.cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="wrap">
+<header><div>
+<h1>Issue 12 · 先对比，再替换</h1>
+<p>新增输出方式 <code>"compare"</code>：动作跑完后，弹窗显示原文和结果的差异，点「替换」才写回去。下面的差异是<b>页面里真算出来的</b>（英文按单词、中文按单字，和打算在 App 里用的规则一样），不是手工标的。</p>
+</div>
+<div class="ctl"><div class="toggle"><button id="lt" class="on">浅色</button><button id="dk">深色</button></div>
+<div class="toggle" id="sampleSel"><button data-s="zh" class="on">中文润色</button><button data-s="en">英文纠错</button><button data-s="mix">中英混排</button><button data-s="long">多段长文</button></div></div></header>
+
+<div class="facts"><b>这一版改成两栏。</b>原文那一栏只标出<b>被删掉</b>的字（红），结果那一栏只标出<b>新加</b>的字（绿），各看各的，不再挤在一行里。
+<ul><li><b>第一部分</b>：两栏怎么排（3 种）。</li>
+<li><b>第二部分</b>：「替换」按钮放哪儿（2 种）。</li></ul>
+右上角可以切示例，「多段长文」是专门看长文本的。</div>
+
+<h2 class="sec">第一部分 · 两栏怎么排</h2>
+<p class="secp">现在的结果窗口宽 450。左右分两栏在这个宽度下每栏太窄，所以甲是「对比时窗口加宽」，乙是「宽度不变、改成上下」，丙是不加宽硬分两栏，放着做对照。</p>
+<div class="grid" id="colsGrid"></div>
+
+<h2 class="sec">第二部分 · 替换按钮放哪儿</h2>
+<p class="secp">两栏统一用甲。</p>
+<div class="grid" id="layoutGrid"></div>
+
+<h2 class="sec">试验区</h2>
+<div class="play"><div class="two">
+<div><div class="note">原文（选中的文字）</div><textarea id="pa"></textarea></div>
+<div><div class="note">结果（AI 返回的）</div><textarea id="pb"></textarea></div></div>
+<div style="margin-top:12px" class="panel wide" id="pout"></div>
+<p class="note" id="pstat"></p></div>
+
+<p class="note" style="margin-top:20px">网页模拟：真实 App 里背景是 Liquid Glass，字由系统绘制，细节以 App 实物为准。<br>
+没改动时（结果和原文一字不差）：打算显示一行「没有需要修改的地方」，不显示替换按钮。</p>
+</div>
+
+<script>
+const SAMPLES={
+zh:{a:"我们这个产品的主要的目的是为了帮助用户能够更加快速的完成日常的工作，并且减少他们在重复性的操作上所花费的时间。",
+    b:"这个产品的主要目的是帮助用户更快地完成日常工作，减少花在重复操作上的时间。"},
+en:{a:"Their are several reason why the build fail on CI, but the most common one is that the cache are stale.",
+    b:"There are several reasons why the build fails on CI, but the most common one is that the cache is stale."},
+mix:{a:"打开 Xcode 的 build settings，把 Swift language version 改为 Swift 6 ，然后在 clean 一下 build 就可以了。",
+    b:"打开 Xcode 的 Build Settings，把 Swift Language Version 改成 Swift 6，然后 clean build 一下就好了。"},
+long:{a:"我们这个产品的主要的目的是为了帮助用户能够更加快速的完成日常的工作，并且减少他们在重复性的操作上所花费的时间。\n\n在过去的一年里面，我们一共收到了超过三千条的用户反馈，其中大部分的反馈都是关于性能方面的问题，还有一小部分是关于界面的设计不够直观的。\n\n接下来我们会把重点放在启动速度的优化上面，争取在下一个版本当中把冷启动的时间缩短到一秒钟以内。",
+     b:"这个产品的主要目的是帮助用户更快地完成日常工作，减少花在重复操作上的时间。\n\n过去一年，我们共收到三千多条用户反馈，大部分与性能有关，一小部分认为界面不够直观。\n\n接下来我们会重点优化启动速度，争取在下一版把冷启动时间缩短到一秒以内。"}};
+
+// Tokenizer: CJK = one char per token; Latin letters/digits = one word; whitespace runs; any other char alone.
+const CJK=/[　-〿぀-ヿ㐀-䶿一-鿿豈-﫿＀-￯]/;
+function tok(s){const out=[];const re=/([A-Za-z0-9_'’]+)|(\s+)|([\s\S])/gu;let m;while((m=re.exec(s)))out.push(m[0]);return out}
+// LCS diff on tokens
+function diff(a,b){const A=tok(a),B=tok(b),n=A.length,m=B.length;const d=Array.from({length:n+1},()=>new Uint16Array(m+1));
+ for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)d[i][j]=A[i]===B[j]?d[i+1][j+1]+1:Math.max(d[i+1][j],d[i][j+1]);
+ const ops=[];let i=0,j=0;const push=(t,s)=>{const l=ops[ops.length-1];if(l&&l.t===t)l.s+=s;else ops.push({t,s})};
+ while(i<n&&j<m){if(A[i]===B[j]){push("=",A[i]);i++;j++}else if(d[i+1][j]>=d[i][j+1]){push("-",A[i]);i++}else{push("+",B[j]);j++}}
+ while(i<n)push("-",A[i++]);while(j<m)push("+",B[j++]);
+ // A lone space between two changes joins them, so "a b" → "c d" reads as one change.
+ const f=[];ops.forEach((o,k)=>{if(o.t==="="&&/^\s+$/.test(o.s)&&k>0&&ops[k+1]&&ops[k-1].t!=="="&&ops[k+1].t!=="="){f.push({t:"-",s:o.s},{t:"+",s:o.s})}else f.push(o)});
+ return order(f)}
+// Within a run of changes, put deletion before insertion.
+function order(f){const r=[];let k=0;while(k<f.length){if(f[k].t==="="){r.push(f[k]);k++;continue}let del="",ins="";while(k<f.length&&f[k].t!=="="){if(f[k].t==="-")del+=f[k].s;else ins+=f[k].s;k++}
+ if(del)r.push({t:"-",s:del});if(ins)r.push({t:"+",s:ins})}return r}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function html(ops){return ops.map(o=>o.t==="="?esc(o.s):o.t==="-"?`<del data-t="${esc(o.s)}">${esc(o.s)}</del>`:`<ins>${esc(o.s)}</ins>`).join("")}
+function stats(ops){let d=0,i=0;ops.forEach(o=>{if(o.t==="-")d++;if(o.t==="+")i++});return{d,i}}
+
+const BD=`<div class="bd"><h4>A document behind the popup</h4>Some article text sits under the window so the glass shows. 背景里是随便一页内容。</div>`;
+const bar1=(st)=>`<div class="bar"><span class="cb">📌</span><span class="stat">${st}</span><span class="sp"></span>
+ <span class="cb prim">⇄<span class="tip">替换（↩）</span></span><span class="cb">⧉<span class="tip">复制结果</span></span><span class="cb">✕</span></div>`;
+function panel(inner,w){return `<div class="stage">${BD}<div class="panel ${w&&w.includes("wide")?"wide":""}">${inner}</div></div>`}
+function card(t,p,inner,rec,w){return `<div class="opt ${w&&w.includes("full")?"full":""}"><h3>${t}${rec?'<span class="tag">推荐</span>':''}</h3><p>${p}</p>${panel(inner,w)}</div>`}
+// Two columns aligned by paragraph: when both sides have the same number of paragraphs, each pair is
+// diffed on its own and sits on one row; otherwise the whole text is one row.
+function rows(a,b,head){const pa=a.split(/\n\s*\n/),pb=b.split(/\n\s*\n/);const pairs=pa.length===pb.length?pa.map((x,k)=>[x,pb[k]]):[[a,b]];
+ let r=head?`<div class="h">原文</div><div class="vr"></div><div class="h">结果</div>`:`<div class="h">原文</div><div class="vr"></div><div class="h">结果</div>`;
+ pairs.forEach(([x,y])=>{const o=diff(x,y);r+=`<div class="body sA old oldL">${html(o.filter(q=>q.t!=="+"))}</div><div class="vr"></div><div class="body sA">${html(o.filter(q=>q.t!=="-"))}</div>`});
+ return `<div class="rows">${r}</div>`}
+
+let cur="zh";
+function render(){
+ const {a,b}=SAMPLES[cur],ops=diff(a,b),h=html(ops),{d,i}=stats(ops),st=`${d} 处删除 · ${i} 处新增`;
+ const seg=`<span class="seg" data-g><span class="on" data-v="both">两栏</span><span data-v="new">只看结果</span></span>`;
+ document.getElementById("colsGrid").innerHTML=
+  card("甲 · 左右两栏，对比时窗口加宽到约 780","左原文、右结果，按段落对齐：同一段在左右同一高度，长文也能一段段对着看。原文稍微淡一点，视线自然落在右边。",bar1(st)+`<div class="scroll">${rows(a,b,true)}</div>`,true,"wide full")+
+  card("乙 · 上下两栏，宽度不变（450）","上面是原文（淡一点，太长时自己滚动，最多约 4 行高），下面是结果。窗口不用变宽，但长文时要上下来回看。",bar1(st)+`<div class="stack"><div class="h">原文</div><div class="body sA old oldL scroll">${html(ops.filter(o=>o.t!=="+"))}</div><div class="h">结果</div><div class="body sA">${html(ops.filter(o=>o.t!=="-"))}</div></div>`)+
+  card("丙 · 左右两栏，宽度不变（对照）","不加宽硬分两栏。每栏中文一行只剩十几个字，稍长一点就要滚动。",bar1(st)+`<div class="scroll">${rows(a,b,false)}</div>`);
+ document.getElementById("layoutGrid").innerHTML=
+  card("1 · 替换放在顶部工具栏（和现在一样的位置）","和现在结果窗口的替换按钮同一个位置、同一个图标，换成蓝色强调；回车替换，Esc 关闭。",bar1(st)+`<div class="scroll">${rows(a,b,true)}</div>`,true,"wide full")+
+  card("2 · 底部一排文字按钮 + 顶部可切到「只看结果」","底部「取消 / 复制 / 替换」，像确认对话框；顶部小开关在「两栏 / 只看结果」之间切。功能全，但多一行。",
+   `<div class="bar"><span class="cb">📌</span>${seg}<span class="stat">${st}</span><span class="sp"></span><span class="cb">✕</span></div><div class="scroll" data-t>${rows(a,b,true)}</div><div data-n hidden class="body sN scroll">${h}</div>
+    <div class="foot"><button class="btn">取消<span class="kbd">esc</span></button><button class="btn">复制</button><button class="btn p">替换<span class="kbd">↩</span></button></div>`,false,"wide full");
+ document.querySelectorAll("[data-g]").forEach(g=>g.onclick=e=>{const v=e.target.dataset.v;if(!v)return;g.querySelectorAll("span").forEach(s=>s.classList.toggle("on",s===e.target));
+   const p=g.closest(".panel");p.querySelector("[data-t]").hidden=v!=="both";p.querySelector("[data-n]").hidden=v==="both"});
+}
+document.getElementById("sampleSel").onclick=e=>{const s=e.target.dataset.s;if(!s)return;cur=s;document.querySelectorAll("#sampleSel button").forEach(x=>x.classList.toggle("on",x===e.target));render()};
+const pa=document.getElementById("pa"),pb=document.getElementById("pb");
+function play(){const ops=diff(pa.value,pb.value),{d,i}=stats(ops);document.getElementById("pout").innerHTML=pa.value===pb.value?'<div class="body" style="opacity:.6">没有需要修改的地方</div>':rows(pa.value,pb.value,true);
+ document.getElementById("pstat").textContent=`${d} 处删除 · ${i} 处新增（文字很长时这个页面会慢一些，App 里会换成更快的算法）`}
+pa.value=SAMPLES.mix.a;pb.value=SAMPLES.mix.b;pa.oninput=pb.oninput=play;
+const set=d=>{document.documentElement.dataset.theme=d?"dark":"light";lt.classList.toggle("on",!d);dk.classList.toggle("on",d)};lt.onclick=()=>set(false);dk.onclick=()=>set(true);
+render();play();
+</script>
+</body></html>

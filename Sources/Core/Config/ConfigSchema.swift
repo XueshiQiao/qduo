@@ -62,6 +62,10 @@ enum ConfigSchema {
               "type": "string", "enum": ["pill", "marker", "solid", "karaoke"],
               "description": "How the reading window marks the word being spoken: pill = a rounded pill behind the word, marker = a highlighter stroke across its lower half, solid = an accent-colour pill with the word in white, karaoke = unread text faded and the spoken word in the accent colour."
             },
+            "compareView": {
+              "type": "string", "enum": ["diff", "result"],
+              "description": "What an action whose output is \\"compare\\" shows first: diff = the selection above the result with the changes marked, result = the result alone. The switch in the popup changes it. Default diff."
+            },
             "hotKeyEnabled": {
               "type": "boolean",
               "description": "Register the popup hotkey: select text, press it, and the popup opens. Works while paused, in excludedApps and in address bars — it is pressed on purpose. Paused + hotkey = the popup opens only when asked. Default false."
@@ -251,8 +255,8 @@ enum ConfigSchema {
               "description": "For \\"shortcut\\": the name of a Shortcut. The selection is its input; its output is the result." },
             "script": { "type": "string",
               "description": "For \\"script\\": a shell command, run by your login shell. The selection is on standard input and in $QDUO_TEXT; what it prints is the result. Times out after 10 seconds." },
-            "output": { "type": "string", "enum": ["panel", "replace", "append", "copy"],
-              "description": "For ai, transform, shortcut, script and systemTranslate: where the result goes. panel (default) shows it in the popup, which offers a Replace button; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
+            "output": { "type": "string", "enum": ["panel", "compare", "replace", "append", "copy"],
+              "description": "For ai, transform, shortcut, script and systemTranslate: where the result goes. panel (default) shows it in the popup, which offers a Replace button; compare shows the selection above the result with the changes marked, then Replace; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
             "targetLanguage": { "type": "string",
               "description": "For \\"systemTranslate\\": the language to translate into, as macOS names it, e.g. \\"zh\\" (Simplified Chinese), \\"zh-TW\\" (Traditional Chinese), \\"en\\", \\"en-GB\\", \\"ja\\", \\"fr\\"." },
             "reader": { "type": "string",

@@ -173,6 +173,7 @@ struct ActionsPage: View {
         if action.hasOutput {
             switch action.outputMode {
             case .panel:   break
+            case .compare: tags.append(Tag(text: L("popbar.tag.compare"), color: .teal))
             case .replace: tags.append(Tag(text: L("popbar.tag.replace"), color: .teal))
             case .append:  tags.append(Tag(text: L("popbar.tag.append"), color: .teal))
             case .copy:    tags.append(Tag(text: L("popbar.tag.copy"), color: .teal))

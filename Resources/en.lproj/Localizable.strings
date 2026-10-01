@@ -205,6 +205,7 @@
 "popbar.editor.op" = "Operation";
 "popbar.editor.output" = "Result";
 "popbar.editor.output.panel" = "Show in the popup";
+"popbar.editor.output.compare" = "Compare, then replace";
 "popbar.editor.output.replace" = "Replace the selection";
 "popbar.editor.output.append" = "Insert after the selection";
 "popbar.editor.output.copy" = "Copy to the clipboard";
@@ -215,6 +216,11 @@
 "popbar.replace.result" = "Replace the selection with this";
 "popbar.replace.lost" = "The selection has moved or lost focus, so nothing was replaced. The result is on the clipboard.";
 "popbar.replace.unavailable" = "This selection can't be replaced (it isn't in an editable field this app can reach). The result is on the clipboard.";
+"popbar.compare.view.diff" = "Compare";
+"popbar.compare.view.result" = "Result";
+"popbar.compare.original" = "Original";
+"popbar.compare.revised" = "Result";
+"popbar.compare.unchanged" = "Nothing to change: the result is the same as the selection.";
 "popbar.error.noshortcut" = "This action has no Shortcut name. Edit it in Settings → Actions.";
 "popbar.error.noscript" = "This action has no script. Edit it in Settings → Actions.";
 "popbar.error.badurl" = "This action's URL is missing or invalid. Edit it in Settings → Actions.";
@@ -290,6 +296,7 @@
 "icons.markers" = "Markers";
 "popbar.tag.script" = "SCRIPT";
 "popbar.tag.replace" = "REPLACES";
+"popbar.tag.compare" = "COMPARES";
 "popbar.tag.append" = "APPENDS";
 "popbar.tag.copy" = "COPIES";
 

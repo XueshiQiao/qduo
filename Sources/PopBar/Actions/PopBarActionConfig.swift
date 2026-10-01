@@ -44,6 +44,10 @@ enum ActionOutput: String, CaseIterable {
     /// selection can take one. The default: nothing is written into a document
     /// unless the action says so.
     case panel
+    /// Shown in the result panel as the selection above the result, with what was
+    /// removed and what was added marked, so a rewrite is checked before Replace
+    /// puts it in place (issue #12). The panel can also show the result alone.
+    case compare
     /// Put in place of the selection.
     case replace
     /// Put after the selection, which is kept.
@@ -323,8 +327,7 @@ enum DefaultActions {
         [
             PopBarActionConfig(title: L("popbar.action.translate"), iconSymbol: "character.bubble",
                                kind: .ai, prompt: translatePrompt),
-            PopBarActionConfig(title: L("popbar.action.polish"), iconSymbol: "wand.and.stars",
-                               kind: .ai, prompt: polishPrompt),
+            polishAction(),
             PopBarActionConfig(title: L("popbar.action.explain"), iconSymbol: "lightbulb",
                                kind: .ai, prompt: explainPrompt),
             filesAndWebGroup(),
@@ -333,6 +336,15 @@ enum DefaultActions {
             PopBarActionConfig(title: L("popbar.action.copy"), iconSymbol: "doc.on.doc",
                                kind: .copy),
         ]
+    }
+
+    /// Polish rewrites the selection, so it shows what it changed before Replace
+    /// puts it in place (issue #12).
+    static func polishAction() -> PopBarActionConfig {
+        var a = PopBarActionConfig(title: L("popbar.action.polish"), iconSymbol: "wand.and.stars",
+                                   kind: .ai, prompt: polishPrompt)
+        a.output = ActionOutput.compare.rawValue
+        return a
     }
 
     /// The seed's "Files & Web" group: the three actions that only make sense on

@@ -107,6 +107,15 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(out?[path: "targetLanguage"]?.stringValue, "zh-TW")
     }
 
+    func testTheCompareOutputLoadsAndSavesAsCompare() throws {
+        let json = """
+        [{ "id": "p", "title": "Polish", "iconSymbol": "wand.and.stars", "kind": "ai", "prompt": "p", "output": "compare" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertEqual(action.outputMode, .compare)
+        XCTAssertEqual(try roundTrip(json).arrayValue?.first?[path: "output"]?.stringValue, "compare")
+    }
+
     func testAKnownFieldIsNeverShadowedByAStrayExtra() throws {
         // If a decode ever let a known name into `extra`, encoding it again would
         // write the key twice. Belt and braces: the title must be the real one.
@@ -174,6 +183,11 @@ final class ActionRoundTripTests: XCTestCase {
         let data = try JSONEncoder().encode(seed)
         let back = try JSONDecoder().decode([PopBarActionConfig].self, from: data)
         XCTAssertEqual(back.first { $0.kind == .group }?.children.count, 3)
+    }
+
+    func testTheDefaultPolishComparesBeforeReplacing() {
+        let seed = DefaultActions.seed()
+        XCTAssertEqual(seed.map(\.outputMode), [.panel, .compare, .panel, .panel, .panel, .panel, .panel])
     }
 
     func testAnEmptyListRoundTripsAsEmpty() throws {
