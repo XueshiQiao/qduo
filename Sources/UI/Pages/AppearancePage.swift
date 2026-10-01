@@ -116,7 +116,8 @@ struct AppearancePage: View {
                     Label(L("popbar.reset.button"), systemImage: "arrow.counterclockwise")
                 }
                 .confirmationDialog(String(format: L("popbar.reset.confirm"), styleName(store.style)),
-                                    isPresented: $confirmingReset) {
+                                    isPresented: $confirmingReset,
+                                    titleVisibility: .visible) {
                     Button(L("popbar.reset.action"), role: .destructive) { store.resetStyleSettings() }
                     Button(L("popbar.reset.cancel"), role: .cancel) {}
                 }
