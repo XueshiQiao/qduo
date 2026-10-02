@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QDuo 历史记录方案</title>
+<style>
+:root{--page:#ecebf0;--text:#1d1d1f;--sub:#6e6e73;--faint:#98989d;--line:rgba(0,0,0,.1);--card:#fff;--card2:#f6f6f8;
+  --accent:#0a84ff;--accent-bg:rgba(10,132,255,.12);--ok:#248a3d;--ok-bg:rgba(52,199,89,.16);--warn:#b25000;--warn-bg:rgba(255,149,0,.16);
+  --err:#c4271c;--err-bg:rgba(255,59,48,.12);--del-fg:#c4271c;--del-bg:rgba(255,59,48,.13);--ins-fg:#1d7a35;--ins-bg:rgba(52,199,89,.22);
+  --win:#fbfbfd;--side:#ececf0;--sel:rgba(10,132,255,.14);--code:rgba(127,127,127,.14)}
+:root[data-theme="dark"]{--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--faint:#6e6e73;--line:rgba(255,255,255,.12);--card:#232326;--card2:#1c1c1f;
+  --accent:#4da3ff;--accent-bg:rgba(77,163,255,.16);--ok:#5be37d;--ok-bg:rgba(48,209,88,.18);--warn:#ffb340;--warn-bg:rgba(255,159,10,.18);
+  --err:#ff7b72;--err-bg:rgba(255,69,58,.18);--del-fg:#ff7b72;--del-bg:rgba(255,69,58,.20);--ins-fg:#5be37d;--ins-bg:rgba(48,209,88,.22);
+  --win:#1e1e21;--side:#252528;--sel:rgba(77,163,255,.22);--code:rgba(255,255,255,.1)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--faint:#6e6e73;--line:rgba(255,255,255,.12);--card:#232326;--card2:#1c1c1f;
+  --accent:#4da3ff;--accent-bg:rgba(77,163,255,.16);--ok:#5be37d;--ok-bg:rgba(48,209,88,.18);--warn:#ffb340;--warn-bg:rgba(255,159,10,.18);
+  --err:#ff7b72;--err-bg:rgba(255,69,58,.18);--del-fg:#ff7b72;--del-bg:rgba(255,69,58,.20);--ins-fg:#5be37d;--ins-bg:rgba(48,209,88,.22);
+  --win:#1e1e21;--side:#252528;--sel:rgba(77,163,255,.22);--code:rgba(255,255,255,.1)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:13px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;padding:24px 16px 80px}
+.wrap{max-width:1280px;margin:0 auto}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+h1{font-size:23px;margin:0 0 4px} header.top p{margin:0;color:var(--sub);max-width:820px}
+.toggle{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px}
+.toggle button{border:0;background:none;color:var(--text);font:inherit;padding:5px 12px;border-radius:6px;cursor:pointer}
+.toggle button.on{background:rgba(127,127,127,.2);font-weight:600}
+nav.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 6px;position:sticky;top:0;z-index:20;background:var(--page);padding:8px 0;border-bottom:1px solid var(--line)}
+nav.tabs button{border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;padding:7px 14px;border-radius:9px;cursor:pointer}
+nav.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+section.tab{display:none} section.tab.on{display:block}
+h2{font-size:18px;margin:30px 0 6px} h3{font-size:15px;margin:22px 0 6px}
+p.lead{color:var(--sub);margin:0 0 12px;max-width:940px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:12px 0}
+.box ul,.box ol{margin:6px 0;padding-left:20px} .box li{margin:3px 0}
+.note{border-left:3px solid var(--warn);background:var(--warn-bg);border-radius:8px;padding:10px 14px;margin:12px 0}
+.good{border-left:3px solid var(--ok);background:var(--ok-bg);border-radius:8px;padding:10px 14px;margin:12px 0}
+code{font:12px ui-monospace,Menlo,monospace;background:var(--code);padding:1px 5px;border-radius:4px}
+pre{font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow:auto;margin:8px 0}
+table{border-collapse:collapse;width:100%;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--card2);font-weight:600;font-size:12px;color:var(--sub)}
+tr:last-child td{border-bottom:0}
+.tblwrap{overflow-x:auto;margin:10px 0}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--code);color:var(--sub);white-space:nowrap;margin:1px 2px 1px 0}
+.pill.free{background:var(--ok-bg);color:var(--ok)} .pill.paid{background:var(--warn-bg);color:var(--warn)} .pill.err{background:var(--err-bg);color:var(--err)}
+.pill.acc{background:var(--accent-bg);color:var(--accent)}
+.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px}
+.pros{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
+.pros .box h4{margin:0 0 4px;font-size:13px}
+
+/* ---------- mac window ---------- */
+.win{background:var(--win);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.14);overflow:hidden;margin:14px 0}
+.win .titlebar{height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--side)}
+.dot{width:12px;height:12px;border-radius:50%} .d1{background:#ff5f57}.d2{background:#febc2e}.d3{background:#28c840}
+.win .titlebar .t{flex:1;text-align:center;font-weight:600;font-size:13px;color:var(--sub);margin-right:52px}
+.win .body{display:flex;height:640px}
+.win .side{width:184px;flex:none;background:var(--side);border-right:1px solid var(--line);padding:10px 8px;overflow:auto}
+.side .row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;color:var(--text);font-size:13px}
+.side .row .ic{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;color:#fff;font-size:11px;flex:none}
+.side .row.on{background:var(--sel);font-weight:600}
+.side .gap{height:12px}
+.side .new{font-size:10px;color:var(--accent);margin-left:auto}
+.win .main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* toolbar */
+.tb{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.search{flex:1;min-width:160px;display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:7px;padding:4px 9px;color:var(--faint)}
+.search input{border:0;outline:0;background:none;color:var(--text);font:inherit;flex:1;min-width:0}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;font-size:12px;padding:2px 9px;border-radius:12px;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chip .n{opacity:.6;margin-left:3px;font-size:11px}
+select.sel{font:inherit;font-size:12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+
+/* option A */
+.split{flex:1;display:flex;min-height:0}
+.list{width:330px;flex:none;border-right:1px solid var(--line);overflow:auto}
+.day{font-size:11px;font-weight:600;color:var(--faint);padding:10px 14px 4px;text-transform:uppercase;letter-spacing:.04em}
+.item{display:flex;gap:10px;padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line)}
+.item:hover{background:rgba(127,127,127,.06)} .item.on{background:var(--sel)}
+.aic{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-size:14px;flex:none;color:#fff}
+.item .mid{flex:1;min-width:0}
+.item .l1{display:flex;gap:6px;align-items:baseline}
+.item .l1 b{font-size:13px;white-space:nowrap}
+.item .l1 .tm{margin-left:auto;font-size:11px;color:var(--faint);white-space:nowrap}
+.item .l2{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .l3{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail{flex:1;overflow:auto;padding:16px 20px}
+.dh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.dh h4{margin:0;font-size:16px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--sub);margin-bottom:12px}
+.lbl{font-size:11px;font-weight:600;color:var(--faint);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.txt{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;font-size:13.5px;line-height:1.62}
+.txt.mono{font:12px/1.55 ui-monospace,Menlo,monospace}
+.txt.errt{border-color:var(--err);background:var(--err-bg)}
+.del{color:var(--del-fg);background:var(--del-bg);text-decoration:line-through;border-radius:3px}
+.ins{color:var(--ins-fg);background:var(--ins-bg);border-radius:3px}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;font-size:12px;padding:4px 10px;border-radius:7px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.prim{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn .c{font-size:10px;padding:0 5px;border-radius:7px}
+.btn .c.free{background:var(--ok-bg);color:var(--ok)} .btn .c.paid{background:var(--warn-bg);color:var(--warn)}
+.btn.prim .c{background:rgba(255,255,255,.25);color:#fff}
+.vers{display:inline-flex;gap:2px;background:var(--code);border-radius:6px;padding:2px;font-size:11px;margin-left:auto}
+.vers span{padding:1px 8px;border-radius:4px;cursor:pointer} .vers span.on{background:var(--card);font-weight:600;box-shadow:0 0 0 .5px var(--line)}
+.linkcard{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.linkcard .fav{width:32px;height:32px;border-radius:7px;background:var(--code);display:grid;place-items:center;font-size:16px}
+.linkcard .u{font-size:12px;color:var(--accent);word-break:break-all}
+.player{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 12px}
+.play{width:30px;height:30px;border-radius:50%;border:0;background:var(--accent);color:#fff;cursor:pointer;font-size:12px;flex:none}
+.wave{flex:1;display:flex;align-items:center;gap:2px;height:28px}
+.wave i{display:block;width:3px;border-radius:2px;background:var(--faint);opacity:.5}
+.wave i.p{background:var(--accent);opacity:1}
+.w.hl{background:var(--accent-bg);color:var(--accent);border-radius:3px}
+.status{font-size:11px;padding:1px 7px;border-radius:10px}
+.st-ok{background:var(--ok-bg);color:var(--ok)} .st-err{background:var(--err-bg);color:var(--err)} .st-warn{background:var(--warn-bg);color:var(--warn)} .st-info{background:var(--accent-bg);color:var(--accent)}
+.changed a{color:inherit;font-weight:600}
+.changed{font-size:12px;background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:6px 10px;margin-top:10px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:3px 10px;font-size:12px}
+.kv div:nth-child(odd){color:var(--faint)}
+
+/* option B */
+.feed{flex:1;overflow:auto;padding:4px 18px 20px;background:var(--card2)}
+.fcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+.fcard .fh{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.fcard .fh b{font-size:13px} .fcard .fh .tm{margin-left:auto;font-size:11px;color:var(--faint)}
+.fcard .src{font-size:12px;color:var(--sub);border-left:3px solid var(--line);padding-left:9px;margin-bottom:8px;white-space:pre-wrap;max-height:4.6em;overflow:hidden}
+.fcard .out{font-size:13.5px;white-space:pre-wrap;line-height:1.6}
+.fcard .acts{margin-top:10px;padding-top:8px}
+.bi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bi>div{background:var(--card2);border-radius:8px;padding:8px 10px;white-space:pre-wrap;font-size:13px}
+.bi .lang{font-size:10px;color:var(--faint);font-weight:600;margin-bottom:2px}
+
+/* option C */
+.texts{width:290px;flex:none;border-right:1px solid var(--line);overflow:auto}
+.titem{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.titem:hover{background:rgba(127,127,127,.06)} .titem.on{background:var(--sel)}
+.titem .q{font-size:13px;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.titem .ics{display:flex;gap:3px;margin-top:5px;align-items:center}
+.titem .ics span.m{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:10px;color:#fff}
+.titem .ics .tm{margin-left:auto;font-size:11px;color:var(--faint)}
+.ws{flex:1;overflow:auto;padding:16px 20px}
+.orig{font-size:15px;line-height:1.65;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;white-space:pre-wrap}
+.atabs{display:flex;gap:4px;flex-wrap:wrap;margin:14px 0 0;border-bottom:1px solid var(--line)}
+.atab{border:0;background:none;color:var(--sub);font:inherit;font-size:12.5px;padding:6px 10px;cursor:pointer;border-bottom:2px solid transparent;display:flex;gap:5px;align-items:center}
+.atab.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.atab .cnt{font-size:10px;background:var(--code);border-radius:7px;padding:0 5px}
+.runwith{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:14px;padding:10px 12px;background:var(--card2);border:1px dashed var(--line);border-radius:10px}
+.runwith .h{font-size:12px;color:var(--sub);margin-right:4px}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:rgba(30,30,32,.94);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;max-width:min(620px,calc(100% - 32px));opacity:0;transition:.2s;pointer-events:none;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty{color:var(--faint);text-align:center;padding:40px 10px}
+svg text{font-family:-apple-system,"PingFang SC",sans-serif}
+.dg-box{fill:var(--card);stroke:var(--line)} .dg-acc{fill:var(--accent-bg);stroke:var(--accent)} .dg-new{fill:var(--ok-bg);stroke:var(--ok)}
+.dg-t{fill:var(--text);font-size:12.5px;font-weight:600} .dg-s{fill:var(--sub);font-size:11px} .dg-l{stroke:var(--faint);stroke-width:1.4;fill:none}
+.dg-ah{fill:var(--faint)}
+@media (max-width:900px){.win .side{display:none}.list,.texts{width:240px}}
+@media (max-width:640px){.split{flex-direction:column}.list,.texts{width:auto;max-height:240px;border-right:0;border-bottom:1px solid var(--line)}.win .body{height:auto;min-height:640px}.bi{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>QDuo · 历史记录 —— 方案与原型</h1>
+    <p>先看「总体方案」：存什么、存在哪、怎么跟每种动作绑定、怎么复现。后面三个页签是三种页面布局的可点击原型，共用同一份底层设计，只是展示方式不同。原型里的数据是虚构的；按钮点下去只弹提示，说明真实版本会做什么。</p>
+  </div>
+  <div class="toggle" id="theme"><button data-t="auto" class="on">跟随系统</button><button data-t="light">浅色</button><button data-t="dark">深色</button></div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="plan" class="on">0 · 总体方案</button>
+  <button data-tab="a">A · 三栏时间线</button>
+  <button data-tab="b">B · 卡片流</button>
+  <button data-tab="c">C · 按原文归组</button>
+  <button data-tab="cmp">对比 & 待你拍板</button>
+</nav>
+
+<!-- ================= PLAN ================= -->
+<section class="tab on" id="tab-plan">
+
+<div class="note"><b>先说明一件事：</b>GitHub 上没有找到「历史记录」的 issue。我翻了这个仓库全部 12 个 issue（开着的和关掉的都看了），没有一个讲历史记录。离得最近的是 #11「每日用量统计」，但那个只是数次数、发统计事件，不存内容，和这里是两回事。如果需要，我可以把这份方案写成一个英文 issue（你说了我才建）。</div>
+
+<h2>1 · 设计从代码里来：已经有两条「类型轴」</h2>
+<p class="lead">历史页面最难的是「类型很多、以后还会加」。好消息是代码里已经把类型拆成了两条独立的轴，历史只要顺着这两条轴走，新类型就能自然接进来。</p>
+<div class="cols2">
+  <div class="box"><b>输入轴：动作的种类（<code>PopBarActionConfig.Kind</code>，14 种）</b>
+    <ul>
+      <li><code>ai</code> —— 翻译、润色、解释，以及你自己写 prompt 的动作</li>
+      <li><code>systemTranslate</code> —— macOS 自带的离线翻译</li>
+      <li><code>transform</code> —— 本地文字处理（大小写、JSON 格式化、繁简转换、字数统计…共 23 种）</li>
+      <li><code>speak</code> —— 朗读</li>
+      <li><code>openURL</code> / <code>webPreview</code> —— 搜索、打开链接、小浏览器</li>
+      <li><code>quickLook</code> / <code>revealInFinder</code> —— 预览文件、在 Finder 里显示</li>
+      <li><code>shortcut</code> / <code>script</code> —— 快捷指令、shell 脚本</li>
+      <li><code>copy</code> / <code>pause</code> / <code>inspect</code> / <code>settings</code> —— 工具类</li>
+      <li><code>group</code> —— 只是文件夹，不会运行</li>
+    </ul>
+  </div>
+  <div class="box"><b>输出轴：运行完「呈现什么」（<code>PopBarPresentation</code>，11 种）+ 文字往哪送（<code>ActionOutput</code>，5 种）</b>
+    <ul>
+      <li><code>output(文字)</code> 再按 <code>panel / compare / replace / append / copy</code> 分去向</li>
+      <li><code>result(文字)</code> —— 报告或错误信息（字数统计、「没配 API key」）</li>
+      <li><code>openExternal(URL)</code>、<code>webPreview(URL)</code></li>
+      <li><code>quickLook(文件)</code>、<code>revealInFinder(文件)</code></li>
+      <li><code>speak(文字)</code></li>
+      <li><code>none</code>、<code>pause</code>、<code>inspect</code>、<code>openSettings</code></li>
+    </ul>
+    代码注释里已经写明：以后新加输出类型，就是在这个枚举里加一个 case，再在 <code>PopBarSession.present(_:)</code> 里加一个分支。<b>那个函数是「所有结果的唯一出口」，历史记录就挂在这里。</b>
+  </div>
+</div>
+
+<h2>2 · 整体结构</h2>
+<div class="box" style="overflow-x:auto">
+<svg viewBox="0 0 1180 330" width="100%" style="min-width:900px" role="img" aria-label="历史记录架构图">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" class="dg-ah"/></marker></defs>
+  <rect x="10" y="30" width="190" height="64" rx="10" class="dg-box"/><text x="105" y="57" text-anchor="middle" class="dg-t">选中文字 / 快捷键 / 截图识字</text><text x="105" y="76" text-anchor="middle" class="dg-s">记下：从哪个 app、怎么触发的</text>
+  <rect x="250" y="30" width="190" height="64" rx="10" class="dg-box"/><text x="345" y="57" text-anchor="middle" class="dg-t">ActionRegistry.run</text><text x="345" y="76" text-anchor="middle" class="dg-s">真正执行动作（已有）</text>
+  <rect x="490" y="30" width="200" height="64" rx="10" class="dg-acc"/><text x="590" y="57" text-anchor="middle" class="dg-t">PopBarSession.present</text><text x="590" y="76" text-anchor="middle" class="dg-s">所有结果的唯一出口（已有）</text>
+  <rect x="490" y="140" width="200" height="64" rx="10" class="dg-new"/><text x="590" y="167" text-anchor="middle" class="dg-t">HistoryRecorder（新）</text><text x="590" y="186" text-anchor="middle" class="dg-s">把结果 + 动作快照记成一条</text>
+  <rect x="740" y="140" width="190" height="64" rx="10" class="dg-new"/><text x="835" y="167" text-anchor="middle" class="dg-t">HistoryStore（新）</text><text x="835" y="186" text-anchor="middle" class="dg-s">本地 SQLite + 全文搜索</text>
+  <rect x="980" y="140" width="190" height="64" rx="10" class="dg-new"/><text x="1075" y="167" text-anchor="middle" class="dg-t">设置窗口 · 历史页（新）</text><text x="1075" y="186" text-anchor="middle" class="dg-s">按结果类型挑展示组件</text>
+  <rect x="980" y="250" width="190" height="64" rx="10" class="dg-new"/><text x="1075" y="277" text-anchor="middle" class="dg-t">复现（新）</text><text x="1075" y="296" text-anchor="middle" class="dg-s">查看 / 再送一次 / 重跑</text>
+  <rect x="490" y="250" width="440" height="64" rx="10" class="dg-box"/><text x="710" y="277" text-anchor="middle" class="dg-t">复用已有的：ActionRegistry · ReplaceWriter · SpeechCache · TextDiff</text><text x="710" y="296" text-anchor="middle" class="dg-s">重跑走原来的执行路径；朗读优先放本地缓存的音频；对比用原来的 diff</text>
+  <rect x="740" y="30" width="190" height="64" rx="10" class="dg-box"/><text x="835" y="57" text-anchor="middle" class="dg-t">ReplaceWriter.write</text><text x="835" y="76" text-anchor="middle" class="dg-s">替换成功/失败 → 回填记录</text>
+  <path d="M200 62H248" class="dg-l" marker-end="url(#ah)"/><path d="M440 62H488" class="dg-l" marker-end="url(#ah)"/>
+  <path d="M690 62H738" class="dg-l" marker-end="url(#ah)"/>
+  <path d="M590 94V138" class="dg-l" marker-end="url(#ah)"/><path d="M835 94V138" class="dg-l" marker-end="url(#ah)" stroke-dasharray="4 3"/>
+  <path d="M690 172H738" class="dg-l" marker-end="url(#ah)"/><path d="M930 172H978" class="dg-l" marker-end="url(#ah)"/>
+  <path d="M1075 204V248" class="dg-l" marker-end="url(#ah)"/><path d="M980 282H932" class="dg-l" marker-end="url(#ah)"/>
+</svg>
+</div>
+
+<h2>3 · 一条记录长什么样</h2>
+<p class="lead">核心思路：<b>存「当时发生了什么」，而不是存「界面长什么样」</b>。比如润色的对比视图不存，打开时用原文和结果现算（<code>TextDiff</code> 已经有了）；动作本身存一份当时的完整快照，这样你后来改了 prompt 或删了动作，旧记录照样能看、能用当时的设置重跑。</p>
+<div class="cols2">
+<pre>{
+  "id": "01JB…",  "schemaVersion": 1,
+  "at": "2026-10-01T14:32:08+08:00",
+  "trigger": { "via": "selection",          // selection | hotkey | ocr
+               "app": "com.apple.Safari", "appName": "Safari" },
+  "input":   { "text": "The quick brown fox…", "url": null,
+               "truncated": false },
+  "action":  { …当时这个动作的完整配置（PopBarActionConfig 原样）… },
+  "engine":  { "provider": "deepseek", "model": "deepseek-v4-flash",
+               "ms": 1240 },
+  "outcome": { "type": "text",               // 决定用哪个展示组件
+               "text": "敏捷的棕色狐狸…",
+               "deliver": "compare",          // panel|compare|replace|append|copy
+               "delivered": "replaced" },      // 实际结果：replaced / pasted / failed / viewed
+  "status":  "ok",                            // ok | error | cancelled
+  "parent":  null,                            // 重跑出来的记录指向原记录
+  "audio":   null                             // 朗读：SpeechCache 的 key
+}</pre>
+<div class="box"><b>几个关键决定</b>
+<ul>
+  <li><b>outcome.type 决定展示</b>，action.kind 只用来筛选和分组。因为「怎么展示」取决于产出了什么，而不是什么动作产出的：AI、脚本、快捷指令、系统翻译，产出的都是一段文字，用同一个文字组件展示就行。</li>
+  <li><b>outcome 的类型清单</b>（比 11 种呈现方式合并了一些）：<code>text</code>、<code>message</code>（报告/错误）、<code>link</code>、<code>file</code>、<code>speech</code>、<code>silent</code>（复制、没有输出的快捷指令）。</li>
+  <li><b>认不出的类型不丢</b>：老版本读到新版本写的未知 <code>type</code>，用一个通用组件展示原文和原始字段，并照原样保留——和现在动作配置处理 <code>unsupportedKindRaw</code> 是同一个思路。</li>
+  <li><b>中断的也记</b>：流式输出到一半被你关掉，记成 <code>cancelled</code>，保留已经出来的那部分。</li>
+  <li><b>太长的文字截断，不丢弃</b>：超过上限（比如 10 万字）只存前面部分，标 <code>truncated</code>。</li>
+</ul></div>
+</div>
+
+<h2>4 · 每种动作怎么绑定：展示 + 复现</h2>
+<p class="lead">这张表就是「动态展示」的规则。<span class="pill free">免费</span> 本地完成；<span class="pill paid">花钱</span> 会再调一次云端模型或语音，界面上要标出来，免得误点。</p>
+<div class="tblwrap"><table>
+<tr><th>动作种类</th><th>记成什么 outcome</th><th>历史里怎么展示</th><th>能怎么复现</th></tr>
+<tr><td><code>ai</code>（翻译 / 解释 / 自定义）</td><td>text · panel</td><td>原文 + 结果；看得出是哪个模型、用了多久</td><td>复制结果 <span class="pill free">免费</span>　替换到当前选区 <span class="pill free">免费</span>　原样重跑 / 换模型重跑 <span class="pill paid">花钱</span>，新旧结果并排</td></tr>
+<tr><td><code>ai</code>（润色这类 compare 输出）</td><td>text · compare</td><td>删改标红绿的对比视图（打开时现算）</td><td>同上；另外显示「当时替换成功了没有」</td></tr>
+<tr><td><code>systemTranslate</code></td><td>text</td><td>双语对照（源语言 → 目标语言）</td><td>复制　替换　重跑 <span class="pill free">免费</span>（本机翻译）</td></tr>
+<tr><td><code>transform</code></td><td>text（字数统计是 message）</td><td>前后对照，JSON 之类用等宽字体</td><td>重跑 <span class="pill free">免费</span>　复制　替换</td></tr>
+<tr><td><code>shortcut</code> / <code>script</code></td><td>text / silent / message(出错)</td><td>输出；出错时显示退出码和错误输出</td><td>重跑 <span class="pill free">免费</span>，但<b>脚本会有副作用</b>，重跑前要确认；脚本仍要过原来的「首次运行批准」</td></tr>
+<tr><td><code>speak</code></td><td>speech</td><td>小播放器 + 文字，播放时逐词高亮（时间戳已经在缓存里）</td><td>本地缓存还在 → 直接播放 <span class="pill free">免费</span>；缓存被清掉了 → 重新合成 <span class="pill paid">花钱</span>，按钮上写明</td></tr>
+<tr><td><code>openURL</code> / <code>webPreview</code></td><td>link</td><td>链接卡片：站点、完整地址、搜的是什么</td><td>在浏览器打开 / 在小浏览器打开 <span class="pill free">免费</span></td></tr>
+<tr><td><code>quickLook</code> / <code>revealInFinder</code></td><td>file</td><td>文件卡片：路径、当时是文件还是文件夹；文件已不在了就标出来</td><td>再预览 / 在 Finder 显示 <span class="pill free">免费</span></td></tr>
+<tr><td><code>copy</code></td><td>silent</td><td>默认<b>不记</b>（设置里可开）</td><td>再复制一次</td></tr>
+<tr><td><code>pause</code> / <code>inspect</code> / <code>settings</code></td><td>—</td><td>不记，它们不处理文字</td><td>—</td></tr>
+<tr><td>出错（没配 key、网络失败、脚本退出码非 0）</td><td>status = error</td><td>红色错误框 + 原文</td><td>修好后「重试」</td></tr>
+<tr><td>以后新加的种类 / 输出</td><td>新 type</td><td>没写专门组件前：通用组件（原文 + 原始字段）</td><td>只要动作种类认识，就能重跑</td></tr>
+</table></div>
+
+<h3>以后加新类型，要做什么</h3>
+<div class="box"><ol>
+  <li>在 <code>HistoryOutcome</code> 里加一个 case。它是从 <code>PopBarPresentation</code> 转换过来的，转换用 Swift 的完整 <code>switch</code>，<b>新加的呈现方式如果忘了处理历史，编译直接报错</b>，不会悄悄漏记。</li>
+  <li>写一个展示组件，注册到「type → 组件」的表里。三个方法：列表里一行怎么写、详情怎么画、有哪些复现按钮。</li>
+  <li>没写组件也能上线：先用通用组件兜底，看得到、不丢数据。</li>
+</ol>
+筛选条也是动态的：页面顶部的筛选按钮从<b>你当前的动作列表</b>生成（你的「翻译」「润色」「语法检查」…），不是写死的分类。动作被删了，它的历史还在，归到「已删除的动作」。</div>
+
+<h2>5 · 「复现」分四层</h2>
+<div class="tblwrap"><table>
+<tr><th>层级</th><th>做什么</th><th>例子</th><th>花不花钱</th></tr>
+<tr><td>① 原样查看</td><td>当时看到的结果再看一遍，包括对比视图</td><td>翻出昨天润色前后的对比</td><td><span class="pill free">免费</span></td></tr>
+<tr><td>② 再送一次</td><td>把已经有的结果重新送出去，不重新计算</td><td>复制、替换到现在选中的文字、重新打开链接、播放缓存音频</td><td><span class="pill free">免费</span></td></tr>
+<tr><td>③ 重跑</td><td>同一段原文、同一个动作再跑一次；可以选「用当时的设置」还是「用现在的设置」，也可以换个模型。结果存成新记录，挂在原记录下，可以切换版本对比</td><td>翻译不满意，换个模型再翻</td><td>看动作：AI / 云端朗读 <span class="pill paid">花钱</span></td></tr>
+<tr><td>④ 换个动作跑</td><td>拿这段原文去跑别的动作</td><td>翻译完觉得要解释一下：直接在历史里点「解释」</td><td>看动作</td></tr>
+</table></div>
+
+<h2>6 · 存储、保留、隐私</h2>
+<div class="cols2">
+<div class="box"><b>存在哪</b>
+<ul>
+  <li><b>推荐：SQLite</b>，用系统自带的 <code>libsqlite3</code>，不引入第三方库。文件放在 <code>~/Library/Application Support/QDuo/history.sqlite</code>（和其他 app 自有数据放一起）。</li>
+  <li>几个常用字段单独成列（时间、动作 id、种类、outcome 类型、来源 app、原文 hash），方便筛选；整条记录另存一份 JSON 列，<b>不认识的字段原样保留</b>。</li>
+  <li>原文和结果建全文索引（SQLite 的 FTS5），搜中文英文都快。</li>
+  <li>备选：每月一个 JSONL 文本文件。好处是能直接用文本编辑器看、和现在「配置文件可手改」的风格一致；坏处是搜索、删除单条、按时间清理都要整文件重写。几千条以后会明显慢。</li>
+  <li>存储格式算是「不好改回来的决定」，真正动手前我会找 Frank 再过一遍。</li>
+</ul></div>
+<div class="box"><b>保留和隐私（都做成设置项）</b>
+<ul>
+  <li>总开关「记录历史」；保留时长 7 天 / 30 天 / 90 天 / 永久；条数上限。</li>
+  <li><b>不记录的 app</b>：沿用现有的忽略规则，另外默认排除密码管理器（1Password、钥匙串访问等）。</li>
+  <li>可以按动作关掉记录（比如你自己写的某个脚本）。</li>
+  <li>朗读音频复用现有的 SpeechCache（上限 500 MB，最久没播的先删）。历史只记缓存的 key，不另存一份音频；缓存被清了，按钮自动变成「重新合成（花钱）」。</li>
+  <li>历史只在本机。内容<b>永远不进日志、不进统计</b>（#11 的统计只数次数）。</li>
+  <li>单条删除、按条件批量删除、清空全部。清空前二次确认。</li>
+</ul></div>
+</div>
+
+<h2>7 · 入口</h2>
+<div class="box"><ul>
+  <li>设置窗口侧边栏加一页「历史」（原型里放在「动作」下面）。</li>
+  <li>菜单栏图标的菜单里加「历史…」。</li>
+  <li>结果面板标题栏加一个小时钟按钮：看这段文字之前处理过的结果。</li>
+  <li>可选：一个全局快捷键打开历史。</li>
+</ul></div>
+
+<h2>8 · 分几步做</h2>
+<div class="tblwrap"><table>
+<tr><th>阶段</th><th>内容</th></tr>
+<tr><td>第 1 步</td><td>记录 + 存储 + 设置项（开关、保留时长、排除 app）。先只记，界面可以是最简单的列表。</td></tr>
+<tr><td>第 2 步</td><td>历史页：选定的布局（A / B / C）、搜索、筛选、每种类型的展示组件、复现 ①②。</td></tr>
+<tr><td>第 3 步</td><td>复现 ③④：重跑、换模型、版本切换；朗读回放逐词高亮。</td></tr>
+<tr><td>第 4 步</td><td>菜单栏入口、结果面板的历史按钮、快捷键。</td></tr>
+</table></div>
+</section>
+
+<!-- ================= OPTION A ================= -->
+<section class="tab" id="tab-a">
+<h2>方案 A · 三栏时间线（像「邮件」app）</h2>
+<p class="lead">左边是设置窗口原有的侧边栏，中间按时间倒序列出每一条，右边是选中那条的详情和复现按钮。最「标准」的 macOS 做法，信息密度高，适合快速找某一条。点列表里的不同条目，看右边如何随类型变化（翻译、润色对比、朗读播放器、链接卡片、文件、出错、未来未知类型）。</p>
+<div class="win"><div class="titlebar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><div class="t">QDuo</div></div>
+<div class="body"><div class="side" data-sidebar></div>
+<div class="main">
+  <div class="tb"><div class="search">🔍<input id="a-q" placeholder="搜索原文或结果"></div>
+    <select class="sel" id="a-app"></select></div>
+  <div class="tb" style="padding-top:6px;padding-bottom:8px"><div class="chips" id="a-chips"></div></div>
+  <div class="split"><div class="list" id="a-list"></div><div class="detail" id="a-detail"></div></div>
+</div></div></div>
+<div class="pros">
+  <div class="box"><h4>好处</h4>扫一眼就能看到很多条；键盘上下键切换很顺；详情区够宽，润色对比、长文本都放得下。和 Mail、备忘录的习惯一致，不用学。</div>
+  <div class="box"><h4>代价</h4>列表里每条只有一两行，翻译和润色这类要看结果的，得点开才看得到。设置窗口要够宽（三栏至少 ~900pt）。</div>
+</div>
+</section>
+
+<!-- ================= OPTION B ================= -->
+<section class="tab" id="tab-b">
+<h2>方案 B · 卡片流（像聊天记录 / 剪贴板历史）</h2>
+<p class="lead">每条记录是一张卡片，<b>不用点开</b>就按类型直接画出内容：翻译是双语对照，润色直接显示红绿对比，朗读带播放器，搜索是链接卡片。按天分组，往下滚就是更早的。适合「回看今天都干了什么」。</p>
+<div class="win"><div class="titlebar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><div class="t">QDuo</div></div>
+<div class="body"><div class="side" data-sidebar></div>
+<div class="main">
+  <div class="tb"><div class="search">🔍<input id="b-q" placeholder="搜索原文或结果"></div><div class="chips" id="b-chips"></div></div>
+  <div class="feed" id="b-feed"></div>
+</div></div></div>
+<div class="pros">
+  <div class="box"><h4>好处</h4>内容一眼可见，回看最省事；每种类型的「样子」最突出，最能体现按类型动态展示；不需要很宽的窗口。</div>
+  <div class="box"><h4>代价</h4>一屏只能放 4～6 条，找很久以前的某一条要靠搜索；长文本卡片要折叠，否则一张卡占满屏；卡片多了滚动性能要注意（SwiftUI 要用懒加载列表）。</div>
+</div>
+</section>
+
+<!-- ================= OPTION C ================= -->
+<section class="tab" id="tab-c">
+<h2>方案 C · 按原文归组（同一段文字的所有处理放一起）</h2>
+<p class="lead">左边列的不是「每次操作」，而是「你选过的每段文字」。同一段文字先翻译、又解释、又朗读，归到一组。右边上方是原文，下方每个动作一个页签，同一个动作跑过多次就能切版本对比；最下面一排是你所有的动作，<b>点一下就拿这段原文去跑</b>（复现第 ④ 层）。</p>
+<div class="win"><div class="titlebar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><div class="t">QDuo</div></div>
+<div class="body"><div class="side" data-sidebar></div>
+<div class="main">
+  <div class="tb"><div class="search">🔍<input id="c-q" placeholder="搜索原文或结果"></div><span style="font-size:12px;color:var(--sub)" id="c-count"></span></div>
+  <div class="split"><div class="texts" id="c-list"></div><div class="ws" id="c-ws"></div></div>
+</div></div></div>
+<div class="pros">
+  <div class="box"><h4>好处</h4>最适合「复现」和「对比」：同一段话换模型重翻、翻译完再解释，都在一个地方；像一个小工作台，历史不只是看，还能接着干活。</div>
+  <div class="box"><h4>代价</h4>不按时间看，「我刚才干了什么」要看左边的时间；链接、文件这类不太关心原文的记录放这里有点别扭；归组规则（原文完全一样才算一组？去掉首尾空白？）要定清楚。</div>
+</div>
+</section>
+
+<!-- ================= COMPARE ================= -->
+<section class="tab" id="tab-cmp">
+<h2>三个方案对比</h2>
+<div class="tblwrap"><table>
+<tr><th></th><th>A · 三栏时间线</th><th>B · 卡片流</th><th>C · 按原文归组</th></tr>
+<tr><td>最适合</td><td>找某一条</td><td>回看今天干了什么</td><td>同一段话反复处理、对比</td></tr>
+<tr><td>不点开能看到结果吗</td><td>只有一行摘要</td><td>能，按类型完整画出</td><td>点原文后能看到全部动作</td></tr>
+<tr><td>复现入口</td><td>详情区底部按钮</td><td>每张卡片底部按钮</td><td>页签 + 底部「用其他动作跑」</td></tr>
+<tr><td>多版本对比</td><td>详情区里切版本</td><td>卡片里切版本</td><td>最自然（同一页签里切）</td></tr>
+<tr><td>窗口宽度要求</td><td>高（三栏）</td><td>低</td><td>中高</td></tr>
+<tr><td>实现量（相对）</td><td>中</td><td>中</td><td>中偏高（多一层归组）</td></tr>
+<tr><td>底层存储</td><td colspan="3">完全相同。三个方案只是同一份数据的三种看法，以后加「切换视图」也不用动存储。</td></tr>
+</table></div>
+
+<div class="good"><b>我的建议：A 做主视图，把 C 的「用其他动作跑」放进 A 的详情区。</b>A 最稳，找东西最快；C 最有价值的那部分（同一段原文换动作、换模型、多版本对比）可以作为 A 详情区里的一块，不需要整个页面都按原文组织。B 的「按类型直接画出内容」也可以借过来：A 的列表行对翻译和润色多显示一行结果预览。</div>
+
+<h2>需要你拍板的问题</h2>
+<div class="box"><ol>
+  <li><b>布局</b>：A / B / C，还是按我的建议 A + C 的「换动作跑」？</li>
+  <li><b>存储</b>：SQLite（推荐）还是 JSONL 文本文件？</li>
+  <li><b>默认保留多久</b>：30 天（推荐）/ 90 天 / 永久？</li>
+  <li><b>「复制」动作默认记不记</b>：我建议不记，它只是把选区复制一下，记了大多是噪音。</li>
+  <li><b>重跑默认用哪个设置</b>：「用现在的动作设置」（推荐，你改了 prompt 通常就是想用新的），旧设置作为备选按钮？</li>
+  <li><b>要不要我把这份方案建成 GitHub issue</b>（英文）？</li>
+</ol></div>
+</section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- theme ----------
+document.querySelectorAll('#theme button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#theme button').forEach(x=>x.classList.toggle('on',x===b));
+  const t=b.dataset.t; if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t);
+});
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+b.dataset.tab));
+  window.scrollTo({top:0});
+});
+const initTab=location.hash.slice(1);if(initTab){const b=document.querySelector(`#tabs button[data-tab="${initTab}"]`);if(b)setTimeout(()=>b.click(),0);}
+const toastEl=document.getElementById('toast');let tt;
+function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('on'),3200);}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---------- sidebar ----------
+const SIDE=[['通用','#8e8e93','⚙'],['动作','#5856d6','≡'],['历史','#34c759','🕘',1],['外观','#af52de','◎'],['截图识字','#30b0c7','⌗'],null,['AI 模型','#0a84ff','✦'],['朗读','#ff9500','♪'],['关于','#ff2d55','i']];
+document.querySelectorAll('[data-sidebar]').forEach(el=>{
+  el.innerHTML=SIDE.map(r=>r?`<div class="row ${r[3]?'on':''}"><span class="ic" style="background:${r[1]}">${r[2]}</span>${r[0]}${r[3]?'<span class="new">新</span>':''}</div>`:'<div class="gap"></div>').join('');
+});
+
+// ---------- the user's actions (mirrors the seed + a few templates) ----------
+const ACTIONS={
+  translate:{title:'翻译',icon:'文',color:'#0a84ff',kind:'ai'},
+  polish:{title:'润色',icon:'✎',color:'#af52de',kind:'ai',output:'compare'},
+  explain:{title:'解释',icon:'💡',color:'#ff9f0a',kind:'ai'},
+  grammar:{title:'语法检查',icon:'✓',color:'#30b0c7',kind:'ai',output:'compare'},
+  sysTranslate:{title:'系统翻译',icon:'訳',color:'#5ac8fa',kind:'systemTranslate'},
+  speak:{title:'朗读',icon:'♪',color:'#ff9500',kind:'speak'},
+  search:{title:'搜索',icon:'⌕',color:'#8e8e93',kind:'openURL'},
+  webPreview:{title:'网页预览',icon:'◉',color:'#007aff',kind:'webPreview'},
+  quickLook:{title:'预览',icon:'👁',color:'#64d2ff',kind:'quickLook'},
+  jsonPretty:{title:'JSON 格式化',icon:'{}',color:'#5e5ce6',kind:'transform'},
+  count:{title:'字数统计',icon:'#',color:'#636366',kind:'transform'},
+  saveNote:{title:'存到备忘录',icon:'⌘',color:'#ff375f',kind:'shortcut'},
+  wc:{title:'统计行数（脚本）',icon:'›_',color:'#3a3a3c',kind:'script'},
+  imageGen:{title:'配图（新版本的动作）',icon:'▣',color:'#bf5af2',kind:'imageGen',unknown:1},
+};
+const FILTERS=[['all','全部'],['ai','AI'],['text','文字工具'],['speech','朗读'],['web','链接 & 文件'],['auto','自动化'],['err','出错']];
+function cat(r){const k=ACTIONS[r.a].kind;if(r.status==='error')return 'err';
+  if(k==='ai'||k==='systemTranslate')return 'ai';if(k==='transform')return 'text';if(k==='speak')return 'speech';
+  if(['openURL','webPreview','quickLook','revealInFinder'].includes(k))return 'web';if(['shortcut','script'].includes(k))return 'auto';return 'all';}
+
+// ---------- records ----------
+const R=[
+ {id:1,a:'translate',day:'今天',t:'14:32',app:'Safari',via:'选中文字',in:'Speculative decoding lets a small draft model propose several tokens that the large model then verifies in a single forward pass.',
+  out:{type:'text',deliver:'panel',delivered:'viewed',text:'推测解码让一个小的草稿模型先提出若干个 token，再由大模型在一次前向计算中统一校验。'},eng:'DeepSeek · deepseek-v4-flash',ms:1240,status:'ok',
+  versions:[{label:'v1 DeepSeek',text:'推测解码让一个小的草稿模型先提出若干个 token，再由大模型在一次前向计算中统一校验。'},{label:'v2 Qwen',text:'投机解码：先用小型草稿模型一次猜出好几个 token，再交给大模型在一次前向传播里批量验证。'}]},
+ {id:2,a:'polish',day:'今天',t:'14:05',app:'备忘录',via:'选中文字',in:'这个功能我觉得还是挺有用的，但是现在的话用起来的话有一点点麻烦，需要点好几下才能用到。',
+  out:{type:'text',deliver:'compare',delivered:'replaced',text:'这个功能挺有用，但现在用起来有点麻烦，要点好几下才能用到。'},eng:'DeepSeek · deepseek-v4-flash',ms:980,status:'ok'},
+ {id:3,a:'speak',day:'今天',t:'13:48',app:'Chrome',via:'选中文字',in:'Small habits, repeated daily, quietly compound into the biggest changes of your life.',
+  out:{type:'speech',reader:'Qwen-Audio · Cherry',secs:6,cached:true},status:'ok'},
+ {id:4,a:'search',day:'今天',t:'13:20',app:'Slack',via:'选中文字',in:'swift structured concurrency task group cancellation',
+  out:{type:'link',url:'https://www.google.com/search?q=swift%20structured%20concurrency%20task%20group%20cancellation',target:'浏览器',site:'Google'},status:'ok'},
+ {id:5,a:'jsonPretty',day:'今天',t:'11:02',app:'终端',via:'快捷键',in:'{"name":"qduo","version":"26.10.19","features":["wheel","capsule"]}',
+  out:{type:'text',deliver:'replace',delivered:'replaced',mono:1,text:'{\n  "name" : "qduo",\n  "version" : "26.10.19",\n  "features" : [\n    "wheel",\n    "capsule"\n  ]\n}'},status:'ok'},
+ {id:6,a:'explain',day:'今天',t:'10:41',app:'Safari',via:'选中文字',in:'推测解码',
+  out:{type:'text',deliver:'panel',delivered:'viewed',text:'推测解码是一种让大模型生成更快的技术：先让一个小模型快速"猜"出接下来几个字，再让大模型一次性检查这些猜测，猜对的直接采用，猜错的从出错处重新生成。'},eng:'DeepSeek · deepseek-v4-flash',ms:1610,status:'ok'},
+ {id:7,a:'translate',day:'今天',t:'10:39',app:'Safari',via:'选中文字',in:'推测解码',
+  out:{type:'text',deliver:'panel',delivered:'viewed',text:'Speculative decoding'},eng:'DeepSeek · deepseek-v4-flash',ms:410,status:'ok'},
+ {id:8,a:'sysTranslate',day:'昨天',t:'22:15',app:'微信',via:'选中文字',in:'明日の会議は午後三時からに変更になりました。',
+  out:{type:'text',deliver:'panel',delivered:'viewed',text:'明天的会议改到下午三点开始了。',from:'日语',to:'简体中文'},eng:'macOS 本机翻译',ms:300,status:'ok'},
+ {id:9,a:'quickLook',day:'昨天',t:'18:30',app:'终端',via:'选中文字',in:'~/Code/qduo/design/compare-replace-options.html',
+  out:{type:'file',path:'/Users/joey/Code/qduo/design/compare-replace-options.html',isDir:false,exists:true},status:'ok'},
+ {id:10,a:'translate',day:'昨天',t:'16:02',app:'预览',via:'截图识字',in:'Attention is all you need.',
+  out:{type:'message',text:'⚠️ 没有可用的 API key：请到「AI 模型」里为 DeepSeek 填写 key。'},status:'error'},
+ {id:11,a:'wc',day:'昨天',t:'15:10',app:'VS Code',via:'快捷键',in:'line one\nline two\nline three',
+  out:{type:'message',text:'⚠️ 脚本退出，状态码 127',stderr:'zsh: command not found: wcc'},status:'error'},
+ {id:12,a:'count',day:'昨天',t:'11:47',app:'Pages',via:'选中文字',in:'Small habits, repeated daily, quietly compound into the biggest changes of your life.',
+  out:{type:'message',text:'字符：86\n不含空格：74\n单词：14\n行：1'},status:'ok'},
+ {id:13,a:'saveNote',day:'9月29日',t:'20:20',app:'Safari',via:'选中文字',in:'读书笔记：习惯的复利效应，每天进步 1%，一年后是 37 倍。',
+  out:{type:'silent',note:'快捷指令运行成功，没有输出'},status:'ok'},
+ {id:14,a:'grammar',day:'9月29日',t:'17:03',app:'Mail',via:'选中文字',in:'I has send the report yesterday, please check it when you has time.',
+  out:{type:'text',deliver:'compare',delivered:'failed',text:'I sent the report yesterday; please check it when you have time.'},eng:'Qwen · qwen-plus',ms:1120,status:'ok'},
+ {id:15,a:'webPreview',day:'9月29日',t:'09:12',app:'Telegram',via:'选中文字',in:'https://github.com/XueshiQiao/qduo/issues/12',
+  out:{type:'link',url:'https://github.com/XueshiQiao/qduo/issues/12',target:'小浏览器',site:'GitHub'},status:'ok'},
+ {id:16,a:'imageGen',day:'9月28日',t:'21:40',app:'Figma',via:'选中文字',in:'一只在月光下看书的橘猫，水彩风格',
+  out:{type:'image',raw:{file:'~/Library/Application Support/QDuo/history/blobs/9f2c.png',size:'1024×1024',model:'some-image-model'}},status:'ok'},
+];
+const ICON_BG=a=>ACTIONS[a].color;
+
+// ---------- diff (token LCS: CJK per char, latin by word) ----------
+function tok(s){return s.match(/[぀-ヿ㐀-鿿＀-￯]|[A-Za-z0-9']+|\s+|./g)||[];}
+function diff(a,b){const A=tok(a),B=tok(b),n=A.length,m=B.length;const d=Array.from({length:n+1},()=>new Int16Array(m+1));
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)d[i][j]=A[i]===B[j]?d[i+1][j+1]+1:Math.max(d[i+1][j],d[i][j+1]);
+  let i=0,j=0,o='';while(i<n&&j<m){if(A[i]===B[j]){o+=esc(A[i]);i++;j++;}else if(d[i+1][j]>=d[i][j+1]){o+=`<span class="del">${esc(A[i++])}</span>`;}else{o+=`<span class="ins">${esc(B[j++])}</span>`;}}
+  while(i<n)o+=`<span class="del">${esc(A[i++])}</span>`;while(j<m)o+=`<span class="ins">${esc(B[j++])}</span>`;return o;}
+
+// ---------- renderer registry: outcome.type → {summary, body, replays} ----------
+const C={free:'<span class="c free">免费</span>',paid:'<span class="c paid">花钱</span>'};
+function btn(label,msg,cost,prim){return `<button class="btn ${prim?'prim':''}" data-msg="${esc(msg)}">${label}${cost?C[cost]:''}</button>`;}
+function isPaid(r){const k=ACTIONS[r.a].kind;return k==='ai'?'paid':'free';}
+const DELIVER={viewed:['只在面板里看了','st-info'],replaced:['已替换回原文','st-ok'],pasted:['已粘贴','st-ok'],failed:['替换失败（原 app 不接受写入）','st-warn']};
+const RENDER={
+  text:{
+    summary:r=>r.out.text.replace(/\n/g,' '),
+    body:(r,ver)=>{const o=r.out;const text=ver!=null?r.versions[ver].text:o.text;let h='';
+      if(o.from)return `<div class="bi"><div><div class="lang">${o.from}</div>${esc(r.in)}</div><div><div class="lang">${o.to}</div>${esc(text)}</div></div>`;
+      if(o.deliver==='compare')return `<div class="lbl">修改对比（打开时现算，不另存）</div><div class="txt">${diff(r.in,text)}</div>`;
+      if(o.mono)return `<div class="lbl">结果</div><div class="txt mono">${esc(text)}</div>`;
+      return `<div class="lbl">结果</div><div class="txt">${esc(text)}</div>`;},
+    replays:r=>{const p=isPaid(r);const k=ACTIONS[r.a].kind;return [
+      btn('复制结果','把这条结果复制到剪贴板（本地，不重新生成）','free',1),
+      btn('替换到当前选区','把结果写进你「现在」选中的文字位置，走原来的 ReplaceWriter','free'),
+      btn('重跑',k==='ai'?'用同一段原文、同一个动作再调一次模型；新结果存成 v'+((r.versions||[1]).length+1)+'，可以和旧版本切换对比':'本地重新计算一次，结果相同就不新增版本',p),
+      k==='ai'?btn('换个模型重跑…','弹出模型列表；选完后重跑，结果作为新版本挂在这条下面','paid'):'',
+    ].join('');}},
+  speech:{
+    summary:r=>'🔊 '+r.out.reader+' · '+r.out.secs+' 秒',
+    body:r=>{const words=r.in.split(/(\s+)/);const bars=Array.from({length:46},(_,i)=>`<i style="height:${6+Math.round(18*Math.abs(Math.sin(i*1.7)*Math.cos(i*.6)))}px"></i>`).join('');
+      return `<div class="lbl">朗读回放（播放时逐词高亮，时间戳来自本地缓存）</div><div class="player"><button class="play" data-play="${r.id}">▶</button><div class="wave">${bars}</div><span style="font-size:11px;color:var(--sub)">0:0${r.out.secs}</span></div>
+      <div class="txt" style="margin-top:8px" data-words="${r.id}">${words.map(w=>/\s/.test(w)?w:`<span class="w">${esc(w)}</span>`).join('')}</div>`;},
+    replays:r=>[btn('播放','缓存还在：直接播放本地音频，不联网','free',1),btn('用别的声音重读…','换一个朗读者，重新合成','paid'),btn('复制原文','复制这段被朗读的文字','free')].join('')},
+  link:{
+    summary:r=>r.out.site+' · '+decodeURIComponent(r.out.url).replace(/^https?:\/\//,''),
+    body:r=>`<div class="lbl">打开的链接（当时在${r.out.target}打开）</div><div class="linkcard"><div class="fav">${r.out.site[0]}</div><div><b>${r.out.site}</b><div class="u">${esc(decodeURIComponent(r.out.url))}</div></div></div>`,
+    replays:r=>[btn('在浏览器打开','用默认浏览器打开这个地址','free',1),btn('在小浏览器打开','在 QDuo 的浮动小浏览器里打开','free'),btn('复制链接','复制地址','free')].join('')},
+  file:{
+    summary:r=>r.out.path.replace('/Users/joey','~'),
+    body:r=>`<div class="lbl">文件</div><div class="linkcard"><div class="fav">${r.out.isDir?'📁':'📄'}</div><div><b>${esc(r.out.path.split('/').pop())}</b><div class="u" style="color:var(--sub)">${esc(r.out.path.replace('/Users/joey','~'))}</div></div><span class="status ${r.out.exists?'st-ok':'st-err'}" style="margin-left:auto">${r.out.exists?'文件还在':'文件已不存在'}</span></div>`,
+    replays:r=>[btn('再预览一次','用 Quick Look 打开这个文件','free',1),btn('在 Finder 中显示','在 Finder 里选中它','free')].join('')},
+  message:{
+    summary:r=>r.out.text.replace(/\n/g,' · ').replace('⚠️ ',''),
+    body:r=>`<div class="lbl">${r.status==='error'?'出错信息':'报告'}</div><div class="txt ${r.status==='error'?'errt':''}">${esc(r.out.text)}${r.out.stderr?`\n\n<span style="font-family:ui-monospace,Menlo,monospace;font-size:12px">${esc(r.out.stderr)}</span>`:''}</div>`,
+    replays:r=>r.status==='error'?[btn('重试','修好问题后再跑一次（比如已经填好了 API key）',isPaid(r),1),r.a==='translate'?btn('去「AI 模型」设置','打开设置窗口的 AI 模型页',''):btn('编辑这个动作','打开动作编辑器，改脚本',''),btn('复制原文','复制原文','free')].join(''):[btn('复制报告','复制这段统计','free',1),btn('重跑','本地重新统计','free')].join('')},
+  silent:{
+    summary:r=>r.out.note,
+    body:r=>`<div class="lbl">结果</div><div class="txt" style="color:var(--sub)">${esc(r.out.note)}</div>`,
+    replays:r=>[btn('再运行一次','重新运行这个快捷指令（它可能会再存一条备忘录）','free',1),btn('复制原文','复制原文','free')].join('')},
+  // fallback for any outcome type this build has no renderer for
+  _generic:{
+    summary:r=>'（新版本的结果类型「'+r.out.type+'」）',
+    body:r=>`<div class="changed">这条记录是更新版本的 QDuo 写的，结果类型「${esc(r.out.type)}」这个版本还不认识。原始内容完整保留，下面照原样显示；升级后会用专门的样式展示。</div><div class="lbl">原始字段</div><pre>${esc(JSON.stringify(r.out.raw,null,2))}</pre>`,
+    replays:r=>[btn('复制原文','复制原文','free',1),btn('重跑（不可用）','这个动作种类本版本不认识，不能重跑——和现在动作列表里「需要新版本」的动作是同一个处理','')].join('')},
+};
+const rend=r=>RENDER[r.out.type]||RENDER._generic;
+const statusPill=r=>r.status==='error'?'<span class="status st-err">出错</span>':(r.out.delivered&&r.out.delivered!=='viewed'?`<span class="status ${DELIVER[r.out.delivered][1]}">${DELIVER[r.out.delivered][0]}</span>`:'');
+
+function detailHTML(r,ver){const A=ACTIONS[r.a];const R_=rend(r);
+  const vers=r.versions?`<div class="vers" data-vers="${r.id}">${r.versions.map((v,i)=>`<span class="${i===(ver??0)?'on':''}" data-v="${i}">${v.label}</span>`).join('')}</div>`:'';
+  return `<div class="dh"><span class="aic" style="background:${A.color}">${A.icon}</span><h4>${esc(A.title)}</h4>${statusPill(r)}${vers}</div>
+  <div class="meta"><span>${r.day} ${r.t}</span><span>来自 ${r.app}</span><span>${r.via}</span>${r.eng?`<span>${r.eng}</span>`:''}${r.ms?`<span>${(r.ms/1000).toFixed(1)} 秒</span>`:''}</div>
+  ${r.out.type==='text'&&r.out.from?'':`<div class="lbl">原文</div><div class="txt">${esc(r.in)}</div>`}
+  ${R_.body(r,r.versions?(ver??0):null)}
+  ${r.id===1?'<div class="changed">「翻译」这个动作的 prompt 在这条记录之后被你改过。重跑默认用现在的设置；<a href="#" data-msg="用这条记录里保存的旧 prompt 重跑">改用当时的设置</a>。</div>':''}
+  <div class="acts">${R_.replays(r)}${r.out.type!=='_'?btn('🗑 删除这条','只删这一条记录',''):''}</div>`;}
+
+// ---------- event delegation for buttons / versions / play ----------
+let playing=null;
+document.addEventListener('click',e=>{
+  const m=e.target.closest('[data-msg]');if(m){e.preventDefault();toast('原型：'+m.dataset.msg);return;}
+  const v=e.target.closest('[data-v]');if(v){const host=v.closest('[data-vers]');const id=+host.dataset.vers;const r=R.find(x=>x.id===id);const box=host.closest('.detail,.fcard,.ws-panel');
+    if(box){box.dataset.ver=v.dataset.v;rerenderBox(box,r,+v.dataset.v);}return;}
+  const p=e.target.closest('[data-play]');if(p){playSpeech(p);}
+});
+function playSpeech(btnEl){const id=btnEl.dataset.play;const host=btnEl.closest('.detail,.fcard,.ws-panel')||document;const words=[...host.querySelectorAll(`[data-words="${id}"] .w`)];const bars=[...btnEl.parentElement.querySelectorAll('.wave i')];
+  if(playing){clearInterval(playing.t);playing.btn.textContent='▶';playing.words.forEach(w=>w.classList.remove('hl'));playing.bars.forEach(b=>b.classList.remove('p'));if(playing.btn===btnEl){playing=null;return;}}
+  let i=0;btnEl.textContent='❚❚';playing={btn:btnEl,words,bars,t:setInterval(()=>{words.forEach((w,k)=>w.classList.toggle('hl',k===i));const f=(i+1)/words.length;bars.forEach((b,k)=>b.classList.toggle('p',k/bars.length<f));i++;
+    if(i>words.length){clearInterval(playing.t);btnEl.textContent='▶';words.forEach(w=>w.classList.remove('hl'));playing=null;}},420)};}
+function rerenderBox(box,r,ver){if(box.classList.contains('detail'))box.innerHTML=detailHTML(r,ver);else if(box.classList.contains('fcard'))box.outerHTML=cardHTML(r,ver);else box.innerHTML=wsPanelHTML(r,ver);}
+
+function matchQ(r,q){if(!q)return true;q=q.toLowerCase();return (r.in+' '+(r.out.text||'')+' '+ACTIONS[r.a].title).toLowerCase().includes(q);}
+function chipsHTML(el,state,counts,onPick){el.innerHTML=FILTERS.map(([k,l])=>`<button class="chip ${state.f===k?'on':''}" data-f="${k}">${l}<span class="n">${counts[k]||0}</span></button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('[data-f]');if(b){state.f=b.dataset.f;onPick();}};}
+function counts(){const c={all:R.length};R.forEach(r=>{const k=cat(r);c[k]=(c[k]||0)+1;});return c;}
+
+// ---------- Option A ----------
+const SA={f:'all',q:'',app:'',sel:1};
+const apps=[...new Set(R.map(r=>r.app))];
+document.getElementById('a-app').innerHTML='<option value="">所有 app</option>'+apps.map(a=>`<option>${a}</option>`).join('');
+document.getElementById('a-app').onchange=e=>{SA.app=e.target.value;drawA();};
+document.getElementById('a-q').oninput=e=>{SA.q=e.target.value;drawA();};
+function drawA(){chipsHTML(document.getElementById('a-chips'),SA,counts(),drawA);
+  const rows=R.filter(r=>(SA.f==='all'||cat(r)===SA.f)&&(!SA.app||r.app===SA.app)&&matchQ(r,SA.q));
+  let h='',day='';rows.forEach(r=>{if(r.day!==day){day=r.day;h+=`<div class="day">${day}</div>`;}const A=ACTIONS[r.a];
+    h+=`<div class="item ${r.id===SA.sel?'on':''}" data-id="${r.id}"><span class="aic" style="background:${A.color}">${A.icon}</span><div class="mid"><div class="l1"><b>${esc(A.title)}</b>${r.status==='error'?'<span class="status st-err">出错</span>':''}<span class="tm">${r.t}</span></div><div class="l2">${esc(r.in.replace(/\n/g,' '))}</div><div class="l3">→ ${esc(rend(r).summary(r))}</div></div></div>`;});
+  const list=document.getElementById('a-list');list.innerHTML=h||'<div class="empty">没有匹配的记录</div>';
+  list.onclick=e=>{const it=e.target.closest('[data-id]');if(it){SA.sel=+it.dataset.id;drawA();}};
+  const r=R.find(x=>x.id===SA.sel)&&rows.find(x=>x.id===SA.sel)?R.find(x=>x.id===SA.sel):rows[0];
+  document.getElementById('a-detail').innerHTML=r?detailHTML(r):'<div class="empty">选择左侧一条记录</div>';}
+drawA();
+
+// ---------- Option B ----------
+const SB={f:'all',q:''};
+document.getElementById('b-q').oninput=e=>{SB.q=e.target.value;drawB();};
+function cardBody(r,ver){const o=r.out;const text=ver!=null&&r.versions?r.versions[ver].text:o.text;
+  if(o.type==='text'){if(o.from)return RENDER.text.body(r);
+    if(o.deliver==='compare')return `<div class="out">${diff(r.in,text)}</div>`;
+    if(r.a==='translate')return `<div class="bi"><div><div class="lang">原文</div>${esc(r.in)}</div><div><div class="lang">译文</div>${esc(text)}</div></div>`;
+    return `<div class="src">${esc(r.in)}</div><div class="out" ${o.mono?'style="font:12px/1.5 ui-monospace,Menlo,monospace"':''}>${esc(text)}</div>`;}
+  if(o.type==='speech')return RENDER.speech.body(r).replace('<div class="lbl">朗读回放（播放时逐词高亮，时间戳来自本地缓存）</div>','');
+  if(o.type==='link'||o.type==='file')return `<div class="src">${esc(r.in)}</div>`+rend(r).body(r).replace(/<div class="lbl">.*?<\/div>/,'');
+  return `<div class="src">${esc(r.in)}</div>`+rend(r).body(r).replace(/<div class="lbl">.*?<\/div>/,'');}
+function cardHTML(r,ver){const A=ACTIONS[r.a];const vers=r.versions?`<div class="vers" data-vers="${r.id}">${r.versions.map((v,i)=>`<span class="${i===(ver??0)?'on':''}" data-v="${i}">${v.label}</span>`).join('')}</div>`:'';
+  return `<div class="fcard" data-ver="${ver??0}"><div class="fh"><span class="aic" style="background:${A.color};width:22px;height:22px;font-size:11px">${A.icon}</span><b>${esc(A.title)}</b>${statusPill(r)}<span style="font-size:11px;color:var(--faint)">${r.app}${r.eng?' · '+r.eng:''}</span>${vers}<span class="tm">${r.t}</span></div>${cardBody(r,r.versions?(ver??0):null)}<div class="acts">${rend(r).replays(r)}</div></div>`;}
+function drawB(){chipsHTML(document.getElementById('b-chips'),SB,counts(),drawB);
+  const rows=R.filter(r=>(SB.f==='all'||cat(r)===SB.f)&&matchQ(r,SB.q));let h='',day='';
+  rows.forEach(r=>{if(r.day!==day){day=r.day;h+=`<div class="day" style="padding-left:2px">${day}</div>`;}h+=cardHTML(r);});
+  document.getElementById('b-feed').innerHTML=h||'<div class="empty">没有匹配的记录</div>';}
+drawB();
+
+// ---------- Option C ----------
+const SC={q:'',sel:null,tab:null};
+const norm=s=>s.trim();
+function groups(){const m=new Map();R.forEach(r=>{const k=norm(r.in);if(!m.has(k))m.set(k,[]);m.get(k).push(r);});return [...m.entries()].map(([k,rs])=>({k,rs}));}
+document.getElementById('c-q').oninput=e=>{SC.q=e.target.value;drawC();};
+function wsPanelHTML(r,ver){const R_=rend(r);const vers=r.versions?`<div class="vers" data-vers="${r.id}" style="margin:0 0 0 auto">${r.versions.map((v,i)=>`<span class="${i===(ver??0)?'on':''}" data-v="${i}">${v.label}</span>`).join('')}</div>`:'';
+  const body=R_.body(r,r.versions?(ver??0):null);
+  return `<div class="meta" style="margin-top:10px;align-items:center"><span>${r.day} ${r.t}</span><span>来自 ${r.app}</span>${r.eng?`<span>${r.eng}</span>`:''}${statusPill(r)}${vers}</div>${body}<div class="acts">${R_.replays(r)}</div>`;}
+function drawC(){const gs=groups().filter(g=>!SC.q||g.rs.some(r=>matchQ(r,SC.q)));
+  document.getElementById('c-count').textContent=`${gs.length} 段原文 · ${R.length} 次处理`;
+  if(!SC.sel||!gs.find(g=>g.k===SC.sel))SC.sel=(gs.find(g=>g.k==='推测解码')||gs[0]||{}).k;
+  document.getElementById('c-list').innerHTML=gs.map(g=>`<div class="titem ${g.k===SC.sel?'on':''}" data-k="${esc(g.k)}"><div class="q">${esc(g.k)}</div><div class="ics">${g.rs.map(r=>`<span class="m" style="background:${ACTIONS[r.a].color}" title="${esc(ACTIONS[r.a].title)}">${ACTIONS[r.a].icon}</span>`).join('')}<span class="tm">${g.rs[0].day} ${g.rs[0].t}</span></div></div>`).join('')||'<div class="empty">没有匹配</div>';
+  document.getElementById('c-list').onclick=e=>{const it=e.target.closest('[data-k]');if(it){SC.sel=it.dataset.k;SC.tab=null;drawC();}};
+  const g=gs.find(x=>x.k===SC.sel);const ws=document.getElementById('c-ws');if(!g){ws.innerHTML='';return;}
+  const byA=new Map();g.rs.forEach(r=>{if(!byA.has(r.a))byA.set(r.a,[]);byA.get(r.a).push(r);});
+  if(!SC.tab||!byA.has(SC.tab))SC.tab=[...byA.keys()][0];
+  const cur=byA.get(SC.tab)[0];
+  const others=Object.entries(ACTIONS).filter(([k,a])=>!byA.has(k)&&!a.unknown&&['ai','systemTranslate','speak','openURL','transform'].includes(a.kind)).slice(0,7);
+  ws.innerHTML=`<div class="lbl" style="margin-top:0">原文 · 第一次出现在 ${g.rs[g.rs.length-1].app}</div><div class="orig">${esc(g.k)}</div>
+   <div class="atabs">${[...byA.entries()].map(([k,rs])=>`<button class="atab ${k===SC.tab?'on':''}" data-tab="${k}"><span class="aic" style="background:${ACTIONS[k].color};width:16px;height:16px;font-size:9px;border-radius:4px">${ACTIONS[k].icon}</span>${esc(ACTIONS[k].title)}${(cur.versions&&k===SC.tab)||rs.length>1?`<span class="cnt">${cur.versions&&k===SC.tab?cur.versions.length:rs.length} 版</span>`:''}</button>`).join('')}</div>
+   <div class="ws-panel">${wsPanelHTML(cur)}</div>
+   <div class="runwith"><span class="h">用其他动作处理这段原文：</span>${others.map(([k,a])=>`<button class="btn" data-msg="拿这段原文直接运行「${esc(a.title)}」，结果作为新页签加进来${a.kind==='ai'?'（会调用模型，花钱）':''}"><span class="aic" style="background:${a.color};width:16px;height:16px;font-size:9px;border-radius:4px">${a.icon}</span>${esc(a.title)}${a.kind==='ai'?C.paid:C.free}</button>`).join('')}</div>`;
+  ws.querySelectorAll('.atab').forEach(b=>b.onclick=()=>{SC.tab=b.dataset.tab;drawC();});}
+drawC();
+</script>
+</body>
+</html>

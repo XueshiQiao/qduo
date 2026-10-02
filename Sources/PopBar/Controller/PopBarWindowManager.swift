@@ -79,17 +79,19 @@ final class PopBarWindowManager {
     /// Refresh the transient window's captured selection in place (double→triple-
     /// click growing the same selection). No hide/reposition → no flicker, so the
     /// window's anchor is left untouched (it stays where it was placed).
-    func refreshTransientSelection(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil) {
+    func refreshTransientSelection(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil,
+                                   origin: HistoryOrigin? = nil) {
         guard transient.isShowingActions else { return }
-        transient.refreshSelection(text: text, url: url, source: source, element: element)
+        transient.refreshSelection(text: text, url: url, source: source, element: element, origin: origin)
     }
 
     /// Show (or recycle) the transient window for a new selection. Works regardless
     /// of how many pinned windows exist.
     func showTransient(text: String, url: URL?, source: SelectionSource? = nil, element: AXUIElement? = nil,
-                       anchor: CGPoint, actions: [PopBarActionConfig]) {
+                       anchor: CGPoint, actions: [PopBarActionConfig], origin: HistoryOrigin? = nil) {
         let placed = offsetAwayFromPinned(anchor)
-        transient.show(text: text, url: url, source: source, element: element, anchor: placed, actions: actions)
+        transient.show(text: text, url: url, source: source, element: element, anchor: placed, actions: actions,
+                       origin: origin)
     }
 
     /// Dismiss the transient window (outside click / auto-dismiss). Pinned windows

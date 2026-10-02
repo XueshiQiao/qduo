@@ -335,6 +335,7 @@ final class PopBarController {
         Self.log.debug("trigger (\(source == .gesture ? "selection" : "hotkey")) — front=\(front?.bundleIdentifier ?? front?.localizedName ?? "nil") inPlace=\(inPlace) resolvesLinks=\(resolvesLinks)")
 
         let isHotKey = source == .hotKey
+        let origin = HistoryOrigin(trigger: isHotKey ? .hotkey : .selection, app: front)
         resolveTask?.cancel()
         resolveGeneration &+= 1
         let generation = resolveGeneration
@@ -387,11 +388,12 @@ final class PopBarController {
                     // its placed anchor stays put. `lastAnchor` still tracks the raw
                     // selection location for the NEXT re-trigger's proximity check.
                     self.lastAnchor = loc
-                    self.windows.refreshTransientSelection(text: result.text, url: url, source: source, element: focused)
+                    self.windows.refreshTransientSelection(text: result.text, url: url, source: source, element: focused,
+                                                           origin: origin)
                 } else {
                     self.lastAnchor = loc
                     self.windows.showTransient(text: result.text, url: url, source: source, element: focused, anchor: loc,
-                                               actions: self.actionStore.actions)
+                                               actions: self.actionStore.actions, origin: origin)
                 }
             }
         }

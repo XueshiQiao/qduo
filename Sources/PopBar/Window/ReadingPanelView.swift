@@ -10,69 +10,81 @@ struct ReadingPanelView: View {
     let width: CGFloat
     let fixedHeight: CGFloat
 
-    /// Where each line of the text sits, to keep the one being read in view.
-    @State private var lines = ReadingLines()
-
-    /// The word highlighted before the current one, and a counter that ticks once
-    /// per word. The renderer slides the pill from the previous word to the
-    /// current one as the counter animates up by one.
-    @State private var previousHighlight: NSRange?
-    @State private var lastHighlight: NSRange?
-    @State private var highlightStep: Double = 0
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             toolbar
-            status
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        textBody
-                        Color.clear.frame(height: 1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    // Room for the highlight's margin, so a word at a line's start or
-                    // on the first line isn't clipped by the scroll view's edge. The
-                    // frame below widens by the same amount and is pulled back, so
-                    // the text itself stays exactly where it was.
-                    .padding(.horizontal, WordHighlight.padX)
-                    .padding(.vertical, WordHighlight.padY)
-                    .background(GeometryReader { geo in
-                        Color.clear.preference(key: ResultContentHeightKey.self, value: geo.size.height)
-                    })
-                }
-                .frame(width: width + 2 * WordHighlight.padX, height: height)
-                .padding(.horizontal, -WordHighlight.padX)
-                .padding(.vertical, -WordHighlight.padY)
-                .onPreferenceChange(ResultContentHeightKey.self) { model.onMeasuredContentHeight?($0) }
-                .onChange(of: playback.highlight) { hit in
-                    previousHighlight = lastHighlight
-                    lastHighlight = hit
-                    withAnimation(WordHighlight.slide) { highlightStep += 1 }
-                }
-                .onChange(of: currentLine?.minY) { _ in
-                    guard currentLine != nil else { return }
-                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(Self.lineAnchor, anchor: .center) }
-                }
+            if ReadingStatus.hasContent(playback) {
+                ReadingStatus(playback: playback, width: width)
             }
+            ReadingText(playback: playback, width: width, height: height,
+                        fontSize: model.resultFontSize, style: model.readingHighlight,
+                        onMeasuredHeight: { model.onMeasuredContentHeight?($0) })
         }
         .padding(ResultTextStyle.insets)
     }
-
-    // MARK: - Pieces
 
     private var toolbar: some View {
         HStack(spacing: 4) {
             ChromeButton(symbol: model.isPinned ? "pin.fill" : "pin",
                          help: L(model.isPinned ? "popbar.unpin" : "popbar.pin"),
                          active: model.isPinned) { model.onTogglePin?() }
+            ReadingReaderLabel(playback: playback)
+                .padding(.leading, 4)
+            Spacer()
+            ReadingPlaybackButtons(playback: playback)
+            CopyButton { model.onCopyResult?(playback.text) }
+            ChromeButton(symbol: "xmark", help: L("popbar.close")) { model.onClose?() }
+        }
+    }
+
+    private var height: CGFloat {
+        guard model.autoExpandHeight else { return max(fixedHeight, 160) }
+        return model.resultContentHeight ?? max(fixedHeight, 160)
+    }
+}
+
+// MARK: - Shared pieces
+//
+// The reading window is assembled from these, and so is the History page's
+// replay of a read: the two must look and behave the same.
+
+/// The reader's name and the short, passing states beside it (preparing, from
+/// the cache) — in the toolbar, so the text below never moves when they come
+/// and go.
+struct ReadingReaderLabel: View {
+    @ObservedObject var playback: SpeechPlayback
+
+    var body: some View {
+        HStack(spacing: 4) {
             Label(playback.reader.name, systemImage: "speaker.wave.2")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .padding(.leading, 4)
-            toolbarStatus
-            Spacer()
+            switch playback.state {
+            case .preparing:
+                HStack(spacing: 4) {
+                    ProgressView().controlSize(.mini)
+                    Text(L("speech.preparing"))
+                }
+                .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+            case .playing, .paused, .finished:
+                if playback.fromCache {
+                    Text("· " + L("speech.fromCache"))
+                        .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                }
+            default:
+                EmptyView()
+            }
+        }
+    }
+}
+
+/// Pause / resume while it reads, and read again from the start.
+struct ReadingPlaybackButtons: View {
+    @ObservedObject var playback: SpeechPlayback
+
+    var body: some View {
+        HStack(spacing: 4) {
             switch playback.state {
             case .playing:
                 ChromeButton(symbol: "pause.fill", help: L("speech.pause")) { playback.togglePause() }
@@ -82,36 +94,25 @@ struct ReadingPanelView: View {
                 EmptyView()
             }
             ChromeButton(symbol: "arrow.counterclockwise", help: L("speech.replay")) { playback.replay() }
-            CopyButton { model.onCopyResult?(playback.text) }
-            ChromeButton(symbol: "xmark", help: L("popbar.close")) { model.onClose?() }
         }
     }
+}
 
-    /// Short, passing states sit in the toolbar next to the reader's name, so
-    /// the text below never moves when they come and go.
-    @ViewBuilder
-    private var toolbarStatus: some View {
-        switch playback.state {
-        case .preparing:
-            HStack(spacing: 4) {
-                ProgressView().controlSize(.mini)
-                Text(L("speech.preparing"))
-            }
-            .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-        case .playing, .paused, .finished:
-            if playback.fromCache {
-                Text("· " + L("speech.fromCache"))
-                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-            }
-        default:
-            EmptyView()
-        }
+/// What stays for the whole read: a failure (with Retry) or the text being
+/// cut short — known from the start, so it does not appear mid-read.
+struct ReadingStatus: View {
+    @ObservedObject var playback: SpeechPlayback
+    /// A fixed width to lay out in; nil = the width offered.
+    var width: CGFloat?
+
+    /// Whether there is anything to show. Callers include the view only then,
+    /// so an empty one never takes a slot (and a gap) in their stack.
+    static func hasContent(_ playback: SpeechPlayback) -> Bool {
+        if case .failed = playback.state { return true }
+        return playback.wasTruncated
     }
 
-    /// What stays for the whole read: a failure (with Retry) or the text being
-    /// cut short — known from the start, so it does not appear mid-read.
-    @ViewBuilder
-    private var status: some View {
+    var body: some View {
         if case .failed(let message) = playback.state {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -124,25 +125,78 @@ struct ReadingPanelView: View {
             }
             .frame(width: width)
         } else if playback.wasTruncated {
-            note(String(format: L("speech.truncated"), SpeechPlayback.maxCharacters))
+            Label(String(format: L("speech.truncated"), SpeechPlayback.maxCharacters), systemImage: "info.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: width, alignment: .leading)
         }
     }
+}
 
-    private func note(_ text: String) -> some View {
-        Label(text, systemImage: "info.circle")
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(width: width, alignment: .leading)
+/// The whole text being read, with the word being spoken highlighted and its
+/// line kept in view.
+struct ReadingText: View {
+    @ObservedObject var playback: SpeechPlayback
+    let width: CGFloat
+    let height: CGFloat
+    let fontSize: Double
+    let style: ReadingHighlightStyle
+    /// The text's natural height, for an owner that sizes to fit it.
+    var onMeasuredHeight: ((CGFloat) -> Void)?
+
+    /// Where each line of the text sits, to keep the one being read in view.
+    @State private var lines = ReadingLines()
+
+    /// The word highlighted before the current one, and a counter that ticks once
+    /// per word. The renderer slides the pill from the previous word to the
+    /// current one as the counter animates up by one.
+    @State private var previousHighlight: NSRange?
+    @State private var lastHighlight: NSRange?
+    @State private var highlightStep: Double = 0
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    textBody
+                    Color.clear.frame(height: 1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // Room for the highlight's margin, so a word at a line's start or
+                // on the first line isn't clipped by the scroll view's edge. The
+                // frame below widens by the same amount and is pulled back, so
+                // the text itself stays exactly where it was.
+                .padding(.horizontal, WordHighlight.padX)
+                .padding(.vertical, WordHighlight.padY)
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: ResultContentHeightKey.self, value: geo.size.height)
+                })
+            }
+            .frame(width: width + 2 * WordHighlight.padX, height: height)
+            .padding(.horizontal, -WordHighlight.padX)
+            .padding(.vertical, -WordHighlight.padY)
+            .onPreferenceChange(ResultContentHeightKey.self) { onMeasuredHeight?($0) }
+            .onChange(of: playback.highlight) { hit in
+                previousHighlight = lastHighlight
+                lastHighlight = hit
+                withAnimation(WordHighlight.slide) { highlightStep += 1 }
+            }
+            .onChange(of: currentLine?.minY) { _ in
+                guard currentLine != nil else { return }
+                withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(Self.lineAnchor, anchor: .center) }
+            }
+        }
     }
 
     /// The text exactly as it is read — one Text, so its own line breaks are
     /// the only ones. The sentences it is sent to the voice in never show here.
     private var textBody: some View {
-        spokenText
-            .font(.system(size: model.resultFontSize))
+        SpokenText(text: playback.text, highlight: playback.highlight, previous: previousHighlight,
+                   step: highlightStep, style: style)
+            .font(.system(size: fontSize))
             .foregroundStyle(Color.primary.opacity(ResultTextStyle.inkOpacity))
-            .lineSpacing(model.resultFontSize * ResultTextStyle.lineSpacingEm)
+            .lineSpacing(fontSize * ResultTextStyle.lineSpacingEm)
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
@@ -158,19 +212,37 @@ struct ReadingPanelView: View {
 
     private static let lineAnchor = "reading.currentLine"
 
-    /// The whole text, with the spoken word marked. The word keeps the same font,
-    /// weight and colour as the rest: only a shape is drawn behind it, so nothing
-    /// in the line moves as the highlight walks.
-    @ViewBuilder
-    private var spokenText: some View {
-        let text = playback.text
-        if let hit = playback.highlight, hit.length > 0, let r = Range(hit, in: text) {
+    /// The line the spoken word is on, in the text's own coordinates.
+    private var currentLine: ReadingLines.Line? {
+        guard let hit = playback.highlight else { return nil }
+        return lines.line(at: hit.location, text: playback.text, width: width,
+                          fontSize: fontSize,
+                          lineSpacing: fontSize * ResultTextStyle.lineSpacingEm)
+    }
+}
+
+/// A text being read aloud, with the spoken word marked. The word keeps the
+/// same font, weight and colour as the rest: only a shape is drawn behind it,
+/// so nothing in the line moves as the highlight walks. Shared by the reading
+/// window and the History page's replay, so both look alike.
+///
+/// `previous` and `step` drive the slide from the last word to this one: the
+/// owner bumps `step` by one, animated, on every new highlight.
+struct SpokenText: View {
+    let text: String
+    let highlight: NSRange?
+    let previous: NSRange?
+    let step: Double
+    let style: ReadingHighlightStyle
+
+    var body: some View {
+        if let hit = highlight, hit.length > 0, let r = Range(hit, in: text) {
             if #available(macOS 15, *) {
                 // An empty previous range would slip past the overlap check and
                 // cut the text backwards, so only a real word counts.
-                let previous = previousHighlight.flatMap { $0.length > 0 ? Range($0, in: text) : nil }
+                let previous = previous.flatMap { $0.length > 0 ? Range($0, in: text) : nil }
                 marked(text, current: r, previous: previous)
-                    .textRenderer(renderer(model.readingHighlight))
+                    .textRenderer(WordHighlight.Renderer(style: style, step: step, target: step.rounded(.up)))
             } else {
                 // macOS 13–14 have no text renderer: fall back to a plain
                 // background on the word's own glyphs (no margin, no corners).
@@ -179,11 +251,6 @@ struct ReadingPanelView: View {
         } else {
             Text(verbatim: text)
         }
-    }
-
-    @available(macOS 15, *)
-    private func renderer(_ style: ReadingHighlightStyle) -> WordHighlight.Renderer {
-        WordHighlight.Renderer(style: style, step: highlightStep, target: highlightStep.rounded(.up))
     }
 
     /// The text as one Text, with the current word (and the previous one, when
@@ -215,19 +282,6 @@ struct ReadingPanelView: View {
         var result = AttributedString(piece)
         if let a = Range(r, in: result) { result[a].backgroundColor = WordHighlight.fill }
         return result
-    }
-
-    /// The line the spoken word is on, in the text's own coordinates.
-    private var currentLine: ReadingLines.Line? {
-        guard let hit = playback.highlight else { return nil }
-        return lines.line(at: hit.location, text: playback.text, width: width,
-                          fontSize: model.resultFontSize,
-                          lineSpacing: model.resultFontSize * ResultTextStyle.lineSpacingEm)
-    }
-
-    private var height: CGFloat {
-        guard model.autoExpandHeight else { return max(fixedHeight, 160) }
-        return model.resultContentHeight ?? max(fixedHeight, 160)
     }
 }
 

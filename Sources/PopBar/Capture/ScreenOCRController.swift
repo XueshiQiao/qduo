@@ -108,6 +108,8 @@ final class ScreenOCRController {
         let generation = captureGeneration
         let selector = RegionSelectionController()
         regionSelector = selector
+        // The app being looked at, read before the overlay takes the focus.
+        let origin = HistoryOrigin(trigger: .ocr, app: NSWorkspace.shared.frontmostApplication)
         selector.begin { [weak self] selection in
             guard let self else { return }
             self.regionSelector = nil
@@ -145,7 +147,7 @@ final class ScreenOCRController {
                 }
                 Self.log.info("OCR recognized \(trimmed.count) chars → capsule")
                 self.windows.showTransient(text: trimmed, url: nil, source: .ocr, anchor: anchor,
-                                           actions: self.actionStore.actions)
+                                           actions: self.actionStore.actions, origin: origin)
             }
         }
     }

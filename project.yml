@@ -129,6 +129,8 @@ targets:
       - path: Sources/PopBar/Selection/SelectionIgnoreRules.swift
       - path: Sources/Core/FileLog.swift
       - path: Sources/Core/Config/ConfigSchema.swift
+      - path: Sources/Core/History/HistoryRecord.swift
+      - path: Sources/Core/History/HistoryStore.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

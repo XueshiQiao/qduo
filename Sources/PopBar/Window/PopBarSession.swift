@@ -51,6 +51,13 @@ final class PopBarSession {
     /// selection elsewhere, so a pinned window keeps streaming undisturbed.
     private var actionTask: Task<Void, Never>?
 
+    /// How this popup was opened and over which app, for the history. Nil for
+    /// the onboarding sample and the preview, which are not recorded.
+    private var origin: HistoryOrigin?
+    /// The history record of the action whose result is showing, so what
+    /// becomes of that result (replaced, copied) can be added to it.
+    private var historyTicket: HistoryTicket?
+
     init(llm: LLMService) {
         self.llm = llm
     }
@@ -67,8 +74,10 @@ final class PopBarSession {
     /// Update the captured selection text in place WITHOUT a hide/reposition —
     /// used for an in-place refresh (double→triple-click growing the same
     /// selection). The window doesn't move, so its placement is untouched.
-    func refreshSelection(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil) {
+    func refreshSelection(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil,
+                          origin: HistoryOrigin? = nil) {
         self.text = text
+        self.origin = origin
         self.url = url
         self.source = source
         self.element = element
@@ -82,8 +91,10 @@ final class PopBarSession {
     /// in-flight action in THIS window so its stale tokens can't bleed into the new
     /// popup.
     func show(text: String, url: URL?, source: SelectionSource?, element: AXUIElement? = nil, anchor: CGPoint,
-              actions: [PopBarActionConfig]) {
+              actions: [PopBarActionConfig], origin: HistoryOrigin? = nil) {
         self.text = text
+        self.origin = origin
+        historyTicket = nil
         self.url = url
         self.source = source
         self.element = element
@@ -165,6 +176,9 @@ final class PopBarSession {
         panel.model.notice = nil
         panel.model.comparison = nil
         stopReading()
+        historyTicket = nil
+        let origin = self.origin
+        let startedAt = Date()
 
         guard action.isAI else {
             // Local actions (copy / web preview) have no loading/result chrome — run
@@ -176,8 +190,14 @@ final class PopBarSession {
             }
             actionTask = Task { [weak self] in
                 let outcome = await ActionRegistry.run(action, on: text, url: url, service: nil, config: nil)
+                let cancelled = Task.isCancelled
                 await MainActor.run {
+                    // Recorded before the staleness check: a run that finished
+                    // after its popup closed still happened.
+                    let ticket = HistoryRecorder.record(action, input: text, origin: origin, presentation: outcome,
+                                                        partial: nil, cancelled: cancelled, startedAt: startedAt, config: nil)
                     guard let self, isCurrent(self) else { return }
+                    self.historyTicket = ticket
                     self.present(outcome, for: action, input: text)
                 }
             }
@@ -190,8 +210,10 @@ final class PopBarSession {
         let config = resolveConfig(for: action.modelOverride)
         let service = self.llm
         panel.applyPhase(.result(""))
+        let streamed = StreamedText()
         actionTask = Task { [weak self] in
             let outcome = await ActionRegistry.runStreaming(action, on: text, url: url, service: service, config: config) { displayed in
+                streamed.text = displayed
                 // Every delta hops to main and bails if a newer popup OR a newer
                 // action on this same capsule took over, so stale tokens never leak.
                 Task { @MainActor [weak self] in
@@ -199,8 +221,15 @@ final class PopBarSession {
                     self.panel.updateResultText(displayed)
                 }
             }
+            let cancelled = Task.isCancelled
             await MainActor.run {
+                // Recorded before the staleness check: a stopped stream keeps
+                // what had arrived, and a finished one whose popup closed is kept.
+                let ticket = HistoryRecorder.record(action, input: text, origin: origin, presentation: outcome,
+                                                    partial: streamed.text, cancelled: cancelled,
+                                                    startedAt: startedAt, config: config)
                 guard let self, isCurrent(self) else { return }
+                self.historyTicket = ticket
                 // The per-delta `Task { @MainActor }` updates above aren't ordered
                 // relative to this final apply, so a straggler could otherwise land
                 // AFTER it and revert the text to an earlier partial. Bump the token
@@ -248,7 +277,7 @@ final class PopBarSession {
         switch presentation {
         case .none:
             onDismissOutcome?()
-        case .result(let output):
+        case .result(let output), .error(let output):
             panel.model.resultIsFinalOutput = false
             panel.applyPhase(.result(output))
         case .output(let output):
@@ -383,6 +412,7 @@ final class PopBarSession {
             guard let source, source.canReplace else {
                 // Nowhere to put it: show it, copied, and say why.
                 copyResult(output)
+                markDelivered(.failed)
                 panel.applyPhase(.result(output))
                 panel.model.notice = L("popbar.replace.unavailable")
                 return
@@ -398,7 +428,13 @@ final class PopBarSession {
     }
 
     private func write(_ output: String, mode: ReplaceWriter.Mode, source: SelectionSource) {
-        switch ReplaceWriter.write(output, mode: mode, original: text, source: source) {
+        let result = ReplaceWriter.write(output, mode: mode, original: text, source: source)
+        switch result {
+        case .replaced: markDelivered(.replaced)
+        case .pasted: markDelivered(.pasted)
+        case .contextLost: markDelivered(.failed)
+        }
+        switch result {
         case .replaced, .pasted:
             // Done: a transient popup steps aside. A pinned one keeps showing the
             // result — and must be told it is final, or a streamed answer would
@@ -413,9 +449,22 @@ final class PopBarSession {
         }
     }
 
+    /// Add what became of the showing result to its history record.
+    private func markDelivered(_ delivered: HistoryRecord.Delivered) {
+        guard let historyTicket else { return }
+        HistoryStore.shared.setDelivered(delivered, ticket: historyTicket)
+    }
+
     /// Copy this window's current result to the pasteboard (the chrome copy button).
     func copyResult(_ text: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+        markDelivered(.copied)
     }
+}
+
+/// The text a stream has shown so far, kept for the history in case the stream
+/// is stopped. Written and read on the task that runs the stream.
+private final class StreamedText: @unchecked Sendable {
+    var text: String?
 }

@@ -25,6 +25,16 @@ enum LocalizationOverride {
     /// The sub-bundle the swizzled lookup defers to. Nil means "follow system".
     fileprivate static var activeBundle: Bundle?
 
+    /// The overriding language code, or nil when following the system.
+    private(set) static var activeCode: String?
+
+    /// The locale the app's text is in: the override when there is one, the
+    /// system's choice among the shipped languages otherwise. Dates and numbers
+    /// formatted with it read in the same language as the labels around them.
+    static var locale: Locale {
+        Locale(identifier: activeCode ?? Bundle.main.preferredLocalizations.first ?? Locale.current.identifier)
+    }
+
     /// Apply the user's language preference. Pass nil for "follow system".
     /// Call this before any localized string is read so the very first lookups
     /// already see the override.
@@ -38,8 +48,10 @@ enum LocalizationOverride {
            let path = Bundle.main.path(forResource: code, ofType: "lproj"),
            let bundle = Bundle(path: path) {
             activeBundle = bundle
+            activeCode = code
         } else {
             activeBundle = nil
+            activeCode = nil
         }
     }
 

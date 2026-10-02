@@ -9,8 +9,12 @@ import Foundation
 enum PopBarPresentation {
     /// No UI — just dismiss (e.g. Copy).
     case none
-    /// A text/Markdown result page in the popup panel (AI output, error messages).
+    /// A text/Markdown page in the popup panel that is a report about the
+    /// selection rather than a result made from it (a character count).
     case result(String)
+    /// The action failed; the message says why. Shown exactly like `result` —
+    /// kept apart so the run is known to have failed (the History page marks it).
+    case error(String)
     /// The selection's associated link, in the floating mini-browser.
     case webPreview(URL)
     /// A local file, in the floating Quick Look window.

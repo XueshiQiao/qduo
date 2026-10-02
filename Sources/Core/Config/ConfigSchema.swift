@@ -164,6 +164,22 @@ enum ConfigSchema {
           "additionalProperties": true
         },
 
+        "history": {
+          "type": "object",
+          "description": "The History page: every action run from the popup, kept on this Mac only (~/Library/Application Support/<baseID>/history.sqlite).",
+          "properties": {
+            "enabled": { "type": "boolean", "description": "Record runs. Default true." },
+            "retentionDays": { "type": "integer", "minimum": 0,
+              "description": "Days a record is kept; 0 keeps them forever (the default)." },
+            "recordCopy": { "type": "boolean", "description": "Record the Copy action too. Default true." },
+            "excludedApps": {
+              "type": "array", "items": { "type": "string" },
+              "description": "Bundle ids of apps whose selections are never recorded. Starts with the common password managers."
+            }
+          },
+          "additionalProperties": true
+        },
+
         "webPreview": {
           "type": "object",
           "description": "Settings for the 'web preview' kind of action.",

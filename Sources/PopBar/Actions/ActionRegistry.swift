@@ -18,7 +18,7 @@ enum ActionRegistry {
         // user never configured as a prompt.
         guard !action.isUnsupported else {
             log.info("action '\(action.title)' needs a newer build — not run")
-            return .result("⚠️ \(L("popbar.error.unsupported"))")
+            return .error("⚠️ \(L("popbar.error.unsupported"))")
         }
         log.debug("run action '\(action.title)' (\(action.kind.rawValue)) on \(text.count) char(s)")
         switch action.kind {
@@ -58,13 +58,13 @@ enum ActionRegistry {
 
         case .shortcut:
             let name = (action.shortcut ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !name.isEmpty else { return .result("⚠️ \(L("popbar.error.noshortcut"))") }
+            guard !name.isEmpty else { return .error("⚠️ \(L("popbar.error.noshortcut"))") }
             return processPresentation(await ProcessRunner.runShortcut(name, input: text))
 
         case .script:
             let script = action.script ?? ""
             guard !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                return .result("⚠️ \(L("popbar.error.noscript"))")
+                return .error("⚠️ \(L("popbar.error.noscript"))")
             }
             let allowed = await MainActor.run { () -> Bool in
                 if ScriptApproval.isApproved(script) { return true }
@@ -85,27 +85,27 @@ enum ActionRegistry {
             if Task.isCancelled { return .none }
             switch translated {
             case .success(let out):
-                return out.isEmpty ? .result(L("popbar.error.empty")) : .output(out)
+                return out.isEmpty ? .error(L("popbar.error.empty")) : .output(out)
             case .failure(.needsNewerSystem):
-                return .result("⚠️ \(L("systemTranslate.error.needsNewerSystem"))")
+                return .error("⚠️ \(L("systemTranslate.error.needsNewerSystem"))")
             case .failure(.noTarget):
-                return .result("⚠️ \(L("systemTranslate.error.noTarget"))")
+                return .error("⚠️ \(L("systemTranslate.error.noTarget"))")
             case .failure(.alreadyInTarget(let target)):
                 let name = SystemTranslator.displayName(of: target)
-                return .result("⚠️ \(String(format: L("systemTranslate.error.alreadyInTarget"), name))")
+                return .error("⚠️ \(String(format: L("systemTranslate.error.alreadyInTarget"), name))")
             case .failure(.unsupportedPair(let source, let target)):
                 let names = [source, target].map(SystemTranslator.displayName(of:))
-                return .result("⚠️ \(String(format: L("systemTranslate.error.unsupported"), names[0], names[1]))")
+                return .error("⚠️ \(String(format: L("systemTranslate.error.unsupported"), names[0], names[1]))")
             case .failure(.cancelled):
                 // Superseded by another popup's translation (a pinned one still
                 // waiting), or the window closed by hand: say so.
-                return .result("⚠️ \(L("systemTranslate.error.closed"))")
+                return .error("⚠️ \(L("systemTranslate.error.closed"))")
             case .failure(.notDownloaded):
-                return .result("⚠️ \(L("systemTranslate.error.notDownloaded"))")
+                return .error("⚠️ \(L("systemTranslate.error.notDownloaded"))")
             case .failure(.didNotStart):
-                return .result("⚠️ \(L("systemTranslate.error.didNotStart"))")
+                return .error("⚠️ \(L("systemTranslate.error.didNotStart"))")
             case .failure(.failed(let reason)):
-                return .result("⚠️ \(L("systemTranslate.error.prefix"))" + (reason.isEmpty ? "" : "\n\n\(reason)"))
+                return .error("⚠️ \(L("systemTranslate.error.prefix"))" + (reason.isEmpty ? "" : "\n\n\(reason)"))
             }
 
         case .group:
@@ -117,17 +117,17 @@ enum ActionRegistry {
 
         case .ai:
             guard !action.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                return .result("⚠️ \(L("popbar.error.noprompt"))")
+                return .error("⚠️ \(L("popbar.error.noprompt"))")
             }
             guard let service, let config else {
-                return .result("⚠️ \(L("popbar.error.nokey"))")
+                return .error("⚠️ \(L("popbar.error.nokey"))")
             }
             do {
                 let output = try await service.complete(config, system: action.prompt, user: text)
-                return output.isEmpty ? .result(L("popbar.error.empty")) : .output(output)
+                return output.isEmpty ? .error(L("popbar.error.empty")) : .output(output)
             } catch {
                 log.error("LLM '\(action.title)' failed: \(error.localizedDescription)")
-                return .result("⚠️ \(L("popbar.error.prefix"))\n\n\(error.localizedDescription)")
+                return .error("⚠️ \(L("popbar.error.prefix"))\n\n\(error.localizedDescription)")
             }
         }
     }
@@ -141,13 +141,13 @@ enum ActionRegistry {
             return .webPreview(search)
         }
         log.debug("web preview: no link in selection and fallback search off → message")
-        return .result("⚠️ \(L("popbar.error.nolink"))")
+        return .error("⚠️ \(L("popbar.error.nolink"))")
     }
 
     private static func openURLPresentation(_ action: PopBarActionConfig, text: String) -> PopBarPresentation {
         guard let template = action.url, let url = URLTemplate.fill(template, with: text) else {
             log.debug("openURL '\(action.title)': no usable address")
-            return .result("⚠️ \(L("popbar.error.badurl"))")
+            return .error("⚠️ \(L("popbar.error.badurl"))")
         }
         // The mini-browser can only show web pages; any other scheme belongs to
         // the app that owns it, whatever the action asked for.
@@ -157,7 +157,7 @@ enum ActionRegistry {
 
     private static func transformPresentation(_ action: PopBarActionConfig, text: String) -> PopBarPresentation {
         guard let op = action.op.flatMap(TextTransform.init(rawValue:)) else {
-            return .result("⚠️ \(L("popbar.error.unknownop"))")
+            return .error("⚠️ \(L("popbar.error.unknownop"))")
         }
         if op == .count {
             return .result(TextTransform.countReport(text, labels: (
@@ -168,9 +168,9 @@ enum ActionRegistry {
         case .success(let out):
             return .output(out)
         case .failure(.invalidJSON):
-            return .result("⚠️ \(L("popbar.error.invalidjson"))")
+            return .error("⚠️ \(L("popbar.error.invalidjson"))")
         case .failure(.notDecodable):
-            return .result("⚠️ \(L("popbar.error.notdecodable"))")
+            return .error("⚠️ \(L("popbar.error.notdecodable"))")
         }
     }
 
@@ -181,13 +181,13 @@ enum ActionRegistry {
             // nothing: that is success, and there is nothing to show.
             return out.isEmpty ? .none : .output(out)
         case .failure(.timedOut):
-            return .result("⚠️ \(L("popbar.error.timeout"))")
+            return .error("⚠️ \(L("popbar.error.timeout"))")
         case .failure(.exited(let status, let stderr)):
             let detail = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-            return .result("⚠️ \(String(format: L("popbar.error.exited"), Int(status)))"
+            return .error("⚠️ \(String(format: L("popbar.error.exited"), Int(status)))"
                            + (detail.isEmpty ? "" : "\n\n```\n\(detail.prefix(2000))\n```"))
         case .failure(.couldNotStart(let reason)):
-            return .result("⚠️ \(L("popbar.error.prefix"))\n\n\(reason)")
+            return .error("⚠️ \(L("popbar.error.prefix"))\n\n\(reason)")
         }
     }
 
@@ -204,7 +204,7 @@ enum ActionRegistry {
         guard let target = PathResolver.resolve(text) else {
             // Privacy: never log the selection itself — it can be anything.
             log.debug("path action: selection (\(text.count) chars) is not an existing local path")
-            return .result("⚠️ \(L("popbar.error.nopath"))")
+            return .error("⚠️ \(L("popbar.error.nopath"))")
         }
         if forceFinder || target.isDirectory {
             log.debug("path action → Finder (isDirectory=\(target.isDirectory))")
@@ -234,10 +234,10 @@ enum ActionRegistry {
 
         log.debug("stream action '\(action.title)' on \(text.count) char(s)")
         guard !action.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return .result("⚠️ \(L("popbar.error.noprompt"))")
+            return .error("⚠️ \(L("popbar.error.noprompt"))")
         }
         guard let service, let config else {
-            return .result("⚠️ \(L("popbar.error.nokey"))")
+            return .error("⚠️ \(L("popbar.error.nokey"))")
         }
 
         // Track whether any token reached the UI: a failure AFTER content is shown
@@ -248,7 +248,7 @@ enum ActionRegistry {
                 if !displayed.isEmpty { emitted.didEmit = true }
                 onDelta(displayed)
             }
-            return output.isEmpty ? .result(L("popbar.error.empty")) : .output(output)
+            return output.isEmpty ? .error(L("popbar.error.empty")) : .output(output)
         } catch is CancellationError {
             return .none   // re-triggered / panel closed — drop silently
         } catch {
@@ -261,17 +261,17 @@ enum ActionRegistry {
             // has been shown, surface the error rather than restarting the request.
             guard !emitted.didEmit else {
                 log.error("LLM stream '\(action.title)' failed mid-stream: \(error.localizedDescription)")
-                return .result("⚠️ \(L("popbar.error.prefix"))\n\n\(error.localizedDescription)")
+                return .error("⚠️ \(L("popbar.error.prefix"))\n\n\(error.localizedDescription)")
             }
             log.error("LLM stream '\(action.title)' failed to start: \(error.localizedDescription) — falling back to one-shot")
             do {
                 let output = try await service.complete(config, system: action.prompt, user: text)
-                return output.isEmpty ? .result(L("popbar.error.empty")) : .output(output)
+                return output.isEmpty ? .error(L("popbar.error.empty")) : .output(output)
             } catch is CancellationError {
                 return .none
             } catch let fallbackError {
                 log.error("LLM one-shot fallback '\(action.title)' failed: \(fallbackError.localizedDescription)")
-                return .result("⚠️ \(L("popbar.error.prefix"))\n\n\(fallbackError.localizedDescription)")
+                return .error("⚠️ \(L("popbar.error.prefix"))\n\n\(fallbackError.localizedDescription)")
             }
         }
     }

@@ -75,6 +75,17 @@ enum Brand {
         return base.appendingPathComponent(name, isDirectory: true)
     }
 
+    /// `~/Library/Application Support/<baseID>/` — the user's own data that
+    /// Debug and Release must both see (the action history). Keyed off `baseID`,
+    /// unlike `supportDirectory`, so switching builds does not hide it.
+    static var sharedSupportDirectory: URL {
+        let base = (try? FileManager.default.url(for: .applicationSupportDirectory,
+                                                 in: .userDomainMask,
+                                                 appropriateFor: nil, create: true))
+            ?? home.appendingPathComponent("Library/Application Support", isDirectory: true)
+        return base.appendingPathComponent(baseID, isDirectory: true)
+    }
+
     /// `~/.config/<slug>/` — the user's config file lives here, on purpose: it is
     /// meant to be opened in an editor, diffed, and symlinked into a dotfiles repo.
     /// Keyed off `baseID`, so Debug and Release read the same one.

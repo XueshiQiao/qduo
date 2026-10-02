@@ -83,6 +83,7 @@ final class AppState: ObservableObject {
         controller.startOCRIfEnabled()
         // So does the popup hotkey: it works while paused, which is the point.
         controller.startPopupHotKeyIfEnabled()
+        startHistoryRetention()
 
         // Dev/screenshot affordance: pop a sample popup shortly after launch, so the
         // capsule or wheel can be looked at without selecting text by hand. Passed
@@ -105,6 +106,20 @@ final class AppState: ObservableObject {
     func shutdown() {
         controller.shutdown()
         controller.stopScreenOCR()   // not torn down by stop() — independent lifecycle
+        retentionTimer?.invalidate()
+        // A record made in the last moment is still queued: let it land.
+        HistoryStore.shared.flush()
+    }
+
+    /// Applies the history's retention period now and twice a day, so a Mac
+    /// that is never restarted still sheds old records.
+    private var retentionTimer: Timer?
+
+    private func startHistoryRetention() {
+        HistoryStore.shared.applyRetention()
+        retentionTimer = Timer.scheduledTimer(withTimeInterval: 12 * 3600, repeats: true) { _ in
+            HistoryStore.shared.applyRetention()
+        }
     }
 
     // MARK: - Launch arguments

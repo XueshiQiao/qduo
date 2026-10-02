@@ -12,6 +12,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
     case actions
     case appearance
     case ocr
+    case history
     case models
     case speech
     case about
@@ -20,11 +21,12 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
 
     /// Which sidebar block the row sits in. Blocks are separated by a gap with no
     /// header, the way System Settings separates its groups.
-    enum Block: Int, CaseIterable { case popup, app }
+    enum Block: Int, CaseIterable { case popup, history, app }
 
     var block: Block {
         switch self {
         case .general, .actions, .appearance, .ocr: return .popup
+        case .history:                              return .history
         case .models, .speech, .about:              return .app
         }
     }
@@ -33,6 +35,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .general:    return L("page.general")
         case .actions:    return L("page.actions")
+        case .history:    return L("page.history")
         case .appearance: return L("page.appearance")
         case .ocr:        return L("page.ocr")
         case .models:     return L("page.models")
@@ -45,6 +48,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .general:    return "gearshape.fill"
         case .actions:    return "list.bullet.rectangle.fill"
+        case .history:    return "clock.arrow.circlepath"
         case .appearance: return "circle.hexagongrid.fill"
         case .ocr:        return "viewfinder"
         case .models:     return "brain.head.profile"
@@ -57,6 +61,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .general:    return Color(nsColor: .systemGray)
         case .actions:    return .indigo
+        case .history:    return .green
         case .appearance: return .purple
         case .ocr:        return .teal
         case .models:     return .blue
