@@ -360,7 +360,7 @@ private struct PreviewStatus: View {
                 .buttonStyle(.borderless)
         case .failed(let message):
             Text(message).font(.caption).foregroundStyle(.orange).lineLimit(2)
-        case .finished:
+        case .finished, .idle:
             EmptyView()
         }
     }

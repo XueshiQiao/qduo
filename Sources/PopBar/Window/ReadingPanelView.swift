@@ -79,13 +79,16 @@ struct ReadingReaderLabel: View {
     }
 }
 
-/// Pause / resume while it reads, and read again from the start.
+/// Pause / resume while it reads, and read again from the start. Before a read
+/// has started (shown before it is asked for), Play starts it.
 struct ReadingPlaybackButtons: View {
     @ObservedObject var playback: SpeechPlayback
 
     var body: some View {
         HStack(spacing: 4) {
             switch playback.state {
+            case .idle:
+                ChromeButton(symbol: "play.fill", help: L("speech.play")) { SpeechCenter.shared.start(playback) }
             case .playing:
                 ChromeButton(symbol: "pause.fill", help: L("speech.pause")) { playback.togglePause() }
             case .paused:
@@ -93,7 +96,11 @@ struct ReadingPlaybackButtons: View {
             default:
                 EmptyView()
             }
-            ChromeButton(symbol: "arrow.counterclockwise", help: L("speech.replay")) { playback.replay() }
+            // Through the centre, so a read elsewhere (another popup, a preview,
+            // the History page) stops rather than playing over this one.
+            ChromeButton(symbol: "arrow.counterclockwise", help: L("speech.replay")) {
+                SpeechCenter.shared.replay(playback)
+            }
         }
     }
 }
@@ -120,7 +127,7 @@ struct ReadingStatus: View {
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Button(L("speech.retry")) { playback.start() }
+                Button(L("speech.retry")) { SpeechCenter.shared.start(playback) }
                     .controlSize(.small)
             }
             .frame(width: width)

@@ -8,6 +8,7 @@ import Foundation
 /// Main thread only.
 final class SpeechPlayback: ObservableObject, Identifiable {
     enum State: Equatable {
+        case idle               // made but not started (a History record, before Play)
         case preparing          // waiting for the first audio
         case playing
         case paused
@@ -25,7 +26,7 @@ final class SpeechPlayback: ObservableObject, Identifiable {
     let wasTruncated: Bool
     let reader: SpeechReader
 
-    @Published private(set) var state: State = .preparing
+    @Published private(set) var state: State = .idle
     /// The word being spoken, as a UTF-16 range into `text`.
     @Published private(set) var highlight: NSRange?
     /// This read was played from the local cache, not fetched.
@@ -110,6 +111,22 @@ final class SpeechCenter {
         current = playback
         playback.start()
         return playback
+    }
+
+    /// Start a read made earlier and not playing (one shown before it is
+    /// asked for), as the one read playing now.
+    func start(_ playback: SpeechPlayback) {
+        if current !== playback { current?.stop() }
+        current = playback
+        playback.start()
+    }
+
+    /// Read `playback` again from the start (or start it, if it never was), as
+    /// the one read playing now — whatever else was reading stops.
+    func replay(_ playback: SpeechPlayback) {
+        if current !== playback { current?.stop() }
+        current = playback
+        playback.replay()
     }
 
     func stop(_ playback: SpeechPlayback?) {

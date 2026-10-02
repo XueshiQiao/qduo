@@ -434,6 +434,7 @@
 "speech.error.badKey" = "服务拒绝了这个 API Key。请到 设置 › 朗读 里检查。";
 "speech.error.provider" = "朗读失败：%@";
 "speech.error.offline" = "连不上服务。请检查网络后重试。";
+"speech.play" = "朗读";
 "speech.pause" = "暂停";
 "speech.resume" = "继续";
 "speech.replay" = "从头再读";
@@ -525,6 +526,7 @@
 "history.today" = "今天";
 "history.yesterday" = "昨天";
 "history.input" = "原文";
+"history.input.full" = "完整保存的原文";
 "history.result" = "结果";
 "history.error" = "出错信息";
 "history.trigger.selection" = "选中文字";
@@ -580,5 +582,4 @@
 "history.status.cancelled" = "已中断";
 "history.delivered.appended" = "已追加到原文后";
 "history.delivered.copied" = "已复制";
-"history.speech.play" = "播放";
 "history.speech.instead" = "原朗读者已不在，将用「%@」朗读";

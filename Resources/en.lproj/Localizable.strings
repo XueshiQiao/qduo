@@ -435,6 +435,7 @@
 "speech.error.badKey" = "The service refused the API key. Check it in Settings › Speech.";
 "speech.error.provider" = "Reading failed: %@";
 "speech.error.offline" = "Can't reach the service. Check the network, then retry.";
+"speech.play" = "Read Aloud";
 "speech.pause" = "Pause";
 "speech.resume" = "Resume";
 "speech.replay" = "Read again from the start";
@@ -526,6 +527,7 @@
 "history.today" = "Today";
 "history.yesterday" = "Yesterday";
 "history.input" = "Original";
+"history.input.full" = "Full saved original";
 "history.result" = "Result";
 "history.error" = "Error";
 "history.trigger.selection" = "Selected text";
@@ -581,5 +583,4 @@
 "history.status.cancelled" = "Stopped";
 "history.delivered.appended" = "Added after the original";
 "history.delivered.copied" = "Copied";
-"history.speech.play" = "Play";
 "history.speech.instead" = "That reader is gone — “%@” will read it";

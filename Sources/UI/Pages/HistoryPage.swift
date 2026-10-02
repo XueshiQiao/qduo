@@ -659,44 +659,42 @@ private struct OutcomeView: View {
 /// the reader is asked again.
 private struct SpeechOutcome: View {
     let record: HistoryRecord
-    @State private var playback: SpeechPlayback?
+    /// Made when the record is shown and started only by Play, so the text sits
+    /// in the reading window from the start.
+    @StateObject private var playback: SpeechPlayback
+
+    init(record: HistoryRecord) {
+        self.record = record
+        _playback = StateObject(wrappedValue: SpeechPlayback(text: record.input, reader: Self.reader(for: record)))
+    }
 
     var body: some View {
-        let reader = self.reader
         VStack(alignment: .leading, spacing: 12) {
-            if let playback {
-                TextBox(caption: L("history.input")) {
-                    HistoryReadingWindow(playback: playback) { stop() }
-                }
-            } else {
-                TextBox(caption: L("history.input"), note: record.inputTruncated ? L("history.truncated") : nil) {
-                    RecordText(record.input)
-                }
-            }
-            TextBox(caption: L("history.speech")) {
-                InfoRow(symbol: "speaker.wave.2.fill", title: record.extras["reader"] ?? reader.name,
-                        subtitle: subtitle(reader)) {
-                    if playback == nil {
-                        Button { playback = SpeechCenter.shared.read(record.input, with: reader) } label: {
-                            Label(L("history.speech.play"), systemImage: "play.fill").font(.system(size: 12))
+            TextBox(caption: L("history.input"), note: record.inputTruncated ? L("history.truncated") : nil) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HistoryReadingWindow(playback: playback)
+                    // History keeps more text than a single read can speak.
+                    if playback.wasTruncated {
+                        Divider()
+                        DisclosureGroup(L("history.input.full")) {
+                            RecordText(record.input).padding(.top, 4)
                         }
-                        .controlSize(.small)
+                        .font(.system(size: 12))
                     }
                 }
             }
+            TextBox(caption: L("history.speech")) {
+                InfoRow(symbol: "speaker.wave.2.fill", title: record.extras["reader"] ?? playback.reader.name,
+                        subtitle: subtitle)
+            }
         }
         // Moving to another record stops the read, as closing the popup does.
-        .onDisappear { stop() }
+        .onDisappear { SpeechCenter.shared.stop(playback) }
     }
 
-    private func stop() {
-        SpeechCenter.shared.stop(playback)
-        playback = nil
-    }
-
-    private func subtitle(_ reader: SpeechReader) -> String {
+    private var subtitle: String {
         // That reader is gone: say who reads it instead.
-        if readerIsGone { return String(format: L("history.speech.instead"), reader.name) }
+        if readerIsGone { return String(format: L("history.speech.instead"), playback.reader.name) }
         return L("history.speech.done")
     }
 
@@ -712,7 +710,7 @@ private struct SpeechOutcome: View {
 
     /// The reader the run used — by id, or by name for a record made before ids
     /// were stored — else today's default reader.
-    private var reader: SpeechReader {
+    private static func reader(for record: HistoryRecord) -> SpeechReader {
         let store = SpeechSettingsStore.shared
         if let id = record.extras["readerID"], let r = store.allReaders.first(where: { $0.id == id }) { return r }
         if let name = record.extras["reader"], let r = store.allReaders.first(where: { $0.name == name }) { return r }
@@ -721,11 +719,10 @@ private struct SpeechOutcome: View {
 }
 
 /// The popup's reading window, inside the History page's text box: the same
-/// toolbar controls (minus pin), status and highlighted text. Closing it stops
-/// the read and puts the plain text back.
+/// toolbar controls, status and highlighted text. No pin and no close — it is
+/// part of the record, not a window of its own.
 private struct HistoryReadingWindow: View {
     @ObservedObject var playback: SpeechPlayback
-    let close: () -> Void
     @State private var width: CGFloat = 0
     @State private var contentHeight: CGFloat?
 
@@ -743,7 +740,6 @@ private struct HistoryReadingWindow: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(playback.text, forType: .string)
                 }
-                ChromeButton(symbol: "xmark", help: L("popbar.close"), action: close)
             }
             if ReadingStatus.hasContent(playback) {
                 ReadingStatus(playback: playback)
