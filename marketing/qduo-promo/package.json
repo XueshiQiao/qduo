@@ -1,0 +1,13 @@
+{
+  "name": "qduo-promo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "QDuo 20-second motion graphics film, landscape and portrait",
+  "scripts": {
+    "stills": "node render.mjs --stills",
+    "render": "node render.mjs",
+    "render:portrait": "node render.mjs --portrait",
+    "soundtrack": "python3 soundtrack.py"
+  },
+  "devDependencies": {"playwright": "1.60.0"}
+}

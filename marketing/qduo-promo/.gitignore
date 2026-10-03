@@ -1,0 +1,13 @@
+output/
+node_modules/
+capture/.home/
+capture/bin/
+capture/takes/
+capture/mock.log
+frames/
+.venv/
+# Regenerable sound: `.venv/bin/python soundtrack.py` rebuilds music, sfx and mix
+# (the voice is cut from a take, which is not committed, so voice.wav is kept).
+assets/audio/music.wav
+assets/audio/sfx.wav
+assets/audio/mix.wav

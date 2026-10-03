@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QDuo — 下一步，就在手边</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="film" aria-label="QDuo 产品动效短片">
+    <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="ambient ambient-c"></div>
+    <div class="grid"></div><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div>
+    <header><div class="brand"><img src="assets/icon.png" alt=""><b>QDuo</b></div><div class="header-right"><span class="status-dot"></span> 为 macOS 而生</div></header>
+    <div id="scenes"></div>
+    <div id="shot"><img id="shot-img" alt=""><i id="ripple"></i></div>
+    <footer><span class="footer-note">文字所至，能力即达。</span><div id="chapters"></div><span class="footer-end">SELECT. ACT.</span></footer>
+    <div id="progress"></div>
+  </main>
+  <nav id="controls" aria-label="预览控制"><button id="play" aria-label="播放">播放</button><input id="seek" aria-label="播放位置" type="range" min="0" max="20" value="0" step="0.01"><output id="time">0:00 / 0:20</output><button id="sound" aria-label="开启声音">声音关</button><a id="orientation" href="?portrait">竖屏</a></nav>
+  <audio id="audio" preload="auto" src="assets/audio/mix.wav"></audio>
+  <script src="frames/manifest.js"></script><script src="cues.js"></script><script src="film.js"></script>
+</body>
+</html>

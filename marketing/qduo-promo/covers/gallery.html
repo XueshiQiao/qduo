@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QDuo Cover Options</title>
+<style>
+:root{--bg:#f4f6f9;--fg:#16233c;--mute:#6b7e95;--card:#fff;--line:#e2e8f0}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1116;--fg:#e8edf4;--mute:#93a1b4;--card:#171b22;--line:#262c36}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"PingFang SC",sans-serif}
+main{max-width:1400px;margin:0 auto;padding:40px 16px 80px}
+h1{font-size:30px;margin:0 0 6px}main>p{color:var(--mute);margin:0 0 36px}
+section{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:28px}
+h2{margin:0;font-size:22px}h2 span{font-size:14px;color:var(--mute);font-weight:500;margin-left:10px}
+section p{color:var(--mute);margin:6px 0 18px}
+.pair{display:grid;grid-template-columns:4fr 2.25fr;gap:18px;align-items:start}
+.pair a{display:block}.pair img{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}
+figcaption{font-size:13px;color:var(--mute);margin-top:6px}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+</style></head><body><main>
+<h1>QDuo 封面方案</h1>
+<p>每套都有 4:3 横版和 3:4 竖版；产品画面全部来自真实录屏，只展示 3D Glass。点图片可看原图。</p>
+<script>
+const opts=[
+ ['same','A · 同视频风格','和宣传片结尾页一致：浅色、蓝青渐变、居中品牌 + 一张 3D Glass 卡片。','../output/QDuo-cover-4x3.png','../output/QDuo-cover-3x4.png'],
+ ['dark','B · 暗夜聚光','黑底 + 蓝色辉光，单一产品画面，像发布会主视觉；最"高级"、最克制。','../output/covers/dark-4x3.png','../output/covers/dark-3x4.png'],
+ ['gradient','C · 渐变海报','高饱和蓝青渐变、超大字号 QDuo、倾斜悬浮的卡片；最抢眼，适合社交媒体。','../output/covers/gradient-4x3.png','../output/covers/gradient-3x4.png'],
+ ['editorial','D · 杂志编辑','米色纸张、宋体大标题、编号功能列表、带投影边框的配图；文艺、有讲述感。','../output/covers/editorial-4x3.png','../output/covers/editorial-3x4.png'],
+ ['bento','E · 便当格','一格一个真实画面：3D 圆环、翻译、润色对比、朗读、自定义；信息量最大，像产品官网首屏。','../output/covers/bento-4x3.png','../output/covers/bento-3x4.png'],
+ ['desktop','F · 桌面实拍','彩色壁纸上的整个文档窗口，带轻微透视；强调"在真实 Mac 上用"。','../output/covers/desktop-4x3.png','../output/covers/desktop-3x4.png']];
+document.querySelector('main').insertAdjacentHTML('beforeend',opts.map(([id,t,d,a,b])=>`<section id="${id}"><h2>${t}</h2><p>${d}</p><div class="pair"><figure style="margin:0"><a href="${a}" target="_blank"><img src="${a}" alt="${t} 4:3"></a><figcaption>4:3 · 1440×1080</figcaption></figure><figure style="margin:0"><a href="${b}" target="_blank"><img src="${b}" alt="${t} 3:4"></a><figcaption>3:4 · 1080×1440</figcaption></figure></div></section>`).join(''));
+</script></main></body></html>

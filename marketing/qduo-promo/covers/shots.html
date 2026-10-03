@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><title>Cover shots</title>
+<style>body{margin:0;background:#ddd;display:flex;flex-wrap:wrap;gap:12px;padding:12px;width:1416px;font:14px system-ui}figure{margin:0;width:340px}figure div{width:340px;background:#f0f}</style>
+<body><script src="shots.js"></script><script>
+document.body.innerHTML=Object.keys(SHOTS).map(k=>`<figure><div data-shot="${k}"></div><figcaption>${k}</figcaption></figure>`).join('');
+placeShots().then(()=>window.ready=true);
+</script>
