@@ -155,6 +155,10 @@ struct WheelActionsView: View {
     var autoHideOnExit: Bool = false
     /// Liquid skin only: hairline dividers between slices (user setting, off by default).
     var liquidDividers: Bool = false
+    /// 3D skin only: draw the ring inside this view instead of in a click-through
+    /// window under it. Only for the settings-page preview, where clicks do nothing
+    /// and the ring has to scroll and clip with the page.
+    var drawsDonutInline: Bool = false
     /// Live bridge to the panel's AppKit hit-test, so the clickable region grows
     /// with the submenu ring and shrinks back when it closes.
     var hitRegion: WheelHitRegion?
@@ -465,7 +469,8 @@ struct WheelActionsView: View {
         // All of it is drawn in a mouse-transparent window under the popup: see
         // `DonutLayerWindow` for why drawing it here would swallow every click in
         // the wheel's square, the hole included.
-        return DonutLayerWindow(appearance: NSAppearance(named: surfaceDark ? .darkAqua : .aqua), content: ZStack {
+        let appearance = NSAppearance(named: surfaceDark ? .darkAqua : .aqua)
+        let scene = ZStack {
             DonutMotionReader(motion: motion) { m in
                 donutGlassBackdrop(m.outlinePath(), dark: surfaceDark, side: d)
             }
@@ -480,7 +485,14 @@ struct WheelActionsView: View {
         // wheel changes its state inside `withAnimation(openSpring)`, and letting
         // SwiftUI animate the same things on top made switching groups leave the
         // previous group's names fading out on the far side of the wheel.
-        .transaction { $0.animation = nil })
+        .transaction { $0.animation = nil }
+        return Group {
+            if drawsDonutInline {
+                DonutInlineLayer(appearance: appearance, content: scene)
+            } else {
+                DonutLayerWindow(appearance: appearance, content: scene)
+            }
+        }
         .frame(width: d, height: d)
     }
 

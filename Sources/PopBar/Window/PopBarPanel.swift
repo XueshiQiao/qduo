@@ -267,17 +267,9 @@ final class PopBarPanel {
     func show(at screenPoint: CGPoint) {
         anchor = screenPoint
         userMoved = false   // a fresh popup re-anchors to the cursor
-        // Pick up the current presentation style for this show (capsule vs wheel).
-        // Read here so toggling it in settings affects the next popup/preview.
-        model.style = PopBarPreferences.style
-        let ring = PopBarPreferences.ring(model.style)   // this ring style's own knobs
-        model.wheelLayout = ring.layout   // user-adjustable radii + icon/label toggles
-        model.autoHideOnExitRing = ring.autoHideOnExit   // wheel: hide when pointer leaves the ring
-        model.capsuleIconSize = PopBarPreferences.capsuleIconSize
-        model.capsuleLabelSize = PopBarPreferences.capsuleLabelSize
-        model.capsuleBorder = PopBarPreferences.capsuleBorder
-        model.donutDividers = PopBarPreferences.wheelDonutDividers
-        model.liquidDividers = PopBarPreferences.wheelLiquidDividers
+        // Pick up the current presentation style and its knobs for this show
+        // (capsule vs wheel). Read here so a change in settings affects the next popup.
+        model.loadAppearance()
         // Pick up the current auto-expand preference for this show (the user may
         // have toggled it in settings since the last popup).
         model.autoExpandHeight = PopBarPreferences.autoExpandHeight

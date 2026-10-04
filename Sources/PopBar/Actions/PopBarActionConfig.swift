@@ -334,7 +334,7 @@ enum DefaultActions {
             polishAction(),
             PopBarActionConfig(title: L("popbar.action.explain"), iconSymbol: "lightbulb",
                                kind: .ai, prompt: explainPrompt),
-            filesAndWebGroup(),
+            toolsGroup(),
             searchAction(),
             speakAction(),
             PopBarActionConfig(title: L("popbar.action.copy"), iconSymbol: "doc.on.doc",
@@ -351,27 +351,24 @@ enum DefaultActions {
         return a
     }
 
-    /// The seed's "Files & Web" group: the three actions that only make sense on
-    /// a URL or a file path, folded together so they take one slot, not three.
-    static func filesAndWebGroup() -> PopBarActionConfig {
-        var group = PopBarActionConfig(title: L("popbar.action.filesAndWeb"), iconSymbol: "folder", kind: .group)
-        group.children = [webPreviewAction(), quickLookAction(), revealInFinderAction()]
+    /// The seed's "Tools" group: actions used less often than the ring's own,
+    /// folded together so they take one slot, not three. Only changes what a
+    /// fresh config starts with; saved actions are the user's and stay as they are.
+    static func toolsGroup() -> PopBarActionConfig {
+        var group = PopBarActionConfig(title: L("popbar.action.tools"), iconSymbol: "wrench.and.screwdriver", kind: .group)
+        group.children = [webPreviewAction(), settingsAction(), chatGPTAction()]
         return group
+    }
+
+    /// Open ChatGPT with the selection as the question — the "Ask ChatGPT"
+    /// template, titled by the brand alone so it fits a ring slot in any language.
+    static func chatGPTAction() -> PopBarActionConfig {
+        openURL("ChatGPT", "bubble.left.and.bubble.right", "https://chatgpt.com/?q={text}")
     }
 
     /// The seed / migration "Web Preview" action.
     static func webPreviewAction() -> PopBarActionConfig {
         PopBarActionConfig(title: L("popbar.action.webpreview"), iconSymbol: "safari", kind: .webPreview)
-    }
-
-    /// The seed / migration "Preview" action (Quick Look a selected path).
-    static func quickLookAction() -> PopBarActionConfig {
-        PopBarActionConfig(title: L("popbar.action.quicklook"), iconSymbol: "eye", kind: .quickLook)
-    }
-
-    /// The seed / migration "Show in Finder" action.
-    static func revealInFinderAction() -> PopBarActionConfig {
-        PopBarActionConfig(title: L("popbar.action.reveal"), iconSymbol: "folder", kind: .revealInFinder)
     }
 
     /// Search the web for the selection, in the default browser.

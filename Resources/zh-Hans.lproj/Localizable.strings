@@ -57,9 +57,7 @@
 "popbar.action.translate" = "翻译";
 "popbar.action.polish" = "润色";
 "popbar.action.explain" = "解释";
-"popbar.preview.button" = "预览弹窗";
 "popbar.preview.sample" = "敏捷的棕色狐狸跳过了那只懒狗。";
-"popbar.style.label" = "显示样式";
 "popbar.style.capsule" = "胶囊";
 "popbar.style.liquid" = "水玻璃";
 "popbar.style.donut" = "立体玻璃";
@@ -70,8 +68,12 @@
 "popbar.reset.confirm" = "把「%@」的设置恢复为默认值？只影响这一种样式，调过的值无法找回。";
 "popbar.reset.action" = "恢复默认";
 "popbar.reset.cancel" = "取消";
+"popbar.preview.footer" = "预览使用默认动作。可以把鼠标移上去看效果，在这里点击不会执行任何动作。";
+"popbar.advanced.header" = "高级 · %@";
+"popbar.advanced.show" = "显示";
+"popbar.advanced.hide" = "隐藏";
+"popbar.advanced.collapsed" = "这个样式的尺寸、分隔缝等细调都在这里，点「显示」展开。";
 "popbar.donut.dividers" = "显示扇区之间的分隔缝";
-"popbar.style.footer" = "水玻璃 / 立体玻璃以光标为圆心成环，胶囊在选区上方横向展开（水玻璃是明亮磨砂玻璃皮肤；立体玻璃是一个会朝鼠标方向微微倾斜的立体玻璃圆环）。";
 "popbar.wheel.outer" = "外环半径";
 "popbar.wheel.inner" = "内环半径";
 "popbar.wheel.subSeam" = "二级菜单间距";
@@ -148,8 +150,6 @@
 "popbar.editor.kind.quicklook" = "预览文件（快速查看）";
 "popbar.editor.kind.reveal" = "在 Finder 中显示";
 "popbar.editor.kind.pathHint" = "当选中的文字是这台 Mac 上真实存在的文件或文件夹路径时生效，例如 ~/Downloads/photo.png。";
-"popbar.action.quicklook" = "预览";
-"popbar.action.reveal" = "在 Finder 中显示";
 "popbar.error.nopath" = "选中的文字不是这台 Mac 上存在的文件或文件夹。";
 "popbar.error.unsupported" = "这个动作是更新版本创建的，当前版本运行不了。升级后即可使用。";
 "popbar.action.webpreview" = "网页预览";
@@ -186,7 +186,7 @@
 /* Actions: open URL, speak, transform, shortcut, script, replace */
 "popbar.action.search" = "搜索";
 "popbar.action.speak" = "朗读";
-"popbar.action.filesAndWeb" = "文件与网页";
+"popbar.action.tools" = "工具";
 "popbar.actions.addTemplate" = "从模板添加";
 "popbar.editor.kind.openURL" = "打开网址";
 "popbar.editor.kind.speak" = "朗读";

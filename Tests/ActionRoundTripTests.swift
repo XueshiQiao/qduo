@@ -174,11 +174,13 @@ final class ActionRoundTripTests: XCTestCase {
         }
     }
 
-    func testTheDefaultsFoldTheURLAndFileActionsIntoOneGroup() throws {
+    func testTheDefaultsFoldTheLessUsedActionsIntoOneToolsGroup() throws {
         let seed = DefaultActions.seed()
         XCTAssertEqual(seed.map(\.kind), [.ai, .ai, .ai, .group, .openURL, .speak, .copy])
         let group = try XCTUnwrap(seed.first { $0.kind == .group })
-        XCTAssertEqual(group.children.map(\.kind), [.webPreview, .quickLook, .revealInFinder])
+        XCTAssertEqual(group.children.map(\.kind), [.webPreview, .settings, .openURL])
+        // The third is ChatGPT, asked with the selection.
+        XCTAssertEqual(group.children.last?.url, "https://chatgpt.com/?q={text}")
         // And the group survives the trip through the config file.
         let data = try JSONEncoder().encode(seed)
         let back = try JSONDecoder().decode([PopBarActionConfig].self, from: data)

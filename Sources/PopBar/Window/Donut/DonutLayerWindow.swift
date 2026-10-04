@@ -132,3 +132,32 @@ struct DonutLayerWindow<Content: View>: NSViewRepresentable {
         }
     }
 }
+
+/// The same drawing as `DonutLayerWindow`, but as an ordinary subview — for the
+/// ring drawn inside the settings page, where nothing is meant to be clicked and
+/// a separate window would not scroll or clip with the page.
+///
+/// Hosted in its own `NSHostingView` so it can carry the same pinned appearance
+/// the child window has (the glass under the donut goes grey when it inherits a
+/// dark page), and it never takes the mouse either: the wheel's hover surface,
+/// drawn on top of it, still sees the pointer.
+struct DonutInlineLayer<Content: View>: NSViewRepresentable {
+    var appearance: NSAppearance?
+    let content: Content
+
+    final class Host: NSHostingView<AnyView> {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
+    func makeNSView(context: Context) -> Host {
+        let host = Host(rootView: AnyView(content))
+        host.sizingOptions = []   // sized by SwiftUI's frame, never from its content
+        host.appearance = appearance
+        return host
+    }
+
+    func updateNSView(_ host: Host, context: Context) {
+        if host.appearance != appearance { host.appearance = appearance }
+        host.rootView = AnyView(content)
+    }
+}

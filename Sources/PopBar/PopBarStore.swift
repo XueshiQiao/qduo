@@ -84,7 +84,7 @@ final class PopBarStore: ObservableObject {
         self.screenOCRRegistered = controller.screenOCRIsRegistered
         // Deferred a turn: pausing closes every popup window, and the request
         // arrives from inside one of them while it is still handling the tap.
-        // Already paused is possible — the OCR popup and the settings preview
+        // Already paused is possible — the OCR popup and the sample popup
         // still open while paused — and then the tap must still close them.
         controller.onPauseRequested = { [weak self] in
             DispatchQueue.main.async {
@@ -138,15 +138,13 @@ final class PopBarStore: ObservableObject {
         if popupReg != popupHotKeyRegistered { popupHotKeyRegistered = popupReg }
     }
 
-    /// Switch the popup's presentation style. Persisted in PopBar's own prefs and
-    /// reflected live in the centered preview (so flipping capsule ↔ wheel ↔ liquid in
-    /// settings shows the new style immediately).
+    /// Switch the popup's presentation style. Persisted in PopBar's own prefs; the
+    /// Appearance page's preview follows it, and the next popup reads it at show time.
     func setStyle(_ s: PopBarStyle) {
         if s != style { Analytics.trackPreferenceChanged(key: "popup_style", value: s.rawValue) }
         style = s
         PopBarPreferences.style = s
         reloadStyleSettings()   // each ring style has its own knobs
-        controller.previewStyleLive()   // show/refresh the preview so the new style is visible live
     }
 
     /// The settings controls below show the SELECTED style's own values.
@@ -169,28 +167,28 @@ final class PopBarStore: ObservableObject {
         capsuleBorder = PopBarPreferences.capsuleBorder
     }
 
-    /// Put the selected style's own settings back to their defaults, and show it.
+    /// Put the selected style's own settings back to their defaults.
     func resetStyleSettings() {
         PopBarPreferences.resetStyleSettings(style)
         reloadStyleSettings()
-        controller.previewStyleLive()
+        controller.updateShowingWheel()
+        controller.updateShowingCapsule()
     }
 
-    /// Capsule icon / caption sizes. Shown live in the preview.
+    /// Capsule icon / caption sizes. Shown live in the preview and any showing bar.
     func setCapsuleIconSize(_ v: Double) {
         capsuleIconSize = v
         PopBarPreferences.capsuleIconSize = v
-        controller.previewCapsuleLive()
+        controller.updateShowingCapsule()
     }
     func setCapsuleBorder(_ on: Bool) {
         capsuleBorder = on
         PopBarPreferences.capsuleBorder = on
-        controller.previewStyleLive()
     }
     func setCapsuleLabelSize(_ v: Double) {
         capsuleLabelSize = v
         PopBarPreferences.capsuleLabelSize = v
-        controller.previewCapsuleLive()
+        controller.updateShowingCapsule()
     }
 
     /// Ring geometry / content settings of the selected ring style. Persisted;
@@ -202,39 +200,39 @@ final class PopBarStore: ObservableObject {
         if wheelInnerRadius > r - PopBarPreferences.wheelMinThickness {
             setWheelInnerRadius(r - PopBarPreferences.wheelMinThickness)
         }
-        controller.previewWheelLive()
+        controller.updateShowingWheel()
     }
     func setWheelInnerRadius(_ r: Double) {
         let capped = min(r, wheelOuterRadius - PopBarPreferences.wheelMinThickness)
         wheelInnerRadius = capped
         ring.innerRadius = capped
-        controller.previewWheelLive()
+        controller.updateShowingWheel()
     }
     func setWheelShowIcons(_ on: Bool) {
         // Don't let the user hide BOTH icon and label (a slice would be blank).
         if !on && !wheelShowLabels { setWheelShowLabels(true) }
         wheelShowIcons = on
         ring.showIcons = on
-        controller.previewWheelLive()
+        controller.updateShowingWheel()
     }
     func setWheelShowLabels(_ on: Bool) {
         if !on && !wheelShowIcons { setWheelShowIcons(true) }
         wheelShowLabels = on
         ring.showLabels = on
-        controller.previewWheelLive()
+        controller.updateShowingWheel()
     }
-    /// Submenu ring (second level) geometry. Same live-preview treatment as the
-    /// main ring's radii: the showing preview re-fits in place while the slider
-    /// moves, so the two rings can be sized against each other by eye.
+    /// Submenu ring (second level) geometry. Same live treatment as the main
+    /// ring's radii: the preview re-draws while the slider moves, so the two rings
+    /// can be sized against each other by eye.
     func setWheelSubSeam(_ v: Double) {
         wheelSubSeam = v
         ring.subSeam = v
-        controller.previewWheelLive()
+        controller.updateShowingWheel()
     }
     func setWheelSubThickness(_ v: Double) {
         wheelSubThickness = v
         ring.subThickness = v
-        controller.previewWheelLive()
+        controller.updateShowingWheel()
     }
     /// Auto-hide the ring when the pointer leaves it (wheel + liquid-glass only).
     /// Persisted; the next popup / preview reads it at show time.
@@ -246,13 +244,11 @@ final class PopBarStore: ObservableObject {
     func setWheelLiquidDividers(_ on: Bool) {
         wheelLiquidDividers = on
         PopBarPreferences.wheelLiquidDividers = on
-        controller.previewStyleLive()
     }
     /// Whether the 3D style shows the grooves between slices. Shown live.
     func setWheelDonutDividers(_ on: Bool) {
         wheelDonutDividers = on
         PopBarPreferences.wheelDonutDividers = on
-        controller.previewStyleLive()
     }
 
     // MARK: - Paused
@@ -345,9 +341,6 @@ final class PopBarStore: ObservableObject {
 
     func requestPermission() { AccessibilityAuthorizer.prompt() }
     func openAccessibilitySettings() { AccessibilityAuthorizer.openSettings() }
-    func showPreview() { controller.showPreview() }
-    /// Hide the live tuning preview when the user leaves the PopBar settings page.
-    func dismissPreview() { controller.dismissPreview() }
 
     // MARK: - Screenshot OCR
 

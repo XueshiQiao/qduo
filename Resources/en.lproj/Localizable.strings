@@ -58,9 +58,7 @@
 "popbar.action.translate" = "Translate";
 "popbar.action.polish" = "Polish";
 "popbar.action.explain" = "Explain";
-"popbar.preview.button" = "Preview popup";
 "popbar.preview.sample" = "The quick brown fox jumps over the lazy dog.";
-"popbar.style.label" = "Display style";
 "popbar.style.capsule" = "Capsule";
 "popbar.style.liquid" = "Liquid";
 "popbar.style.donut" = "3D Glass";
@@ -71,8 +69,12 @@
 "popbar.reset.confirm" = "Restore the %@ settings to their defaults? Only this style is affected, and the values you tuned can't be brought back.";
 "popbar.reset.action" = "Restore Defaults";
 "popbar.reset.cancel" = "Cancel";
+"popbar.preview.footer" = "The preview uses the default actions. Hover to see how it responds; clicks here run nothing.";
+"popbar.advanced.header" = "Advanced · %@";
+"popbar.advanced.show" = "Show";
+"popbar.advanced.hide" = "Hide";
+"popbar.advanced.collapsed" = "Sizes, dividers and other fine-tuning for this style. Click Show to open them.";
 "popbar.donut.dividers" = "Show dividers between slices";
-"popbar.style.footer" = "Liquid and 3D Glass show a ring centered on the cursor; Capsule shows a horizontal bar above the selection (Liquid is a bright frosted-glass skin; 3D Glass is a glass ring that leans toward the pointer).";
 "popbar.wheel.outer" = "Outer radius";
 "popbar.wheel.inner" = "Inner radius";
 "popbar.wheel.subSeam" = "Submenu gap";
@@ -149,8 +151,6 @@
 "popbar.editor.kind.quicklook" = "Preview a file (Quick Look)";
 "popbar.editor.kind.reveal" = "Show in Finder";
 "popbar.editor.kind.pathHint" = "Acts on the selected text when it is a path to a file or folder that exists on this Mac — for example ~/Downloads/photo.png.";
-"popbar.action.quicklook" = "Preview";
-"popbar.action.reveal" = "Show in Finder";
 "popbar.error.nopath" = "The selected text isn't a file or folder that exists on this Mac.";
 "popbar.error.unsupported" = "This action was made by a newer version and can't run here. Update the app to use it.";
 "popbar.action.webpreview" = "Web Preview";
@@ -187,7 +187,7 @@
 /* Actions: open URL, speak, transform, shortcut, script, replace */
 "popbar.action.search" = "Search";
 "popbar.action.speak" = "Speak";
-"popbar.action.filesAndWeb" = "Files & Web";
+"popbar.action.tools" = "Tools";
 "popbar.actions.addTemplate" = "Add from Template";
 "popbar.editor.kind.openURL" = "Open URL";
 "popbar.editor.kind.speak" = "Speak";

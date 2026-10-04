@@ -70,6 +70,24 @@ final class PopBarPanelModel: ObservableObject {
     @Published var capsuleLabelSize = PopBarPreferences.capsuleLabelSizeDefault
     /// Capsule: draw the very thin outline. Seeded on each show.
     @Published var capsuleBorder = true
+    /// Set only for the preview in the Appearance settings: the 3D ring is drawn
+    /// in the page itself rather than in a window of its own (see `DonutInlineLayer`).
+    var drawsDonutInline = false
+
+    /// Read how the popup looks from the preferences: the style, the selected
+    /// ring's geometry, the capsule's sizes and both styles' dividers. The one
+    /// place this is read, for a real popup and the settings preview alike.
+    func loadAppearance() {
+        style = PopBarPreferences.style
+        let ring = PopBarPreferences.ring(style)   // this ring style's own knobs
+        wheelLayout = ring.layout   // user-adjustable radii + icon/label toggles
+        autoHideOnExitRing = ring.autoHideOnExit   // wheel: hide when pointer leaves the ring
+        capsuleIconSize = PopBarPreferences.capsuleIconSize
+        capsuleLabelSize = PopBarPreferences.capsuleLabelSize
+        capsuleBorder = PopBarPreferences.capsuleBorder
+        donutDividers = PopBarPreferences.wheelDonutDividers
+        liquidDividers = PopBarPreferences.wheelLiquidDividers
+    }
 
     /// Wired by the controller.
     var onAction: ((PopBarActionConfig) -> Void)?
@@ -147,6 +165,7 @@ struct PopBarContentView: View {
                                  skin: wheelSkin,
                                  autoHideOnExit: model.autoHideOnExitRing,
                                  liquidDividers: model.liquidDividers,
+                                 drawsDonutInline: model.drawsDonutInline,
                                  hitRegion: model.wheelHitRegion,
                                  onExitRing: { model.onExitRing?() }) { action in
                     model.onAction?(action)

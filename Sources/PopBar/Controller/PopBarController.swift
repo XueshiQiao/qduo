@@ -430,9 +430,10 @@ final class PopBarController {
 
     // MARK: - Preview (verification affordance)
 
-    /// Show the capsule at screen center with sample text — used by the settings
-    /// "Preview" button and by the `--popbar-preview` launch flag. Lets the UI
-    /// be seen without performing a real system-wide selection.
+    /// Show the popup at screen center with sample text — used by the
+    /// `--popbar-preview` launch flag. Lets the UI be seen (and filmed) without
+    /// performing a real system-wide selection. The Appearance page has its own
+    /// preview drawn in the page (`PopBarStylePreview`) and never calls this.
     func showPreview() {
         let anchor = previewAnchor()
         lastAnchor = anchor
@@ -477,39 +478,22 @@ final class PopBarController {
         windows.setResultFontSize(size)
     }
 
-    /// Show (or live-update) the centered preview wheel as the user drags the wheel
-    /// geometry sliders / toggles in settings, so the change is visible in real time.
-    /// If the preview is already up, push the new geometry in place (smooth); otherwise
-    /// bring the centered preview up (which reads the current geometry at show time).
-    func previewWheelLive() {
-        if windows.transientIsVisibleUnpinned && windows.transientIsShowingActions {
-            windows.setWheelLayout(PopBarPreferences.ring(PopBarPreferences.style).layout)
-        } else {
-            showPreview()
-        }
+    /// Push a live wheel-geometry change (from the settings sliders) onto any popup
+    /// that is showing its ring, so it follows the slider in place. Popups shown
+    /// later read the geometry at show time anyway.
+    func updateShowingWheel() {
+        windows.setWheelLayout(PopBarPreferences.ring(PopBarPreferences.style).layout)
     }
 
-    /// Show (or live-update) the preview as the capsule's icon / caption size
-    /// sliders move. The bar re-fits to its new button size in place.
-    func previewCapsuleLive() {
-        if windows.transientIsVisibleUnpinned && windows.transientIsShowingActions {
-            windows.setCapsuleSizes(icon: PopBarPreferences.capsuleIconSize,
-                                    label: PopBarPreferences.capsuleLabelSize)
-        } else {
-            showPreview()
-        }
+    /// The same for the capsule's icon / caption sizes: a showing bar re-fits to
+    /// its new button size in place.
+    func updateShowingCapsule() {
+        windows.setCapsuleSizes(icon: PopBarPreferences.capsuleIconSize,
+                                label: PopBarPreferences.capsuleLabelSize)
     }
 
-    /// Reflect a live STYLE switch (capsule ↔ wheel ↔ liquid) in the preview. Unlike a
-    /// radius/icon/label tweak, a style change alters the popup's structure, placement
-    /// and hit-testing, so re-show the preview fresh (it reads the new style at show
-    /// time) rather than patching the showing one in place.
-    func previewStyleLive() {
-        showPreview()
-    }
-
-    /// Dismiss the live preview wheel — used when the user leaves the PopBar settings
-    /// page (so a centered preview isn't left orphaned over the rest of the app).
+    /// Dismiss the sample popup — used when the onboarding guide moves on or
+    /// closes, so its sample isn't left orphaned over the rest of the app.
     func dismissPreview() {
         windows.dismissTransient()
     }
