@@ -15,7 +15,7 @@
 /* Sidebar pages */
 "page.general" = "General";
 "page.actions" = "Actions";
-"page.appearance" = "Appearance";
+"page.advanced" = "Advanced";
 "page.ocr" = "Screenshot Text";
 "page.speech" = "Speech";
 "page.models" = "AI Models";
@@ -51,7 +51,8 @@
 "popbar.perm.grant" = "Grant Access…";
 "popbar.perm.open" = "Open Settings";
 "popbar.actions.header" = "Actions";
-"popbar.result.header" = "Result";
+"popbar.result.header" = "Result Panel";
+"popbar.result.collapsed" = "The panel's height, text size and reading highlight. Click Show to open them.";
 "popbar.display.header" = "Display style";
 "popbar.actions.footer" = "Copy is real. Translate, Polish and Explain return placeholder text for now — wiring a real model in is a one-file change.";
 "popbar.action.copy" = "Copy";
@@ -70,7 +71,7 @@
 "popbar.reset.action" = "Restore Defaults";
 "popbar.reset.cancel" = "Cancel";
 "popbar.preview.footer" = "The preview uses the default actions. Hover to see how it responds; clicks here run nothing.";
-"popbar.advanced.header" = "Advanced · %@";
+"popbar.advanced.header" = "%@ Advanced Settings";
 "popbar.advanced.show" = "Show";
 "popbar.advanced.hide" = "Hide";
 "popbar.advanced.collapsed" = "Sizes, dividers and other fine-tuning for this style. Click Show to open them.";

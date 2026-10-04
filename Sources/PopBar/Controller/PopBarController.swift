@@ -432,7 +432,7 @@ final class PopBarController {
 
     /// Show the popup at screen center with sample text — used by the
     /// `--popbar-preview` launch flag. Lets the UI be seen (and filmed) without
-    /// performing a real system-wide selection. The Appearance page has its own
+    /// performing a real system-wide selection. The General page has its own
     /// preview drawn in the page (`PopBarStylePreview`) and never calls this.
     func showPreview() {
         let anchor = previewAnchor()

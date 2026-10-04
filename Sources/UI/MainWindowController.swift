@@ -102,7 +102,7 @@ struct MainView: View {
         case .general:    GeneralPage(store: appState.store, openOnboarding: appState.showOnboarding)
         case .actions:    ActionsPage(actions: appState.actions, llm: appState.llm)
         case .history:    HistoryPage()
-        case .appearance: AppearancePage(store: appState.store)
+        case .advanced:   AdvancedPage(store: appState.store)
         case .ocr:        OCRPage(store: appState.store)
         case .models:     ModelsPage(settings: appState.llm.settings)
         case .speech:     SpeechSettingsView()

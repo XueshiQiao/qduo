@@ -1,11 +1,15 @@
 import SwiftUI
 import AppKit
 import ServiceManagement
-import UniformTypeIdentifiers
 
 /// The General page: the Accessibility permission, the app-level settings
-/// (launch at login, language), how the selection is read and where it is not,
-/// and the config / log files.
+/// (onboarding, launch at login, language), then the popup itself — which shape
+/// it takes, that style's own knobs, and how a result is rendered once an action
+/// produces text.
+///
+/// Everything else — the hotkey, how the selection is read, excluded apps,
+/// terminals, the config and log files — is on the Advanced page. Those are
+/// opt-in or rarely touched; this page is what a new user sees first.
 ///
 /// There is no global on/off switch, by design. Reading the selection IS the app;
 /// a switch for it would only be a slower way to quit. Per-app exclusion covers
@@ -14,19 +18,22 @@ import UniformTypeIdentifiers
 /// The Accessibility block appears only while the permission is missing — it is
 /// the one thing standing between a fresh install and a working popup, so it goes
 /// at the top and disappears the moment it stops being true.
+///
+/// The popup is drawn live in the page (`PopBarStylePreview`), and every control
+/// under it changes it in place: pick a style, open its advanced settings, drag.
 struct GeneralPage: View {
 
     @ObservedObject private var store: PopBarStore
     private let openOnboarding: () -> Void
 
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
-    #if DEBUG
-    @AppStorage(DebugReadViaBadge.enabledKey) private var showReadViaBadge = true
-    #endif
     @State private var languageCode: String? = Preferences.languageOverride
-    /// Set when the recorded popup hotkey could not be registered (another app,
-    /// or the screenshot-OCR hotkey, has it), so the field can say so.
-    @State private var popupHotKeyError = false
+    @State private var confirmingReset = false
+    /// Whether the selected style's own knobs are shown. Closed every time the
+    /// page opens: most people pick a style and never tune it.
+    @State private var showingStyleAdvanced = false
+    /// Same for the result rows: the defaults are what nearly everyone keeps.
+    @State private var showingResult = false
 
     /// The Accessibility grant happens in System Settings, in another process — the
     /// app is never told. Polling is the only way to notice, and two seconds is
@@ -45,11 +52,9 @@ struct GeneralPage: View {
         Form {
             if !store.isTrusted { permissionSection }
             appSection
-            popupHotKeySection
-            readingSection
-            excludedAppsSection
-            terminalAppsSection
-            diagnosticsSection
+            styleSection
+            styleAdvancedSection
+            resultSection
         }
         .formStyle(.grouped)
         .navigationTitle(L("page.general"))
@@ -58,117 +63,6 @@ struct GeneralPage: View {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
         }
         .onReceive(trustPoll) { _ in store.refreshTrust() }
-    }
-
-    // MARK: - Popup hotkey (issue #4)
-
-    /// Independent of the pause, on purpose: the pause is about the popup opening
-    /// by itself, the hotkey about opening it when asked. Paused + hotkey is the
-    /// "only when I press it" mode. See `docs/popup-hotkey.html`.
-    private var popupHotKeySection: some View {
-        Section {
-            Toggle(isOn: Binding(get: { store.popupHotKeyEnabled },
-                                 set: { popupHotKeyError = !store.setPopupHotKeyEnabled($0) })) {
-                featureLabel("keyboard", .purple,
-                             L("popbar.hotkey.enable.title"), L("popbar.hotkey.enable.subtitle"))
-            }
-            if store.popupHotKeyEnabled {
-                LabeledContent {
-                    HotKeyRecorderField(combo: store.popupHotKey) { combo in
-                        popupHotKeyError = !store.setPopupHotKey(combo)
-                    }
-                } label: {
-                    iconLabel("command", .purple, L("popbar.ocr.hotkey.label"))
-                }
-                // A rejected combo is reported first: with none recorded yet, the
-                // "record one" hint would otherwise hide that the try failed.
-                if store.popupHotKey == nil && !popupHotKeyError {
-                    Text(L("popbar.hotkey.notSet"))
-                        .font(.caption).foregroundStyle(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else if popupHotKeyError || !store.popupHotKeyRegistered {
-                    Text(L("popbar.ocr.hotkey.occupied"))
-                        .font(.caption).foregroundStyle(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        } header: {
-            Text(L("popbar.hotkey.header"))
-        } footer: {
-            Text(String(format: L("popbar.hotkey.footer"), Brand.name))
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: - How the selection is read
-
-    private var readingSection: some View {
-        Section {
-            Toggle(isOn: Binding(get: { store.simulateCopy }, set: { store.setSimulateCopy($0) })) {
-                VStack(alignment: .leading, spacing: 2) {
-                    iconLabel("command", .blue, L("popbar.simulateCopy.title"))
-                    Text(L("popbar.simulateCopy.body"))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            Toggle(isOn: Binding(get: { store.ignoreAddressBars }, set: { store.setIgnoreAddressBars($0) })) {
-                VStack(alignment: .leading, spacing: 2) {
-                    iconLabel("link", .blue, L("popbar.ignoreAddressBars.title"))
-                    Text(L("popbar.ignoreAddressBars.body"))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        } header: {
-            Text(L("popbar.reading.header"))
-        }
-    }
-
-    // MARK: - Excluded apps
-
-    private var excludedAppsSection: some View {
-        Section {
-            if store.excludedApps.isEmpty {
-                Text(L("popbar.excluded.empty"))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(store.excludedApps, id: \.self) { id in
-                AppListRow(bundleID: id) { store.includeApp(id) }
-            }
-            AddAppMenu(skipping: store.excludedApps) { store.excludeApp($0) }
-        } header: {
-            Text(L("popbar.excluded.header"))
-        } footer: {
-            Text(L("popbar.excluded.footer"))
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: - Terminals
-
-    private var terminalAppsSection: some View {
-        Section {
-            // Only the installed ones: the built-in list names terminals most
-            // people don't have. The others stay in the config file untouched.
-            let installed = store.terminalApps.filter { appURL(for: $0) != nil }
-            if installed.isEmpty {
-                Text(L("popbar.terminals.empty"))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(installed, id: \.self) { id in
-                AppListRow(bundleID: id) { store.removeTerminalApp(id) }
-            }
-            AddAppMenu(skipping: store.terminalApps) { store.addTerminalApp($0) }
-        } header: {
-            Text(L("popbar.terminals.header"))
-        } footer: {
-            Text(L("popbar.terminals.footer"))
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 
     // MARK: - Accessibility permission
@@ -222,42 +116,211 @@ struct GeneralPage: View {
         }
     }
 
-    // MARK: - Diagnostics
+    // MARK: - Style
 
-    private var diagnosticsSection: some View {
+    private var styleSection: some View {
         Section {
-            // Nothing else in the app mentions that this file exists, and it is
-            // the one place every setting actually lives — so it needs a door.
-            LabeledContent {
-                Button(L("diagnostics.revealConfig")) {
-                    NSWorkspace.shared.activateFileViewerSelecting([ConfigStore.shared.fileURL])
-                }
-            } label: {
-                iconLabel("doc.badge.gearshape", .indigo, L("diagnostics.config.title"))
-            }
-            Text(String(format: L("diagnostics.config.subtitle"), ConfigStore.shared.fileURL.path))
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            LabeledContent {
-                Button(L("diagnostics.revealLog")) {
-                    NSWorkspace.shared.activateFileViewerSelecting([FileLog.url])
-                }
-            } label: {
-                iconLabel("doc.text", Color(nsColor: .systemGray), L("diagnostics.log.title"))
-            }
-            Text(String(format: L("diagnostics.log.subtitle"), Brand.name, FileLog.url.path))
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            #if DEBUG
-            // Debug builds only: the AX / Clipboard / ⌘C label under the popup.
-            Toggle(isOn: $showReadViaBadge) {
-                iconLabel("tag", .orange, L("diagnostics.readViaBadge"))
-            }
-            #endif
+            StyleSegments(selection: Binding(get: { store.style }, set: { store.setStyle($0) }),
+                          styles: [.liquidGlass, .donut, .capsule], title: styleName)
+                .frame(width: 360)
+                .frame(maxWidth: .infinity)
+            PopBarStylePreview(store: store)
         } header: {
-            Text(L("Diagnostics"))
+            Text(L("popbar.display.header"))
+        } footer: {
+            Text(L("popbar.preview.footer"))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Style advanced settings
+
+    /// The selected style's own knobs, folded away by default. Each style has its
+    /// own set; Liquid and 3D Glass have the same set, but each keeps its own values.
+    private var styleAdvancedSection: some View {
+        Section {
+            if showingStyleAdvanced {
+                if store.style == .capsule {
+                    radiusRow(label: L("popbar.capsule.iconSize"), symbol: "square.grid.2x2",
+                              value: store.capsuleIconSize,
+                              range: PopBarPreferences.capsuleIconSizeRange) {
+                        store.setCapsuleIconSize($0)
+                    }
+                    radiusRow(label: L("popbar.capsule.labelSize"), symbol: "textformat.size",
+                              value: store.capsuleLabelSize,
+                              range: PopBarPreferences.capsuleLabelSizeRange) {
+                        store.setCapsuleLabelSize($0)
+                    }
+                    Toggle(isOn: Binding(get: { store.capsuleBorder },
+                                         set: { store.setCapsuleBorder($0) })) {
+                        iconLabel("rectangle", .indigo, L("popbar.capsule.border"))
+                    }
+                }
+                if store.style == .liquidGlass {
+                    Toggle(isOn: Binding(get: { store.wheelLiquidDividers },
+                                         set: { store.setWheelLiquidDividers($0) })) {
+                        iconLabel("circle.dotted", .indigo, L("popbar.donut.dividers"))
+                    }
+                }
+                if store.style == .donut {
+                    Toggle(isOn: Binding(get: { store.wheelDonutDividers },
+                                         set: { store.setWheelDonutDividers($0) })) {
+                        iconLabel("circle.dotted", .indigo, L("popbar.donut.dividers"))
+                    }
+                }
+                if store.style.isWheel {
+                    radiusRow(label: L("popbar.wheel.outer"), symbol: "circle.circle",
+                              value: store.wheelOuterRadius,
+                              range: PopBarPreferences.wheelOuterRadiusRange) {
+                        store.setWheelOuterRadius($0)
+                    }
+                    radiusRow(label: L("popbar.wheel.inner"), symbol: "smallcircle.circle",
+                              value: store.wheelInnerRadius,
+                              range: PopBarPreferences.wheelInnerRadiusRange) {
+                        store.setWheelInnerRadius($0)
+                    }
+                    radiusRow(label: L("popbar.wheel.subSeam"), symbol: "circle.dashed",
+                              value: store.wheelSubSeam,
+                              range: PopBarPreferences.wheelSubSeamRange) {
+                        store.setWheelSubSeam($0)
+                    }
+                    radiusRow(label: L("popbar.wheel.subThickness"), symbol: "circle.circle.fill",
+                              value: store.wheelSubThickness,
+                              range: PopBarPreferences.wheelSubThicknessRange) {
+                        store.setWheelSubThickness($0)
+                    }
+                    Toggle(isOn: Binding(get: { store.wheelShowIcons },
+                                         set: { store.setWheelShowIcons($0) })) {
+                        iconLabel("square.grid.2x2", .indigo, L("popbar.wheel.showIcons"))
+                    }
+                    Toggle(isOn: Binding(get: { store.wheelShowLabels },
+                                         set: { store.setWheelShowLabels($0) })) {
+                        iconLabel("textformat", .indigo, L("popbar.wheel.showLabels"))
+                    }
+                    Toggle(isOn: Binding(get: { store.wheelAutoHideOnExit },
+                                         set: { store.setWheelAutoHideOnExit($0) })) {
+                        iconLabel("cursorarrow.motionlines", .indigo, L("popbar.wheel.autoHide"))
+                    }
+                }
+                HStack {
+                    Spacer()
+                    // Resets only the selected style's own settings. Asks first: tuned
+                    // values cannot be got back once reset.
+                    Button { confirmingReset = true } label: {
+                        Label(L("popbar.reset.button"), systemImage: "arrow.counterclockwise")
+                    }
+                    .confirmationDialog(String(format: L("popbar.reset.confirm"), styleName(store.style)),
+                                        isPresented: $confirmingReset,
+                                        titleVisibility: .visible) {
+                        Button(L("popbar.reset.action"), role: .destructive) { store.resetStyleSettings() }
+                        Button(L("popbar.reset.cancel"), role: .cancel) {}
+                    }
+                }
+            }
+        } header: {
+            HStack {
+                Text(String(format: L("popbar.advanced.header"), styleName(store.style)))
+                Spacer()
+                Button(showingStyleAdvanced ? L("popbar.advanced.hide") : L("popbar.advanced.show")) {
+                    withAnimation(.easeInOut(duration: 0.2)) { showingStyleAdvanced.toggle() }
+                }
+                .buttonStyle(.link)
+                .font(.callout)
+            }
+        } footer: {
+            // Folded, the section has no rows, and its header would sit right on top
+            // of the next one's; this says what is inside and keeps them apart.
+            if !showingStyleAdvanced {
+                Text(L("popbar.advanced.collapsed"))
+            }
+        }
+    }
+
+    private func styleName(_ style: PopBarStyle) -> String {
+        switch style {
+        case .liquidGlass: return L("popbar.style.liquid")
+        case .donut: return L("popbar.style.donut")
+        case .capsule: return L("popbar.style.capsule")
+        }
+    }
+
+    /// A labeled slider with its value shown, used for every wheel dimension.
+    private func radiusRow(label: String, symbol: String, value: Double,
+                           range: ClosedRange<Double>,
+                           onChange: @escaping (Double) -> Void) -> some View {
+        LabeledContent {
+            HStack(spacing: 10) {
+                Slider(value: Binding(get: { value }, set: { onChange($0) }), in: range, step: 1)
+                    .frame(maxWidth: 180)
+                Text("\(Int(value))")
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, alignment: .trailing)
+            }
+        } label: {
+            iconLabel(symbol, .indigo, label)
+        }
+    }
+
+    // MARK: - Result
+
+    /// How a result is rendered, folded away by default like the style's knobs.
+    private var resultSection: some View {
+        Section {
+            if showingResult {
+                resultRows
+            }
+        } header: {
+            HStack {
+                Text(L("popbar.result.header"))
+                Spacer()
+                Button(showingResult ? L("popbar.advanced.hide") : L("popbar.advanced.show")) {
+                    withAnimation(.easeInOut(duration: 0.2)) { showingResult.toggle() }
+                }
+                .buttonStyle(.link)
+                .font(.callout)
+            }
+        } footer: {
+            if showingResult {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("popbar.autoheight.footer"))
+                    Text(L("popbar.fontsize.footer"))
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text(L("popbar.result.collapsed"))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var resultRows: some View {
+        Toggle(isOn: Binding(get: { store.autoExpandHeight },
+                             set: { store.setAutoExpandHeight($0) })) {
+            iconLabel("arrow.up.and.down.text.horizontal", .indigo, L("popbar.autoheight.label"))
+        }
+        LabeledContent {
+            HStack(spacing: 10) {
+                Slider(value: Binding(get: { store.resultFontSize },
+                                      set: { store.setResultFontSize($0) }),
+                       in: PopBarPreferences.resultFontSizeRange, step: 1)
+                    .frame(maxWidth: 180)
+                Text("\(Int(store.resultFontSize))")
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, alignment: .trailing)
+            }
+        } label: {
+            iconLabel("textformat.size", .indigo, L("popbar.fontsize.label"))
+        }
+        Picker(selection: Binding(get: { store.readingHighlight },
+                                  set: { store.setReadingHighlight($0) })) {
+            Text(L("popbar.readingHighlight.pill")).tag(ReadingHighlightStyle.pill)
+            Text(L("popbar.readingHighlight.marker")).tag(ReadingHighlightStyle.marker)
+            Text(L("popbar.readingHighlight.solid")).tag(ReadingHighlightStyle.solid)
+            Text(L("popbar.readingHighlight.karaoke")).tag(ReadingHighlightStyle.karaoke)
+        } label: {
+            iconLabel("highlighter", .indigo, L("popbar.readingHighlight.label"))
         }
     }
 
@@ -276,5 +339,44 @@ struct GeneralPage: View {
     private func setLanguage(_ code: String?) {
         languageCode = code
         Preferences.setLanguageOverride(code)
+    }
+}
+
+/// The style switch: the system segmented control, with the selected segment
+/// filled in the accent colour (`selectedSegmentBezelColor`). Left plain, the
+/// selected segment on macOS 26 is a raised light chip that reads as one more
+/// button rather than as the choice that is in effect.
+private struct StyleSegments: NSViewRepresentable {
+    @Binding var selection: PopBarStyle
+    let styles: [PopBarStyle]
+    let title: (PopBarStyle) -> String
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> NSSegmentedControl {
+        let control = NSSegmentedControl(labels: styles.map(title), trackingMode: .selectOne,
+                                         target: context.coordinator, action: #selector(Coordinator.changed(_:)))
+        control.selectedSegmentBezelColor = .controlAccentColor
+        control.segmentDistribution = .fillEqually
+        control.controlSize = .large
+        return control
+    }
+
+    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+        context.coordinator.parent = self
+        for (i, style) in styles.enumerated() where control.label(forSegment: i) != title(style) {
+            control.setLabel(title(style), forSegment: i)   // the app's language can change live
+        }
+        control.selectedSegment = styles.firstIndex(of: selection) ?? -1
+    }
+
+    final class Coordinator: NSObject {
+        var parent: StyleSegments
+        init(_ parent: StyleSegments) { self.parent = parent }
+
+        @objc func changed(_ sender: NSSegmentedControl) {
+            guard parent.styles.indices.contains(sender.selectedSegment) else { return }
+            parent.selection = parent.styles[sender.selectedSegment]
+        }
     }
 }

@@ -9,8 +9,8 @@ import SwiftUI
 /// `Block` decides where the separators fall.
 enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
     case general
+    case advanced
     case actions
-    case appearance
     case ocr
     case history
     case models
@@ -25,7 +25,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
 
     var block: Block {
         switch self {
-        case .general, .actions, .appearance, .ocr: return .popup
+        case .general, .advanced, .actions, .ocr: return .popup
         case .history:                              return .history
         case .models, .speech, .about:              return .app
         }
@@ -36,7 +36,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .general:    return L("page.general")
         case .actions:    return L("page.actions")
         case .history:    return L("page.history")
-        case .appearance: return L("page.appearance")
+        case .advanced:   return L("page.advanced")
         case .ocr:        return L("page.ocr")
         case .models:     return L("page.models")
         case .speech:     return L("page.speech")
@@ -49,7 +49,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .general:    return "gearshape.fill"
         case .actions:    return "list.bullet.rectangle.fill"
         case .history:    return "clock.arrow.circlepath"
-        case .appearance: return "circle.hexagongrid.fill"
+        case .advanced:   return "slider.horizontal.3"
         case .ocr:        return "viewfinder"
         case .models:     return "brain.head.profile"
         case .speech:     return "speaker.wave.2.fill"
@@ -62,7 +62,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .general:    return Color(nsColor: .systemGray)
         case .actions:    return .indigo
         case .history:    return .green
-        case .appearance: return .purple
+        case .advanced:   return .purple
         case .ocr:        return .teal
         case .models:     return .blue
         case .speech:     return .orange

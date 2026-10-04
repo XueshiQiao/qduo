@@ -139,7 +139,7 @@ final class PopBarStore: ObservableObject {
     }
 
     /// Switch the popup's presentation style. Persisted in PopBar's own prefs; the
-    /// Appearance page's preview follows it, and the next popup reads it at show time.
+    /// General page's preview follows it, and the next popup reads it at show time.
     func setStyle(_ s: PopBarStyle) {
         if s != style { Analytics.trackPreferenceChanged(key: "popup_style", value: s.rawValue) }
         style = s

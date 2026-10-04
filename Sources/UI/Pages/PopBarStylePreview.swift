@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The live preview at the top of the Appearance page: the real popup — the same
+/// The live preview on the General page: the real popup — the same
 /// `PopBarContentView` a selection pops up — drawn on a band of backdrop, so
 /// every style and every slider below shows here as it is changed.
 ///

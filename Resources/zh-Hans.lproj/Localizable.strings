@@ -14,7 +14,7 @@
 /* 侧边栏页面 */
 "page.general" = "通用";
 "page.actions" = "动作";
-"page.appearance" = "外观";
+"page.advanced" = "高级";
 "page.ocr" = "截屏取字";
 "page.speech" = "朗读";
 "page.models" = "AI 模型";
@@ -50,7 +50,8 @@
 "popbar.perm.grant" = "授予权限…";
 "popbar.perm.open" = "打开设置";
 "popbar.actions.header" = "动作";
-"popbar.result.header" = "结果";
+"popbar.result.header" = "结果面板";
+"popbar.result.collapsed" = "结果面板的高度、文字大小和朗读高亮都在这里，点「显示」展开。";
 "popbar.display.header" = "显示样式";
 "popbar.actions.footer" = "“复制”是真实功能；翻译、润色、解释目前返回占位文本——接入真实模型只需改一个文件。";
 "popbar.action.copy" = "复制";
@@ -69,7 +70,7 @@
 "popbar.reset.action" = "恢复默认";
 "popbar.reset.cancel" = "取消";
 "popbar.preview.footer" = "预览使用默认动作。可以把鼠标移上去看效果，在这里点击不会执行任何动作。";
-"popbar.advanced.header" = "高级 · %@";
+"popbar.advanced.header" = "%@高级设置";
 "popbar.advanced.show" = "显示";
 "popbar.advanced.hide" = "隐藏";
 "popbar.advanced.collapsed" = "这个样式的尺寸、分隔缝等细调都在这里，点「显示」展开。";
