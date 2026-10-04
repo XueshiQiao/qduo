@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QDuo 外观页方案</title>
+<style>
+:root{--doc:#ffffff;--doctext:#3a3a3c;--glassfill:rgba(250,250,252,.86);--glassline:rgba(0,0,0,.18);--page:#ecebf0;--text:#1d1d1f;--sub:#6e6e73;--faint:#98989d;--line:rgba(0,0,0,.1);--card:#fff;--card2:#f6f6f8;
+  --accent:#0a84ff;--accent-bg:rgba(10,132,255,.12);--win:#fbfbfd;--side:#ececf0;--sel:rgba(0,0,0,.08);--row:#fff;--rowline:rgba(0,0,0,.07);
+  --ctl:#fff;--ctlline:rgba(0,0,0,.14);--seg:rgba(0,0,0,.06);--switch-off:#e3e3e6;--desk1:#c9d6ee;--desk2:#e9dcef;--indigo:#5856d6}
+:root[data-theme="dark"]{--doc:#1a1a1c;--doctext:#c7c7cc;--glassfill:rgba(52,52,56,.86);--glassline:rgba(255,255,255,.22);--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--faint:#6e6e73;--line:rgba(255,255,255,.12);--card:#232326;--card2:#1c1c1f;
+  --accent:#4da3ff;--accent-bg:rgba(77,163,255,.16);--win:#1e1e21;--side:#26262a;--sel:rgba(255,255,255,.1);--row:#2a2a2d;--rowline:rgba(255,255,255,.07);
+  --ctl:#3a3a3d;--ctlline:rgba(255,255,255,.12);--seg:rgba(255,255,255,.08);--switch-off:#48484b;--desk1:#2b3550;--desk2:#3d3046;--indigo:#7d7aff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--doc:#1a1a1c;--doctext:#c7c7cc;--glassfill:rgba(52,52,56,.86);--glassline:rgba(255,255,255,.22);--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--faint:#6e6e73;--line:rgba(255,255,255,.12);--card:#232326;--card2:#1c1c1f;
+  --accent:#4da3ff;--accent-bg:rgba(77,163,255,.16);--win:#1e1e21;--side:#26262a;--sel:rgba(255,255,255,.1);--row:#2a2a2d;--rowline:rgba(255,255,255,.07);
+  --ctl:#3a3a3d;--ctlline:rgba(255,255,255,.12);--seg:rgba(255,255,255,.08);--switch-off:#48484b;--desk1:#2b3550;--desk2:#3d3046;--indigo:#7d7aff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:13px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;padding:24px 16px 80px}
+.wrap{max-width:1180px;margin:0 auto}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+h1{font-size:23px;margin:0 0 4px} header.top p{margin:0;color:var(--sub);max-width:780px}
+h2{font-size:18px;margin:34px 0 6px} p.lead{color:var(--sub);margin:0 0 12px;max-width:860px}
+.toggle{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px}
+.toggle button{border:0;background:none;color:var(--text);font:inherit;padding:5px 12px;border-radius:6px;cursor:pointer}
+.toggle button.on{background:rgba(127,127,127,.2);font-weight:600}
+
+/* chooser bar */
+.chooser{position:sticky;top:0;z-index:30;background:var(--page);padding:12px 0;border-bottom:1px solid var(--line);margin-top:18px;display:grid;gap:8px}
+.chooser .grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chooser .lbl{width:118px;color:var(--sub);font-weight:600;flex-shrink:0}
+.chooser button{border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;padding:6px 12px;border-radius:9px;cursor:pointer}
+.chooser button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.chooser button .rec{font-size:11px;margin-left:4px;opacity:.85}
+.note{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:12px 0;color:var(--sub)}
+.note b{color:var(--text)}
+
+/* fake macOS window */
+.stage{display:flex;justify-content:center;padding:24px 0}
+.win{width:760px;max-width:100%;height:640px;background:var(--win);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.25);display:flex;overflow:hidden;position:relative}
+.side{width:190px;background:var(--side);padding:44px 10px 10px;flex-shrink:0;position:relative}
+.lights{position:absolute;top:14px;left:14px;display:flex;gap:8px}
+.lights i{width:12px;height:12px;border-radius:50%;display:block}
+.side .it{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;color:var(--text)}
+.side .it.on{background:var(--sel);font-weight:500}
+.side .ic{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;color:#fff;font-size:11px}
+.main{flex:1;overflow-y:auto;padding:0 22px 30px}
+.main .title{position:sticky;top:0;background:var(--win);font-weight:700;font-size:14px;padding:16px 0 10px;z-index:2}
+.sechead{font-weight:600;font-size:12px;color:var(--text);margin:14px 4px 6px;display:flex;justify-content:space-between;align-items:center}
+.sechead a{font-weight:400;color:var(--accent);cursor:pointer;font-size:12px}
+.sec{background:var(--row);border-radius:9px;box-shadow:0 0 0 .5px var(--rowline);overflow:hidden}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;min-height:38px;border-top:1px solid var(--rowline)}
+.sec>.row:first-child,.sec>.first{border-top:0}
+.row .l{display:flex;align-items:center;gap:8px}
+.sym{width:18px;height:18px;border-radius:5px;background:var(--indigo);color:#fff;display:grid;place-items:center;font-size:10px;flex-shrink:0}
+.secfoot{font-size:11px;color:var(--sub);margin:6px 4px 0;line-height:1.45}
+.faded{opacity:.45}
+
+/* controls */
+.seg{display:inline-flex;background:var(--seg);border-radius:7px;padding:2px;width:300px}
+.seg button{flex:1;border:0;background:none;color:var(--text);font:inherit;font-size:12px;padding:3px 6px;border-radius:5px;cursor:pointer}
+.seg button.on{background:var(--ctl);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.sw{width:32px;height:19px;border-radius:10px;background:var(--switch-off);position:relative;cursor:pointer;flex-shrink:0;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+.sw.on{background:var(--accent)} .sw.on::after{left:15px}
+.sld{display:flex;align-items:center;gap:10px}
+.sld input{width:170px;accent-color:var(--accent)}
+.sld span{width:26px;text-align:right;color:var(--sub);font-size:11px;font-variant-numeric:tabular-nums}
+.btn{border:0;background:var(--ctl);box-shadow:0 0 0 .5px var(--ctlline),0 1px 1px rgba(0,0,0,.08);color:var(--text);font:inherit;font-size:12px;padding:3px 10px;border-radius:6px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.btn.primary{background:var(--accent);color:#fff;box-shadow:none}
+.popup{border:0;background:var(--ctl);box-shadow:0 0 0 .5px var(--ctlline),0 1px 1px rgba(0,0,0,.08);color:var(--text);font:inherit;font-size:12px;padding:3px 8px 3px 10px;border-radius:6px;display:inline-flex;gap:14px;align-items:center;cursor:pointer;position:relative}
+.popup .chev{font-size:9px;color:var(--sub);line-height:1}
+.menu{position:absolute;right:0;top:26px;background:var(--card);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25),0 0 0 .5px var(--ctlline);padding:5px;min-width:150px;z-index:10;text-align:left}
+.menu div{padding:4px 10px 4px 22px;border-radius:5px;position:relative}
+.menu div:hover{background:var(--accent);color:#fff}
+.menu div.on::before{content:"✓";position:absolute;left:7px}
+
+/* A2 cards */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px}
+.card{border:0;background:none;font:inherit;color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0}
+.card .th{width:100%;aspect-ratio:3/2;border-radius:8px;box-shadow:0 0 0 1px var(--rowline);overflow:hidden;position:relative}
+.card.on .th{box-shadow:0 0 0 3px var(--accent)}
+.card .nm{font-size:12px}
+.card.on .nm{font-weight:600}
+.desc{padding:0 14px 12px;color:var(--sub);font-size:11.5px;text-align:center}
+
+/* A3 radio list */
+.rad{display:flex;align-items:center;gap:12px;padding:9px 12px;border-top:1px solid var(--rowline);cursor:pointer}
+.rad:first-child{border-top:0}
+.rad .dot{width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--ctlline);background:var(--ctl);flex-shrink:0;position:relative}
+.rad.on .dot{background:var(--accent);box-shadow:none}
+.rad.on .dot::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#fff}
+.rad .th{width:66px;height:44px;border-radius:6px;overflow:hidden;box-shadow:0 0 0 .5px var(--rowline);flex-shrink:0}
+.rad .tx b{font-weight:600;display:block;font-size:12.5px} .rad .tx span{color:var(--sub);font-size:11.5px}
+
+/* A4 big preview */
+.bigprev{margin:0 12px 12px;border-radius:8px;overflow:hidden;height:150px;box-shadow:0 0 0 .5px var(--rowline)}
+
+/* B1 disclosure row */
+.disc{cursor:pointer;user-select:none}
+.disc .chv{display:inline-block;width:12px;color:var(--sub);transition:transform .15s;font-size:10px}
+.disc.open .chv{transform:rotate(90deg)}
+.disc .cnt{color:var(--sub);font-size:11.5px}
+.indent .row{padding-left:32px}
+
+/* B3 sheet */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.18);display:flex;justify-content:center;align-items:flex-start;z-index:20}
+.sheet{margin-top:28px;width:470px;background:var(--win);border-radius:12px;box-shadow:0 16px 50px rgba(0,0,0,.35),0 0 0 .5px var(--ctlline);padding:16px 18px}
+.sheet h4{margin:0 0 10px;font-size:13px}
+.sheet .foot{display:flex;justify-content:space-between;margin-top:14px}
+
+/* tables */
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 0 0 1px var(--line);font-size:12.5px}
+th,td{padding:9px 12px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
+th{background:var(--card2);font-weight:600;border-top:0}
+td.k{font-weight:600;white-space:nowrap}
+tr.rec td{background:var(--accent-bg)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;background:var(--accent);color:#fff;margin-left:4px;font-weight:600}
+@media (max-width:700px){.side{display:none}.chooser .lbl{width:100%}.seg{width:220px}.sld input{width:110px}.win{height:600px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>设置 → 外观页：两处改法</h1>
+    <p>① 「显示样式」那三个选项换一种更直观的选法；② 下面那一组细调选项（半径、分隔缝、图标/文字开关等）默认收起来，放进「高级设置」。下面的窗口是可以点的：顶部两排按钮分别切换两处的方案，可以任意组合；窗口里点样式、点展开都会真实响应。</p>
+  </div>
+  <div class="toggle" id="theme"><button data-t="light">浅色</button><button data-t="auto" class="on">跟随系统</button><button data-t="dark">深色</button></div>
+</header>
+
+<div class="chooser">
+  <div class="grp"><span class="lbl">① 样式怎么选</span>
+    <button data-a="A1">A1 现在：分段按钮</button>
+    <button data-a="A2" class="on">A2 带缩略图的卡片<span class="rec">推荐</span></button>
+    <button data-a="A3">A3 单选列表 + 小图 + 说明</button>
+    <button data-a="A4">A4 下拉菜单 + 大预览图</button>
+  </div>
+  <div class="grp"><span class="lbl">缩略图用</span>
+    <button data-r="1" class="on">真实截图（从宣传片录屏里截的）</button>
+    <button data-r="0">手画示意图</button>
+  </div>
+  <div class="grp"><span class="lbl">② 细调怎么收</span>
+    <button data-b="B0">B0 现在：全部摊开</button>
+    <button data-b="B1">B1 区块里一行「高级设置 ▸」</button>
+    <button data-b="B2" class="on">B2 单独一个「高级」区块，标题旁有「显示」<span class="rec">你选的</span></button>
+    <button data-b="B3">B3 「高级设置…」按钮，弹出小窗</button>
+  </div>
+</div>
+
+<div class="stage"><div class="win" id="win">
+  <div class="side">
+    <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="it"><span class="ic" style="background:#8e8e93">⚙︎</span>通用</div>
+    <div class="it"><span class="ic" style="background:#ff9500">★</span>动作</div>
+    <div class="it on"><span class="ic" style="background:#5856d6">◐</span>外观</div>
+    <div class="it"><span class="ic" style="background:#34c759">♪</span>朗读</div>
+    <div class="it"><span class="ic" style="background:#007aff">↺</span>历史</div>
+    <div class="it"><span class="ic" style="background:#8e8e93">i</span>关于</div>
+  </div>
+  <div class="main" id="main"></div>
+</div></div>
+
+<div class="note"><b>没动的地方：</b>下面的「结果」区块（高度自适应、文字大小、朗读高亮）这次不改，窗口里显示成淡色只是为了示意它还在原位。<b>「预览弹窗」按钮</b>在所有方案里都留在外面，不收进高级——它是调样式时最常点的。<b>「恢复默认」</b>只重置这一种样式的细调值，所以跟着细调一起收进高级里。</div>
+
+<h2>① 样式怎么选：对比</h2>
+<p class="lead">现在显得怪，主要是两点：三个名字（水玻璃 / 立体玻璃 / 胶囊）光看字想象不出长什么样，只能靠底下一大段说明文字解释；分段按钮在 macOS 上通常用于「视图切换」这类短选项，而这里其实是在选一个外观，系统自己的「外观：浅色 / 深色 / 自动」用的是带缩略图的卡片。</p>
+<table>
+<tr><th>方案</th><th>样子</th><th>好处</th><th>代价 / 风险</th></tr>
+<tr><td class="k">A1 现在</td><td>一行分段按钮 + 底部一段长说明</td><td>最省地方</td><td>名字看不出样子，得读说明；就是你说的「怪」</td></tr>
+<tr class="rec"><td class="k">A2 缩略图卡片<span class="tag">推荐</span></td><td>三张小图并排，选中的描蓝边，下面一行说明只讲选中的那个</td><td>一眼看出区别；和 macOS 系统设置里「外观」的选法一致；底部那段长说明可以删掉</td><td>要画三张缩略图（可以用真实弹窗截图）；纵向多占约 110pt</td></tr>
+<tr><td class="k">A3 单选列表</td><td>三行，每行：圆点 + 小图 + 名字 + 一句说明</td><td>说明直接挨着选项，信息最完整</td><td>最占高度（三行）；小图偏小，看细节不如 A2</td></tr>
+<tr><td class="k">A4 下拉 + 大预览</td><td>一个下拉菜单，下面一张大预览图</td><td>预览图最大、最清楚</td><td>选之前看不到另外两种长什么样，要点开菜单一个个试</td></tr>
+</table>
+
+<h2>② 细调怎么收：对比</h2>
+<p class="lead">注意细调的内容随样式变：选水玻璃 / 立体玻璃时有 8 项（分隔缝、外环半径、内环半径、二级菜单间距、二级菜单环厚、显示图标、显示文字、移出自动隐藏），选胶囊时只有 3 项（图标大小、文字大小、细边框）。</p>
+<table>
+<tr><th>方案</th><th>样子</th><th>好处</th><th>代价 / 风险</th></tr>
+<tr><td class="k">B0 现在</td><td>全部摊开</td><td>—</td><td>选环形样式时一屏都是滑块，主次不分</td></tr>
+<tr class="rec"><td class="k">B1 区块内一行展开<span class="tag">推荐</span></td><td>样式区块最后一行「▸ 高级设置 · 8 项」，点开在原地展开</td><td>离样式选择最近，一看就知道是「这个样式的细调」；展开后开着预览弹窗边拖边看，和现在的调法一样；SwiftUI 用 DisclosureGroup，macOS 13 就支持</td><td>展开后页面变长（和现在一样长）</td></tr>
+<tr><td class="k">B2 单独区块</td><td>新起一个「高级」区块，标题右边「显示 / 隐藏」</td><td>和样式选择分得更开，页面结构更整齐</td><td>系统自带的可折叠区块要 macOS 14，我们最低支持 13，得自己写标题按钮；和「是哪个样式的细调」的关联弱一点</td></tr>
+<tr><td class="k">B3 弹出小窗</td><td>「高级设置…」按钮，点开一个盖在设置窗口上的小窗（sheet），点「完成」关掉</td><td>主页面最干净；系统设置里很多地方这么做</td><td>小窗挡在页面前面，边调边看预览弹窗会别扭；多一次点击</td></tr>
+</table>
+
+<div class="note"><b>还没定、需要你拍板的：</b>① 选 A 几、B 几；② 展开状态要不要记住（推荐：<b>不记住</b>，每次打开都是收起的，符合「默认折叠」）；③ A2 的缩略图用这里手画的示意图，还是用真实弹窗截图（推荐：<b>真实截图</b>，浅色 / 深色各一套）。</div>
+</div>
+
+<script>
+const S = {real:true, a:'A2', b:'B2', style:'liquid', open:false, menu:false, sheet:false,
+  v:{outer:114,inner:54,seam:6,thick:52,icon:15,label:9}, t:{divL:false,divD:false,icons:true,labels:true,autohide:true,border:true}};
+const NAMES = {liquid:'水玻璃', donut:'立体玻璃', capsule:'胶囊'};
+const DESC = {liquid:'以光标为圆心展开成一圈，明亮的磨砂玻璃质感。',
+  donut:'以光标为圆心的立体玻璃圆环，会朝鼠标方向微微倾斜。',
+  capsule:'在选中文字的上方横向展开一排按钮。'};
+
+const REAL = {liquid:'appearance-thumbs/liquid.jpg', donut:'appearance-thumbs/donut.jpg', capsule:'appearance-thumbs/capsule.jpg'};
+function thumb(st, big){
+  if (S.real) return `<img src="${REAL[st]}" alt="${NAMES[st]}" style="width:100%;height:100%;object-fit:cover;display:block">`;
+  return sketch(st, big);
+}
+function sketch(st, big){
+  const id = st + (big?'b':'s');
+  const desk = `<defs><linearGradient id="bg${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--desk1)"/><stop offset="1" stop-color="var(--desk2)"/></linearGradient>
+    <linearGradient id="g${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".55" stop-color="#cfd8ea" stop-opacity=".75"/><stop offset="1" stop-color="#8a96b5" stop-opacity=".85"/></linearGradient>
+    <filter id="sh${id}" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".28"/></filter></defs>
+    <rect width="120" height="80" fill="url(#bg${id})"/>`;
+  const cursor = `<path d="M60 40 l0 9 l2.4 -2.3 l1.8 3.8 l1.4 -.7 l-1.8 -3.7 l3.3 0 z" fill="#111" stroke="#fff" stroke-width=".6"/>`;
+  let body = '';
+  if (st==='liquid'){
+    const C = 2*Math.PI*22, seg = C/6;
+    body = `<circle cx="60" cy="40" r="22" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="15" stroke-dasharray="${seg-1.6} 1.6" filter="url(#sh${id})"/>
+      <circle cx="60" cy="40" r="29.3" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width=".7"/>
+      <circle cx="60" cy="40" r="14.7" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width=".7"/>
+      ${[0,1,2,3,4,5].map(i=>{const a=(i*60-60)*Math.PI/180;return `<circle cx="${60+22*Math.cos(a)}" cy="${40+22*Math.sin(a)}" r="2.6" fill="#5856d6" fill-opacity=".75"/>`}).join('')}`;
+  } else if (st==='donut'){
+    body = `<g transform="translate(60 40) skewX(-6) scale(1 .86)">
+      <circle r="22" fill="none" stroke="url(#g${id})" stroke-width="16" filter="url(#sh${id})"/>
+      <path d="M -26 -10 A 28 28 0 0 1 20 -21" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-opacity=".95"/>
+      <circle r="14" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="1"/>
+      ${[0,1,2,3,4,5].map(i=>{const a=(i*60-60)*Math.PI/180;return `<circle cx="${22*Math.cos(a)}" cy="${22*Math.sin(a)}" r="2.6" fill="#3a3a6e" fill-opacity=".7"/>`}).join('')}</g>`;
+  } else {
+    body = `<rect x="14" y="50" width="92" height="3.2" rx="1.6" fill="#000" fill-opacity=".18"/>
+      <rect x="14" y="58" width="40" height="3.2" rx="1.6" fill="#000" fill-opacity=".18"/>
+      <rect x="54" y="56.5" width="40" height="6.2" rx="1.5" fill="#0a84ff" fill-opacity=".35"/>
+      <rect x="58" y="58" width="32" height="3.2" rx="1.6" fill="#000" fill-opacity=".25"/>
+      <rect x="66" y="66" width="30" height="3.2" rx="1.6" fill="#000" fill-opacity=".18"/>
+      <rect x="22" y="22" width="76" height="24" rx="12" fill="#fff" fill-opacity=".92" stroke="#000" stroke-opacity=".12" stroke-width=".6" filter="url(#sh${id})"/>
+      ${[0,1,2,3].map(i=>`<rect x="${32+i*16.5}" y="27" width="7" height="7" rx="2" fill="#5856d6" fill-opacity=".8"/><rect x="${30.5+i*16.5}" y="37" width="10" height="2" rx="1" fill="#000" fill-opacity=".35"/>`).join('')}`;
+  }
+  return `<svg viewBox="0 0 120 80" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="display:block">${desk}${body}${st!=='capsule'?cursor:''}</svg>`;
+}
+
+function sw(key){ return `<div class="sw ${S.t[key]?'on':''}" data-sw="${key}"></div>`; }
+function sld(key,min,max){ return `<div class="sld"><input type="range" min="${min}" max="${max}" value="${S.v[key]}" data-v="${key}"><span>${S.v[key]}</span></div>`; }
+function row(sym,label,ctl){ return `<div class="row"><span class="l"><span class="sym">${sym}</span>${label}</span>${ctl}</div>`; }
+
+function knobRows(){
+  if (S.style==='capsule') return [
+    row('▦','图标大小',sld('icon',11,24)), row('A','文字大小',sld('label',8,14)), row('▭','显示细边框',sw('border'))];
+  const div = S.style==='liquid'?'divL':'divD';
+  return [row('◌','显示扇区之间的分隔缝',sw(div)),
+    row('◎','外环半径',sld('outer',90,170)), row('◉','内环半径',sld('inner',28,140)),
+    row('◌','二级菜单间距',sld('seam',0,20)), row('●','二级菜单环厚',sld('thick',34,72)),
+    row('▦','显示图标',sw('icons')), row('A','显示文字',sw('labels')), row('➚','鼠标移出圆环时自动隐藏',sw('autohide'))];
+}
+const resetBtn = () => `<button class="btn">↺ 恢复「${NAMES[S.style]}」的默认值</button>`;
+const prevBtn = `<button class="btn">👁 预览弹窗</button>`;
+
+function pickerHTML(){
+  if (S.a==='A1') return `<div class="row first"><span class="l"><span class="sym">⬡</span>显示样式</span>
+    <div class="seg">${['liquid','donut','capsule'].map(k=>`<button data-st="${k}" class="${S.style===k?'on':''}">${NAMES[k]}</button>`).join('')}</div></div>`;
+  if (S.a==='A2') return `<div class="first"><div class="cards">${['liquid','donut','capsule'].map(k=>
+    `<button class="card ${S.style===k?'on':''}" data-st="${k}"><div class="th">${thumb(k)}</div><span class="nm">${NAMES[k]}</span></button>`).join('')}</div>
+    <div class="desc">${DESC[S.style]}</div></div>`;
+  if (S.a==='A3') return `<div class="first">${['liquid','donut','capsule'].map(k=>
+    `<div class="rad ${S.style===k?'on':''}" data-st="${k}"><span class="dot"></span><span class="th">${thumb(k)}</span><span class="tx"><b>${NAMES[k]}</b><span>${DESC[k]}</span></span></div>`).join('')}</div>`;
+  const menuRow = `<div class="row first"><span class="l"><span class="sym">⬡</span>显示样式</span>
+    <div style="position:relative"><button class="popup" data-menu>${NAMES[S.style]}<span class="chev">⌃<br>⌄</span></button>
+    ${S.menu?`<div class="menu">${['liquid','donut','capsule'].map(k=>`<div data-st="${k}" class="${S.style===k?'on':''}">${NAMES[k]}</div>`).join('')}</div>`:''}</div></div>`;
+  return menuRow + `
+    <div class="bigprev">${thumb(S.style,true)}</div>
+    <div class="desc" style="text-align:left">${DESC[S.style]}</div>`;
+}
+
+function render(){
+  const n = knobRows().length;
+  let html = `<div class="title">外观</div><div class="sechead">显示样式</div><div class="sec">${pickerHTML()}`;
+  if (S.b==='B0'){
+    html += knobRows().join('') + `<div class="row">${prevBtn}${resetBtn()}</div></div>`;
+    if (S.a==='A1') html += `<div class="secfoot">水玻璃 / 立体玻璃以光标为圆心成环，胶囊在选区上方横向展开（水玻璃是明亮磨砂玻璃皮肤；立体玻璃是一个会朝鼠标方向微微倾斜的立体玻璃圆环）。</div>`;
+  } else if (S.b==='B1'){
+    html += `<div class="row disc ${S.open?'open':''}" data-disc><span class="l"><span class="chv">▶</span>高级设置</span><span class="cnt">${S.open?'':`「${NAMES[S.style]}」的 ${n} 项细调`}</span></div>`;
+    if (S.open) html += `<div class="indent">${knobRows().join('')}<div class="row" style="justify-content:flex-end">${resetBtn()}</div></div>`;
+    html += `<div class="row">${prevBtn}</div></div>`;
+  } else if (S.b==='B2'){
+    html += `<div class="row">${prevBtn}</div></div>`;
+    html += `<div class="sechead">高级 · ${NAMES[S.style]}<a data-disc>${S.open?'隐藏':'显示'}</a></div>`;
+    if (S.open) html += `<div class="sec">${knobRows().join('')}<div class="row" style="justify-content:flex-end">${resetBtn()}</div></div>`;
+  } else {
+    html += `<div class="row">${prevBtn}<button class="btn" data-sheet>高级设置…</button></div></div>`;
+  }
+  html += `<div class="faded"><div class="sechead">结果</div><div class="sec">
+    ${row('↕','结果高度自适应内容','<div class="sw on"></div>')}
+    ${row('A','结果文字大小','<div class="sld"><input type="range" value="14" disabled><span>14</span></div>')}
+    ${row('✎','朗读高亮','<button class="popup">圆角胶囊<span class="chev">⌃<br>⌄</span></button>')}</div></div>`;
+  document.getElementById('main').innerHTML = html;
+  const old = document.querySelector('.scrim'); if (old) old.remove();
+  if (S.b==='B3' && S.sheet){
+    const d = document.createElement('div'); d.className='scrim';
+    d.innerHTML = `<div class="sheet"><h4>「${NAMES[S.style]}」高级设置</h4><div class="sec">${knobRows().join('')}</div>
+      <div class="foot">${resetBtn()}<button class="btn primary" data-close>完成</button></div></div>`;
+    document.getElementById('win').appendChild(d);
+  }
+}
+
+document.addEventListener('click', e=>{
+  const t = e.target.closest('[data-r],[data-a],[data-b],[data-st],[data-disc],[data-sw],[data-menu],[data-sheet],[data-close],[data-t]');
+  if (!t){ if (S.menu){S.menu=false;render();} return; }
+  if (t.dataset.t){ document.querySelectorAll('#theme button').forEach(b=>b.classList.toggle('on',b===t));
+    if (t.dataset.t==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme=t.dataset.t; return; }
+  if (t.dataset.r){ S.real=t.dataset.r==='1'; document.querySelectorAll('[data-r]').forEach(b=>b.classList.toggle('on',b===t)); }
+  else if (t.dataset.a){ S.a=t.dataset.a; document.querySelectorAll('[data-a]').forEach(b=>b.classList.toggle('on',b===t)); }
+  else if (t.dataset.b){ S.b=t.dataset.b; S.open=false; S.sheet=false; document.querySelectorAll('[data-b]').forEach(b=>b.classList.toggle('on',b===t)); }
+  else if (t.dataset.st){ S.style=t.dataset.st; S.menu=false; }
+  else if ('disc' in t.dataset) S.open=!S.open;
+  else if (t.dataset.sw){ S.t[t.dataset.sw]=!S.t[t.dataset.sw]; }
+  else if ('menu' in t.dataset) S.menu=!S.menu;
+  else if ('sheet' in t.dataset) S.sheet=true;
+  else if ('close' in t.dataset) S.sheet=false;
+  render();
+});
+document.addEventListener('input', e=>{ const k=e.target.dataset.v; if(!k) return; S.v[k]=+e.target.value; e.target.nextElementSibling.textContent=e.target.value; });
+// #style=donut&open=1 opens the mockup in that state (used for checking it headless).
+new URLSearchParams(location.hash.slice(1)).forEach((v,k)=>{ if(k==='style') S.style=v; if(k==='open') S.open=v==='1'; if(k==='a') S.a=v; });
+render();
+</script>
+</body>
+</html>

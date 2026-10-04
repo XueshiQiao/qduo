@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QDuo 预览背景</title>
+<style>
+:root{--page:#ecebf0;--text:#1d1d1f;--sub:#6e6e73;--line:rgba(0,0,0,.1);--card:#fff;--card2:#f6f6f8;--accent:#0a84ff;--accent-bg:rgba(10,132,255,.14);
+  --set-bg:#f2f1f6;--set-card:#ffffff;--set-line:rgba(0,0,0,.07);--seg-bg:rgba(0,0,0,.06);--seg-on:#fff;--glass:rgba(255,255,255,.38);--glass-line:rgba(255,255,255,.75);--ink:#1d1d1f}
+:root[data-theme="dark"]{--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--line:rgba(255,255,255,.12);--card:#232326;--card2:#1c1c1f;--accent:#4da3ff;--accent-bg:rgba(77,163,255,.22);
+  --set-bg:#26232c;--set-card:#2f2c35;--set-line:rgba(255,255,255,.07);--seg-bg:rgba(255,255,255,.07);--seg-on:rgba(255,255,255,.2);--glass:rgba(255,255,255,.12);--glass-line:rgba(255,255,255,.45);--ink:#f5f5f7}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#141416;--text:#f5f5f7;--sub:#a1a1a6;--line:rgba(255,255,255,.12);--card:#232326;--card2:#1c1c1f;--accent:#4da3ff;--accent-bg:rgba(77,163,255,.22);
+  --set-bg:#26232c;--set-card:#2f2c35;--set-line:rgba(255,255,255,.07);--seg-bg:rgba(255,255,255,.07);--seg-on:rgba(255,255,255,.2);--glass:rgba(255,255,255,.12);--glass-line:rgba(255,255,255,.45);--ink:#f5f5f7}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:13px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;padding:24px 16px 80px}
+.wrap{max-width:1180px;margin:0 auto}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+h1{font-size:23px;margin:0 0 4px} header.top p{margin:0;color:var(--sub);max-width:760px}
+h2{font-size:18px;margin:34px 0 6px} p.lead{color:var(--sub);margin:0 0 14px;max-width:880px}
+.toggle{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px}
+.toggle button{border:0;background:none;color:var(--text);font:inherit;padding:5px 12px;border-radius:6px;cursor:pointer}
+.toggle button.on{background:rgba(127,127,127,.2);font-weight:600}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 14px}
+.bar .lbl{color:var(--sub);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px}
+.tile{background:var(--card);border-radius:12px;box-shadow:0 0 0 1px var(--line);padding:12px}
+.tile h3{margin:0 0 2px;font-size:14px} .tile p{margin:0 0 10px;color:var(--sub);font-size:12px}
+.note{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:14px 0;color:var(--sub)}
+.note b{color:var(--text)}
+
+/* the square preview */
+.sq{position:relative;width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;box-shadow:0 0 0 .5px var(--set-line);perspective:800px}
+.ringwrap{position:absolute;transition:transform .12s ease-out;transform-style:preserve-3d}
+.ringwrap .glass{position:absolute;inset:0;border-radius:50%}
+.ringwrap.liquid .glass{background:var(--glass);backdrop-filter:blur(16px) saturate(1.7);-webkit-backdrop-filter:blur(16px) saturate(1.7)}
+.ringwrap.donut{filter:drop-shadow(0 10px 14px rgba(0,0,0,.33))}
+.ringwrap.donut .glass{background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(222,228,240,.72) 50%,rgba(150,160,190,.78));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.ringwrap svg{position:absolute;inset:0;overflow:visible}
+.ringwrap svg path.sec{fill:transparent;cursor:default}
+.ringwrap svg path.sec:hover{fill:rgba(10,132,255,.22)}
+.ringwrap svg text{pointer-events:none}
+.capsule{position:absolute;display:flex;gap:0;padding:4px 6px;border-radius:999px;background:var(--glass);backdrop-filter:blur(16px) saturate(1.7);-webkit-backdrop-filter:blur(16px) saturate(1.7);
+  box-shadow:0 8px 24px rgba(0,0,0,.2),inset 0 0 0 .5px var(--glass-line);transform:translate(-50%,-50%)}
+.capsule .b{white-space:nowrap;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:3px 9px;color:var(--ink);line-height:1.25;border-radius:999px;cursor:default}
+.capsule .b:hover{background:rgba(10,132,255,.22)}
+.capsule .b i{font-style:normal;font-size:15px} .capsule .b span{font-size:9px}
+
+/* settings card for the picker variants */
+.set{background:var(--set-bg);border-radius:12px;padding:14px}
+.setcard{background:var(--set-card);border-radius:10px;box-shadow:0 0 0 .5px var(--set-line);overflow:hidden}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--set-line)}
+.setrow .l{display:flex;gap:8px;align-items:center;font-size:13px}
+.sym{width:20px;height:20px;border-radius:6px;background:#5e5ce6;color:#fff;display:grid;place-items:center;font-size:11px}
+.sqpad{padding:12px}
+/* P1 system segmented, macOS 26+ look */
+.seg{display:inline-flex;background:var(--seg-bg);border-radius:8px;padding:2px}
+.seg button{white-space:nowrap;border:0;background:none;color:var(--text);font:inherit;font-size:12.5px;padding:3px 14px;border-radius:6px;cursor:pointer}
+.seg button.on{background:var(--seg-on);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.seg.accent button.on{background:var(--accent);color:#fff;box-shadow:none}
+.seg.icons button{display:flex;flex-direction:column;align-items:center;padding:4px 16px;gap:1px;font-size:11.5px}
+.seg.icons button b{font-size:15px;font-weight:400;line-height:1}
+.seg.glassbar{background:rgba(255,255,255,.28);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 4px 14px rgba(0,0,0,.18),inset 0 0 0 .5px rgba(255,255,255,.6);border-radius:999px;padding:3px}
+.seg.glassbar button{border-radius:999px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);padding:3px 14px}
+.seg.glassbar button.on{background:rgba(255,255,255,.85);color:#1d1d1f;text-shadow:none}
+.radios{display:flex;gap:16px}
+.radios label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.radios .dot{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(127,127,127,.5);background:var(--set-card);position:relative}
+.radios .on .dot{background:var(--accent);box-shadow:none}
+.radios .on .dot::after{content:"";position:absolute;inset:4.5px;border-radius:50%;background:#fff}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;background:var(--accent);color:#fff;margin-left:6px;font-weight:600;vertical-align:1px}
+.tag.sys{background:#34c759} .tag.cus{background:#ff9f0a}
+img.real{width:100%;border-radius:10px;display:block;box-shadow:0 0 0 1px var(--line)}
+@media (max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>外观页预览区：背景 + 样式切换</h1>
+    <p>正方形里画的是按默认尺寸缩放的弹窗示意（外环 114、内环 54、7 个默认动作），背景都只用「线性渐变 + 几团模糊的圆形色块」组成，App 在 macOS 13 上就能用代码原样画出来，不用图片文件。鼠标移上去：扇区会高亮，立体玻璃会跟着倾斜。</p>
+  </div>
+  <div class="toggle" id="theme"><button data-t="light">浅色</button><button data-t="auto" class="on">跟随系统</button><button data-t="dark">深色</button></div>
+</header>
+
+<h2>① 背景图</h2>
+<div class="bar"><span class="lbl">正方形里放：</span><div class="toggle" id="stylebar"><button data-s="liquid" class="on">水玻璃</button><button data-s="donut">立体玻璃</button><button data-s="capsule">胶囊</button></div></div>
+<div class="grid" id="bgs"></div>
+<div class="note"><b>说明：</b>每种背景都有浅色、深色两个版本，跟着系统外观自动换（右上角可以切换着看）。网页里的玻璃用浏览器的模糊效果模拟，真实 App 里是系统自带的玻璃材质，透出来的颜色会更通透一些。</div>
+
+<h2>② 样式切换按钮</h2>
+<p class="lead">你现在看到的那种「选中的像一个按钮」，就是 macOS 系统自带的分段控件（SwiftUI 的 <code>.segmented</code>）。macOS 26 以后系统把它改成了这种样子：选中的那一段是一块浮起来的浅色圆角块。下面是能换的几种，绿色标签 = 系统组件或系统组件的官方选项，橙色标签 = 需要我们自己画。底下的正方形都用第一种背景「极光」。</p>
+<div class="grid" id="pickers"></div>
+
+<h2>现在的样子（刚截的真实窗口）</h2>
+<img class="real" src="appearance-thumbs/current-page.png" alt="当前外观页">
+</div>
+
+<script>
+const BGS = [
+  {id:'aurora', name:'极光', desc:'深蓝底，青、紫、粉三团光。色彩最丰富，玻璃效果最明显。',
+    light:'radial-gradient(circle at 18% 22%,#7fe3d3 0,transparent 46%),radial-gradient(circle at 82% 30%,#b9a4ff 0,transparent 48%),radial-gradient(circle at 60% 88%,#ffb3d1 0,transparent 50%),linear-gradient(160deg,#eef1ff,#f8eefa)',
+    dark:'radial-gradient(circle at 18% 22%,#1fa391 0,transparent 46%),radial-gradient(circle at 82% 30%,#6a4bd8 0,transparent 48%),radial-gradient(circle at 60% 88%,#b83b7a 0,transparent 50%),linear-gradient(160deg,#0d1130,#1b0f2c)'},
+  {id:'sunset', name:'落日', desc:'橙 → 粉 → 紫的斜向渐变，暖色，最有活力。',
+    light:'radial-gradient(circle at 75% 20%,#fff1c9 0,transparent 40%),linear-gradient(145deg,#ffcf9e 0%,#ff9fb2 48%,#b8a3ff 100%)',
+    dark:'radial-gradient(circle at 75% 20%,#ff9a5a 0,transparent 42%),linear-gradient(145deg,#5a2a1a 0%,#6d1f45 48%,#2d1f63 100%)'},
+  {id:'indigo', name:'靛紫', desc:'跟 App 主色（外观图标那种紫）同一色系，单色调，最统一、最克制。',
+    light:'radial-gradient(circle at 30% 25%,#c9c6ff 0,transparent 55%),radial-gradient(circle at 80% 85%,#e2c6ff 0,transparent 50%),linear-gradient(180deg,#eeeeff,#f4ecff)',
+    dark:'radial-gradient(circle at 30% 25%,#4b45c9 0,transparent 55%),radial-gradient(circle at 80% 85%,#7a35b8 0,transparent 50%),linear-gradient(180deg,#14123a,#1d1238)'},
+  {id:'mist', name:'晨雾', desc:'低饱和的蓝灰渐变，几乎是中性色。最安静，但玻璃质感最不明显。',
+    light:'radial-gradient(circle at 25% 20%,#dfe9f5 0,transparent 55%),radial-gradient(circle at 80% 80%,#e9e2ef 0,transparent 55%),linear-gradient(180deg,#f1f3f7,#e8eaf0)',
+    dark:'radial-gradient(circle at 25% 20%,#2d3a4d 0,transparent 55%),radial-gradient(circle at 80% 80%,#3a3045 0,transparent 55%),linear-gradient(180deg,#1b1d22,#22242b)'},
+];
+const ACTS=[['⧉','复制'],['文','翻译'],['✦','润色'],['✎','写作'],['▦','更多'],['⌕','搜索'],['♪','朗读']];
+const CAPS=[1,2,3,4,5,6,0].map(i=>ACTS[i]);
+let STYLE='liquid';
+const isDark=()=>{const t=document.documentElement.dataset.theme; return t? t==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;};
+
+function P(r,a){a=a*Math.PI/180;return [(r*Math.sin(a)).toFixed(1),(-r*Math.cos(a)).toFixed(1)];}
+function sector(r0,r1,a0,a1){const L=(a1-a0)>180?1:0,[x1,y1]=P(r1,a0),[x2,y2]=P(r1,a1),[x3,y3]=P(r0,a1),[x4,y4]=P(r0,a0);
+  return `M${x1} ${y1}A${r1} ${r1} 0 ${L} 1 ${x2} ${y2}L${x3} ${y3}A${r0} ${r0} 0 ${L} 0 ${x4} ${y4}Z`;}
+
+// size = square edge in px; the real square is ~560pt, so k = size/560 keeps the real proportions.
+function popup(style,size){
+  const k=size/560;
+  if(style==='capsule'){
+    return `<div class="capsule" style="left:50%;top:50%;zoom:${Math.max(k,.62).toFixed(2)}">${CAPS.map(([i,l])=>`<div class="b"><i>${i}</i><span>${l}</span></div>`).join('')}</div>`;
+  }
+  const o=114*k, ir=54*k, n=ACTS.length, step=360/n, ink=style==='donut'?'#1d1d1f':'var(--ink)';
+  let svg='';
+  ACTS.forEach(([ic,lb],j)=>{const c=180+(j-4)*step; svg+=`<path class="sec" d="${sector(ir,o,c-step/2,c+step/2)}"/>`;
+    const [x,y]=P((o+ir)/2,c); const fs=Math.max(15*k*1.25,11), ls=Math.max(10*k*1.25,8);
+    svg+=`<text x="${x}" y="${+y-1}" text-anchor="middle" style="font-size:${fs.toFixed(1)}px;fill:${ink}">${ic}</text><text x="${x}" y="${+y+ls+2}" text-anchor="middle" style="font-size:${ls.toFixed(1)}px;fill:${ink};opacity:.85">${lb}</text>`;});
+  svg+=`<circle r="${o-.5}" style="fill:none;stroke:var(--glass-line);stroke-width:1"/><circle r="${ir+.5}" style="fill:none;stroke:var(--glass-line);stroke-width:1"/>`;
+  if(style==='donut') svg+=`<path d="${sector(o-4,o-1.5,-75,35)}" style="fill:#fff;opacity:.95"/>`;
+  const mask=`radial-gradient(circle at center,transparent ${ir}px,#000 ${ir+.6}px)`;
+  return `<div class="ringwrap ${style}" style="left:calc(50% - ${o}px);top:calc(50% - ${o}px);width:${2*o}px;height:${2*o}px">
+    <div class="glass" style="-webkit-mask:${mask};mask:${mask}"></div>
+    <svg viewBox="${-o} ${-o} ${2*o} ${2*o}">${svg}</svg></div>`;
+}
+function square(bg,style,size){ return `<div class="sq" data-bg="${bg.id}" style="background:${isDark()?bg.dark:bg.light}">${popup(style,size)}</div>`; }
+
+function renderBgs(){
+  const el=document.getElementById('bgs'); const w=Math.min(560,el.clientWidth>800?(el.clientWidth-18)/2-24:el.clientWidth-24);
+  el.innerHTML=BGS.map(b=>`<div class="tile"><h3>${b.name}</h3><p>${b.desc}</p>${square(b,STYLE,w)}</div>`).join('');
+}
+
+const PICK=[
+  {id:'P1', name:'P1 现在：系统分段控件', tag:'<span class="tag sys">系统</span>', note:'macOS 26 以后的默认样子。选中段是一块浮起的浅色块，所以看起来像按钮。',
+    ctl:s=>`<div class="seg">${seg(s)}</div>`},
+  {id:'P2', name:'P2 系统分段控件 + 选中段用强调色', tag:'<span class="tag sys">系统选项</span>', note:'还是同一个系统控件，只打开它自带的「选中段填充颜色」选项：选中段变成蓝底白字，一眼看出哪个被选中，不再像普通按钮。',
+    ctl:s=>`<div class="seg accent">${seg(s)}</div>`},
+  {id:'P3', name:'P3 系统分段控件 + 图标', tag:'<span class="tag sys">系统</span>', note:'每段上面加一个小图标（圆环 / 立体圆环 / 胶囊），比纯文字好认。系统控件支持图文混排。',
+    ctl:s=>`<div class="seg icons">${seg(s,true)}</div>`},
+  {id:'P4', name:'P4 浮在预览上方的玻璃切换条', tag:'<span class="tag cus">自己画</span>', note:'像「照片」「地图」那样，切换条浮在正方形预览的顶部中间。切换和预览合成一个整体，最省地方，也最像 macOS 26 的新设计。',
+    overlay:true, ctl:s=>`<div class="seg glassbar">${seg(s)}</div>`},
+  {id:'P5', name:'P5 横排单选按钮', tag:'<span class="tag sys">系统</span>', note:'系统的单选按钮横着排。最传统，选中状态是圆点，绝不会被当成按钮。但显得有点老派。',
+    ctl:s=>`<div class="radios">${['liquid','donut','capsule'].map(k=>`<label class="${s===k?'on':''}" data-ps="${k}"><span class="dot"></span>${NAMES[k]}</label>`).join('')}</div>`},
+];
+const NAMES={liquid:'水玻璃',donut:'立体玻璃',capsule:'胶囊'}, ICONS={liquid:'◯',donut:'◉',capsule:'▭'};
+function seg(s,icons){return ['liquid','donut','capsule'].map(k=>`<button class="${s===k?'on':''}" data-ps="${k}">${icons?`<b>${ICONS[k]}</b>`:''}${NAMES[k]}</button>`).join('');}
+const PS={P1:'liquid',P2:'liquid',P3:'liquid',P4:'liquid',P5:'liquid'};
+function renderPickers(){
+  const el=document.getElementById('pickers'); const w=(el.clientWidth>800?(el.clientWidth-18)/2-24:el.clientWidth-24)-24;
+  el.innerHTML=PICK.map(p=>{const s=PS[p.id];
+    const sq=`<div style="position:relative">${square(BGS[0],s,w)}${p.overlay?`<div style="position:absolute;top:12px;left:50%;transform:translateX(-50%)" data-pid="${p.id}">${p.ctl(s)}</div>`:''}</div>`;
+    return `<div class="tile" data-pid="${p.id}"><h3>${p.name}${p.tag}</h3><p>${p.note}</p><div class="set"><div class="setcard">
+      ${p.overlay?'':`<div class="setrow"><span class="l"><span class="sym">✿</span>显示样式</span>${p.ctl(s)}</div>`}
+      <div class="sqpad">${sq}</div></div></div></div>`;}).join('');
+}
+function renderAll(){renderBgs();renderPickers();}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-t],[data-s],[data-ps]'); if(!t) return;
+  if(t.dataset.t){document.querySelectorAll('#theme button').forEach(b=>b.classList.toggle('on',b===t));
+    if(t.dataset.t==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme=t.dataset.t;}
+  else if(t.dataset.s){STYLE=t.dataset.s;document.querySelectorAll('#stylebar button').forEach(b=>b.classList.toggle('on',b===t));}
+  else if(t.dataset.ps){const pid=t.closest('[data-pid]').dataset.pid; PS[pid]=t.dataset.ps;}
+  renderAll();
+});
+// the 3D ring leans toward the mouse; the flat styles stay put
+document.addEventListener('mousemove',e=>{
+  document.querySelectorAll('.ringwrap.donut').forEach(r=>{const sq=r.closest('.sq').getBoundingClientRect();
+    const dx=(e.clientX-sq.left)/sq.width-.5, dy=(e.clientY-sq.top)/sq.height-.5;
+    r.style.transform=(Math.abs(dx)>.5||Math.abs(dy)>.5)?'':`rotateY(${(dx*16).toFixed(1)}deg) rotateX(${(-dy*16).toFixed(1)}deg)`;});
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);
+addEventListener('resize',renderAll);
+new URLSearchParams(location.hash.slice(1)).forEach((v,k)=>{ if(k==='style') STYLE=v; if(k==='theme') document.documentElement.dataset.theme=v; });
+renderAll();
+</script>
+</body>
+</html>

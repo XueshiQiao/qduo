@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QDuo 预览区布局</title>
+<style>
+:root{--page:#1f1d24;--card:#2b2930;--line:rgba(255,255,255,.08);--text:#f2f2f5;--sub:#a1a1a8;--accent:#3d8bfd;--seg:#3a383f}
+*{box-sizing:border-box}
+body{margin:0;background:#141416;color:var(--text);font:13px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;padding:24px 16px 80px}
+.wrap{max-width:820px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px} p.lead{color:var(--sub);margin:0 0 20px}
+h2{font-size:16px;margin:34px 0 4px} .why{color:var(--sub);margin:0 0 10px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;background:var(--accent);color:#fff;margin-left:6px;font-weight:600}
+.page{background:var(--page);border-radius:12px;padding:18px 20px}
+.sechead{font-weight:600;margin:0 0 8px}
+.card{background:var(--card);border-radius:12px;box-shadow:0 0 0 .5px var(--line);overflow:hidden}
+.segrow{display:flex;justify-content:center;padding:10px;border-bottom:1px solid var(--line)}
+.seg{display:inline-flex;background:var(--seg);border-radius:8px;padding:2px;width:360px}
+.seg span{flex:1;text-align:center;padding:4px 0;border-radius:6px;font-size:13px}
+.seg span.on{background:var(--accent)}
+.body{padding:12px}
+.foot{color:var(--sub);font-size:12px;margin:8px 4px 0}
+.sq{width:460px;height:460px;border-radius:8px;background:url(square.png) center/cover;margin:0 auto}
+/* A: full width */
+.banner{height:460px;border-radius:8px;position:relative;overflow:hidden;background:url(backdrop.jpg) center 45%/cover}
+.banner .ring{position:absolute;left:50%;top:50%;width:460px;height:460px;transform:translate(-50%,-50%);background:url(square.png) center/cover;
+  -webkit-mask:radial-gradient(circle,#000 0 168px,transparent 172px);mask:radial-gradient(circle,#000 0 168px,transparent 172px)}
+/* B: blurred sides */
+.blurfill{height:460px;border-radius:8px;position:relative;overflow:hidden}
+.blurfill::before{content:"";position:absolute;inset:-40px;background:url(backdrop.jpg) center/cover;filter:blur(28px) saturate(1.2) brightness(.8)}
+.blurfill .sq{position:relative;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+/* C: list + square */
+.split{display:flex;gap:14px;align-items:stretch}
+.list{flex:1;display:flex;flex-direction:column;gap:8px;min-width:180px}
+.opt{border-radius:10px;padding:12px 14px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer}
+.opt b{display:block;font-size:14px;margin-bottom:2px} .opt span{color:var(--sub);font-size:12px}
+.opt.on{background:rgba(61,139,253,.18);box-shadow:inset 0 0 0 2px var(--accent)}
+.split .sq{width:420px;height:420px;flex-shrink:0;margin:0}
+table{width:100%;border-collapse:collapse;margin-top:30px;background:#232227;border-radius:10px;overflow:hidden;font-size:12.5px}
+th,td{padding:9px 12px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
+th{background:#2a2930;border-top:0}
+tr.rec td{background:rgba(61,139,253,.12)}
+@media (max-width:760px){.split{flex-direction:column}.split .sq,.sq{width:100%;height:auto;aspect-ratio:1}.banner .ring{width:90%;height:auto;aspect-ratio:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>预览区两侧太空：三种填法</h1>
+<p class="lead">按你截图里的窗口宽度（内容卡片约 704pt）画的。中间的圆环是刚截的真实界面。</p>
+
+<h2>A. 背景铺满整行，不再是正方形<span class="tag">推荐</span></h2>
+<p class="why">背景图横向铺满卡片，高度不变（460pt），圆环还在正中。两侧不再空，改动最小，窗口变宽变窄都自然。</p>
+<div class="page"><div class="sechead">显示样式</div><div class="card">
+  <div class="segrow"><div class="seg"><span class="on">水玻璃</span><span>立体玻璃</span><span>胶囊</span></div></div>
+  <div class="body"><div class="banner"><div class="ring"></div></div></div>
+</div><div class="foot">预览使用默认动作。可以把鼠标移上去看效果，在这里点击不会执行任何动作。</div></div>
+
+<h2>B. 保留正方形，两侧用同一张图模糊延展</h2>
+<p class="why">正方形不变，两侧填上放大并模糊的同一张背景，像视频横屏时两边的模糊填充。保留了「正方形」的形状，但多了一层效果。</p>
+<div class="page"><div class="sechead">显示样式</div><div class="card">
+  <div class="segrow"><div class="seg"><span class="on">水玻璃</span><span>立体玻璃</span><span>胶囊</span></div></div>
+  <div class="body"><div class="blurfill"><div class="sq" style="width:460px;height:460px"></div></div></div>
+</div><div class="foot">预览使用默认动作。可以把鼠标移上去看效果，在这里点击不会执行任何动作。</div></div>
+
+<h2>C. 左边竖排样式选项，右边正方形</h2>
+<p class="why">顶上的分段按钮去掉，三种样式改成左边一列卡片，每个带一句说明；右边是正方形预览。空间用满，选项也更好懂。窗口窄的时候要上下排，代码改动最大。</p>
+<div class="page"><div class="sechead">显示样式</div><div class="card"><div class="body">
+  <div class="split">
+    <div class="list">
+      <div class="opt on"><b>水玻璃</b><span>以光标为圆心展开成一圈，明亮的磨砂玻璃。</span></div>
+      <div class="opt"><b>立体玻璃</b><span>立体的玻璃圆环，会朝鼠标方向微微倾斜。</span></div>
+      <div class="opt"><b>胶囊</b><span>在选中文字的上方横向展开一排按钮。</span></div>
+    </div>
+    <div class="sq"></div>
+  </div>
+</div></div><div class="foot">预览使用默认动作。可以把鼠标移上去看效果，在这里点击不会执行任何动作。</div></div>
+
+<table>
+<tr><th>方案</th><th>好处</th><th>代价</th></tr>
+<tr class="rec"><td><b>A 铺满整行</b></td><td>最简单，两侧自然填满，宽窗口窄窗口都好看</td><td>不再是正方形；背景图要裁成横的（同一张图换个裁法）</td></tr>
+<tr><td><b>B 模糊延展</b></td><td>保留正方形</td><td>两边模糊有点「填空」的感觉，不如 A 干净</td></tr>
+<tr><td><b>C 左列表 + 右正方形</b></td><td>空间利用最好，每种样式带说明</td><td>改动最大；窗口窄时要变成上下排；分段按钮换成自己画的卡片</td></tr>
+</table>
+</div>
+</body>
+</html>
