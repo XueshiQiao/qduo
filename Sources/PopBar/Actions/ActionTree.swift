@@ -69,9 +69,10 @@ enum ActionTree {
         // Two levels, never three: a group can't go inside a group. That holds for
         // an EMPTY group too — one rule is easier to live with than "empty ones may,
         // full ones may not", and a group that could never be filled is useless.
-        if moving.kind == .group || moving.hasChildren { return false }
-        // The destination must still be a real group.
-        return list.contains { $0.id == groupID && $0.kind == .group }
+        if moving.isGroup { return false }
+        // The destination must still be a group — of any kind: one that runs
+        // something on click holds actions like one that does not.
+        return list.contains { $0.id == groupID && $0.isGroup }
     }
 
     // MARK: - Operations (each returns nil when it would change nothing)
@@ -100,7 +101,7 @@ enum ActionTree {
     /// Update an action in place, wherever it lives.
     ///
     /// A group's `children` are NOT taken from the incoming copy: the editor edits a
-    /// group's name and icon, never its contents, so an editor sheet opened before a
+    /// group's name, icon and what a click on it does, never its contents, so an editor sheet opened before a
     /// drag would otherwise write a stale list of children back over the current one
     /// and silently undo the drag.
     static func update(_ action: PopBarActionConfig,
@@ -160,7 +161,7 @@ enum ActionTree {
 
     static func flatten(_ list: [PopBarActionConfig]) -> [FlatRow] {
         list.flatMap { action -> [FlatRow] in
-            [FlatRow(id: action.id, isGroup: action.kind == .group, parentID: nil)]
+            [FlatRow(id: action.id, isGroup: action.isGroup, parentID: nil)]
                 + action.children.map { FlatRow(id: $0.id, isGroup: false, parentID: action.id) }
         }
     }

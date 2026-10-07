@@ -123,8 +123,9 @@ struct ActionsPage: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(action.title.isEmpty ? L("popbar.action.untitled") : action.title)
-                if action.kind == .group {
-                    Text(String(format: L("popbar.group.count"), action.children.count))
+                if action.isGroup {
+                    Text(String(format: L("popbar.group.count"), action.children.count)
+                         + (action.isGroupThatRuns ? " · " + L("popbar.group.runs") : ""))
                         .font(.caption).foregroundStyle(.secondary)
                 } else if action.isAI {
                     Text(modelLabel(action)).font(.caption).foregroundStyle(.secondary).lineLimit(1)

@@ -292,9 +292,10 @@ enum ConfigSchema {
               },
               "additionalProperties": true
             },
+            "group": { "type": "boolean", "description": "true = this action is a group even though it has no children yet, so actions can be dragged into it in Settings. Not needed for \\"kind\\": \\"group\\" or once it has children." },
             "children": {
               "type": "array",
-              "description": "Only for \\"kind\\": \\"group\\".",
+              "description": "The actions inside a group. An action of any kind that has children is a group: pointing at it unfolds them, clicking it runs it. \\"kind\\": \\"group\\" is a group that runs nothing.",
               "items": { "$ref": "#/definitions/action" }
             }
           },

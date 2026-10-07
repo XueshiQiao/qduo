@@ -128,7 +128,12 @@
 "popbar.group.delete.message" = "“%@” contains %d actions.";
 "popbar.group.delete.all" = "Delete Group and Actions";
 "popbar.group.delete.keep" = "Delete Group, Keep Actions";
-"popbar.editor.group.hint" = "A group holds other actions. Drag actions onto it in the list; on the wheel they open as a second ring.";
+"popbar.editor.group.hint" = "A group holds other actions. Drag actions onto it in the list; on the wheel they open as a second ring. A group can be an action too: pointing at it unfolds it, clicking it runs what is chosen below.";
+"popbar.editor.group.click" = "When the group is clicked";
+"popbar.editor.group.click.none" = "Only unfold, run nothing";
+"popbar.group.runs" = "also runs when clicked";
+"popbar.action.makeGroup" = "Make it a group (drag other actions into it)";
+"popbar.action.unmakeGroup" = "No longer a group";
 "popbar.actions.reset" = "Reset to defaults";
 "popbar.actions.footer2" = "Use the arrows to reorder · click to edit · right-click to delete. Each action can use the default model or its own.";
 "popbar.autoheight.label" = "Grow result height to fit";

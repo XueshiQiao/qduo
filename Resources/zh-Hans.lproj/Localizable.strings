@@ -127,7 +127,12 @@
 "popbar.group.delete.message" = "「%@」里面有 %d 个动作。";
 "popbar.group.delete.all" = "分组和动作一起删";
 "popbar.group.delete.keep" = "只删分组，动作留下";
-"popbar.editor.group.hint" = "分组本身不执行任何操作，它只用来装别的动作：在列表里把动作拖进来，它们会在轮盘上展开成外面一圈。";
+"popbar.editor.group.hint" = "分组用来装别的动作：在列表里把动作拖进来，它们会在轮盘上展开成外面一圈。分组自己也可以是一个动作：鼠标指着它是展开，点击它是执行下面选的动作。";
+"popbar.editor.group.click" = "点击分组时";
+"popbar.editor.group.click.none" = "只展开，不执行动作";
+"popbar.group.runs" = "点击时也执行动作";
+"popbar.action.makeGroup" = "变成分组（可以把别的动作拖进来）";
+"popbar.action.unmakeGroup" = "不再作为分组";
 "popbar.actions.reset" = "恢复默认";
 "popbar.actions.footer2" = "用箭头调整顺序 · 点击编辑 · 右键删除。每个动作可用默认模型，也可单独指定模型。";
 "popbar.autoheight.label" = "结果高度自适应内容";

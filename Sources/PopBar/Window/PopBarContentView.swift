@@ -595,7 +595,9 @@ private struct CapsuleActionButton: View {
 
     var body: some View {
         Button {
-            if isGroup { model.onGroupHover?(action, frame) } else { model.onAction?(action) }
+            // A group that only unfolds answers a click by opening its dropdown;
+            // one that is an action too runs it (issue #16).
+            if isGroup, action.kind == .group { model.onGroupHover?(action, frame) } else { model.onAction?(action) }
         } label: {
             VStack(spacing: 3) {
                 // Fixed-height icon slot. SF Symbols have different glyph bounding

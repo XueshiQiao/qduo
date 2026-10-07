@@ -162,6 +162,16 @@ struct PopBarActionListSection: View {
         .overlay { intoIndicator(action.id) }
         .contextMenu {
             Button(L("popbar.action.edit")) { onEdit(action) }
+            // Any top-level action can become a group and keep what it does:
+            // pointing at it then unfolds what is dropped into it, clicking
+            // still runs it. Offered both ways while it holds nothing.
+            if !row.isChild, action.kind != .group, !action.hasChildren, !action.isUnsupported {
+                Button(L(action.isGroup ? "popbar.action.unmakeGroup" : "popbar.action.makeGroup")) {
+                    var changed = action
+                    changed.marksGroup = action.isGroup ? nil : true
+                    actions.update(changed)
+                }
+            }
             Button(L("popbar.action.delete"), role: .destructive) { requestDelete(action) }
         }
         .onDrag {
@@ -204,7 +214,7 @@ struct PopBarActionListSection: View {
     // MARK: - Delete
 
     private func requestDelete(_ action: PopBarActionConfig) {
-        if action.kind == .group && action.hasChildren {
+        if action.hasChildren {
             groupPendingDelete = action
         } else {
             actions.delete(id: action.id)
@@ -236,7 +246,7 @@ struct PopBarActionListSection: View {
         // the group's own row.
         if !pointerRow.isChild, zone == .below,
            let group = actions.actions.first(where: { $0.id == pointerRow.id }),
-           group.kind == .group, let last = group.children.last {
+           group.isGroup, let last = group.children.last {
             return DropHint(ownerRowID: pointerRow.id, rowID: last.id, zone: .below, indented: false)
         }
         return DropHint(ownerRowID: pointerRow.id, rowID: pointerRow.id, zone: zone, indented: indented)

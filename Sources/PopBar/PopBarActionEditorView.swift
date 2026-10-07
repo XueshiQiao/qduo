@@ -15,12 +15,15 @@ struct ActionEditorView: View {
     @State private var iconQuery = ""
     /// Why the last picture could not be used, shown under the picture row.
     @State private var iconImageError: String?
+    /// The action being edited is a group: it may also be given nothing to do.
+    private let wasGroup: Bool
     let onSave: (PopBarActionConfig) -> Void
     let onCancel: () -> Void
 
     init(action: PopBarActionConfig, llm: LLMService,
          onSave: @escaping (PopBarActionConfig) -> Void, onCancel: @escaping () -> Void) {
         _draft = State(initialValue: action)
+        wasGroup = action.isGroup
         _llm = ObservedObject(wrappedValue: llm)
         self.onSave = onSave
         self.onCancel = onCancel
@@ -33,17 +36,20 @@ struct ActionEditorView: View {
             Form {
                 Section {
                     TextField(L("popbar.editor.title"), text: $draft.title)
-                    // A group holds actions instead of doing anything itself, so it
-                    // has no kind to pick and no prompt to write. The kind is also
-                    // not OFFERED as a choice: turning a group back into an action
-                    // would orphan whatever is inside it.
-                    if draft.kind == .group {
+                    // A group is an action too (issue #16): pointing at it unfolds
+                    // what it holds, clicking it does what is chosen here — which
+                    // may be nothing. Only a group is offered "nothing": an
+                    // ordinary action that did nothing would be a dead button.
+                    if wasGroup {
                         Text(L("popbar.editor.group.hint"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                    Picker(L("popbar.editor.kind"), selection: $draft.kind) {
+                    }
+                    Picker(L(wasGroup ? "popbar.editor.group.click" : "popbar.editor.kind"), selection: $draft.kind) {
+                        if wasGroup {
+                            Text(L("popbar.editor.group.click.none")).tag(PopBarActionConfig.Kind.group)
+                        }
                         Text(L("popbar.editor.kind.ai")).tag(PopBarActionConfig.Kind.ai)
                         Text(L("popbar.editor.kind.copy")).tag(PopBarActionConfig.Kind.copy)
                         Text(L("popbar.editor.kind.webpreview")).tag(PopBarActionConfig.Kind.webPreview)
@@ -67,7 +73,6 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.pathHint"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                    }
                     }
                 }
 
@@ -109,6 +114,8 @@ struct ActionEditorView: View {
     private var saved: PopBarActionConfig {
         var action = draft
         if action.kind == .transform, action.op == nil { action.op = TextTransform.uppercase.rawValue }
+        // A group given something to do stays a group even while it is empty.
+        if wasGroup { action.marksGroup = action.kind == .group ? nil : true }
         return action
     }
 

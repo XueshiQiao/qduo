@@ -421,8 +421,9 @@ struct WheelActionsView: View {
                     onAction(open.children[i])
                 }
             case .parent(let i):
-                // A group runs nothing — tapping it just leaves its ring open.
-                if !actions[i].hasChildren { onAction(actions[i]) }
+                // A group of kind `.group` runs nothing — tapping it just leaves
+                // its ring open. Any other group is an action too: tapping runs it.
+                if !(actions[i].hasChildren && actions[i].kind == .group) { onAction(actions[i]) }
             case .hole, .keep, .outside:
                 break
             }

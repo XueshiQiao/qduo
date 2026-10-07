@@ -98,8 +98,10 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case pause          // pause the popup, like the menu bar's Pause (the selection is ignored)
         case inspect        // debug: show the selection's accessibility element and its path
         case settings       // open the app's settings window (the selection is ignored)
-        /// A GROUP: runs nothing itself, it only holds `children`. On the wheel it
-        /// unfolds a second ring; in the capsule it opens a dropdown.
+        /// A group that runs nothing itself: it only holds `children`. On the
+        /// wheel it unfolds a second ring; in the capsule it opens a dropdown.
+        /// A group that also DOES something when clicked has that kind instead
+        /// (issue #16) — see `isGroup`.
         case group
     }
 
@@ -168,8 +170,22 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// something this UI can actually show instead of silently hiding actions.
     var children: [PopBarActionConfig] = []
 
-    /// A group: it holds sub-actions instead of doing anything itself.
+    /// It has sub-actions right now, so the popup unfolds it.
     var hasChildren: Bool { !children.isEmpty }
+
+    /// Marks an action of any other kind as a group while it has no children
+    /// yet (or no longer): without it, a group that was given something to do on
+    /// click and then emptied would stop being a place to drop actions into.
+    /// Written as `"group": true`; never needed for `kind: group`.
+    var marksGroup: Bool?
+
+    /// A group: an action that holds others, or is there to. Pointing at it
+    /// unfolds its children; clicking it runs it, unless its kind is `.group`,
+    /// which runs nothing (issue #16).
+    var isGroup: Bool { kind == .group || hasChildren || marksGroup == true }
+
+    /// A group whose click does something, as opposed to one that only unfolds.
+    var isGroupThatRuns: Bool { isGroup && kind != .group }
 
     /// The literal `kind` string from disk when THIS build does not recognise it —
     /// i.e. the action was written by a newer build. Nil for every kind this
@@ -221,6 +237,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, id, title, iconSymbol, iconImage, kind, prompt, modelOverride, children
         case url, openIn, op, shortcut, script, output, reader, targetLanguage
+        case marksGroup = "group"
     }
     private static let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
     init(from decoder: Decoder) throws {
@@ -247,6 +264,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         output = try? c.decodeIfPresent(String.self, forKey: .output)
         reader = try? c.decodeIfPresent(String.self, forKey: .reader)
         targetLanguage = try? c.decodeIfPresent(String.self, forKey: .targetLanguage)
+        marksGroup = try? c.decodeIfPresent(Bool.self, forKey: .marksGroup)
         // Flatten anything deeper than one level (see `children`). Decoding is
         // deliberately lenient here for the same reason every other field is: a
         // malformed children array must not throw away the whole action list.
@@ -300,6 +318,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(output, forKey: key(.output))
         try c.encodeIfPresent(reader, forKey: key(.reader))
         try c.encodeIfPresent(targetLanguage, forKey: key(.targetLanguage))
+        if marksGroup == true { try c.encode(true, forKey: key(.marksGroup)) }
         // Only written when there is something to write, so an action that never
         // had children does not grow an empty array.
         if !children.isEmpty { try c.encode(children, forKey: key(.children)) }
