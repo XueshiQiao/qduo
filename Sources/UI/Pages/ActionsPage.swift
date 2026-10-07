@@ -31,7 +31,9 @@ struct ActionsPage: View {
         .navigationTitle(L("page.actions"))
         .sheet(item: $editingAction) { action in
             ActionEditorView(action: action, llm: llm,
-                             takenURLNames: ActionURL.takenNames(in: actions.actions, except: action.id)) { saved in
+                             takenURLNames: ActionURL.takenNames(in: actions.actions, except: action.id),
+                             // A new action, or one at the top level, can be a group.
+                             canBeGroup: actions.parentGroupID(of: action.id) == nil) { saved in
                 // Look in BOTH levels. `actions.actions` is only the top level, so
                 // saving an action that lives inside a group used to fall through to
                 // `add` and append a SECOND copy of it at the root, with the same id

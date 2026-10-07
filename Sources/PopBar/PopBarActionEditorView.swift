@@ -11,9 +11,15 @@ struct ActionEditorView: View {
     /// The system translator's languages, loaded when the editor shows a
     /// `systemTranslate` action (the list comes from an async system call).
     @State private var translateTargets: [SystemTranslator.Target] = []
-    /// What is typed in the icon search box. Empty = the curated groups.
-    @State private var iconQuery = ""
-    /// Why the last picture could not be used, shown under the picture row.
+    /// The symbol-search window: open or not, what is typed, what is picked.
+    @State private var showSymbolSearch = false
+    @State private var symbolQuery = ""
+    @State private var symbolPick: String?
+    @FocusState private var symbolSearchFocused: Bool
+    /// The picture window, and whether a file is being dragged over its drop area.
+    @State private var showImagePicker = false
+    @State private var imageDropTargeted = false
+    /// Why the last picture could not be used, shown in the picture window.
     @State private var iconImageError: String?
     /// Pictures imported while this sheet has been open. All but the one that
     /// is saved are deleted again when it closes, so choosing a few and
@@ -21,15 +27,19 @@ struct ActionEditorView: View {
     @State private var importedPictures: [String] = []
     /// URL names other actions already use (lower case); this one needs its own.
     private let takenURLNames: Set<String>
-    /// The action being edited is a group: it may also be given nothing to do.
+    /// The action being edited was a group when the sheet opened. Given another
+    /// kind, it stays one (see `saved`).
     private let wasGroup: Bool
+    /// "Group" is offered as a kind: the action is at the top level, or new.
+    private let canBeGroup: Bool
     let onSave: (PopBarActionConfig) -> Void
     let onCancel: () -> Void
 
-    init(action: PopBarActionConfig, llm: LLMService, takenURLNames: Set<String> = [],
+    init(action: PopBarActionConfig, llm: LLMService, takenURLNames: Set<String> = [], canBeGroup: Bool = true,
          onSave: @escaping (PopBarActionConfig) -> Void, onCancel: @escaping () -> Void) {
         _draft = State(initialValue: action)
         wasGroup = action.isGroup
+        self.canBeGroup = canBeGroup
         self.takenURLNames = takenURLNames
         _llm = ObservedObject(wrappedValue: llm)
         self.onSave = onSave
@@ -43,19 +53,15 @@ struct ActionEditorView: View {
             Form {
                 Section {
                     TextField(L("popbar.editor.title"), text: $draft.title)
-                    // A group is an action too (issue #16): pointing at it unfolds
-                    // what it holds, clicking it does what is chosen here — which
-                    // may be nothing. Only a group is offered "nothing": an
-                    // ordinary action that did nothing would be a dead button.
-                    if wasGroup {
-                        Text(L("popbar.editor.group.hint"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Picker(L(wasGroup ? "popbar.editor.group.click" : "popbar.editor.kind"), selection: $draft.kind) {
-                        if wasGroup {
-                            Text(L("popbar.editor.group.click.none")).tag(PopBarActionConfig.Kind.group)
+                    // A group is one of the kinds (issue #16), chosen in the same
+                    // picker as every other: "Group" only holds actions; any
+                    // other kind on an action that holds some is a group that
+                    // also runs when clicked. Not offered to an action that is
+                    // INSIDE a group — two levels, never three.
+                    Picker(L("popbar.editor.kind"), selection: $draft.kind) {
+                        if canBeGroup || draft.kind == .group {
+                            Text(L("popbar.editor.kind.group")).tag(PopBarActionConfig.Kind.group)
+                            Divider()
                         }
                         Text(L("popbar.editor.kind.ai")).tag(PopBarActionConfig.Kind.ai)
                         Text(L("popbar.editor.kind.copy")).tag(PopBarActionConfig.Kind.copy)
@@ -81,18 +87,17 @@ struct ActionEditorView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    if draft.kind == .group {
+                        Text(L("popbar.editor.group.hint"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+
+                Section(L("popbar.editor.icon")) { iconGrid }
 
                 kindSpecificSections
-
-                Section(L("popbar.editor.icon")) {
-                    iconSearchField
-                    iconGrid
-                    iconImageRow
-                }
-
-                // A group that only unfolds has nothing for a URL to run.
-                if draft.kind != .group { urlSection }
 
                 if draft.kind == .ai {
                     Section(L("popbar.editor.prompt")) {
@@ -102,6 +107,11 @@ struct ActionEditorView: View {
                     }
                     Section { modelOverrideControls }
                 }
+
+                // Always the last thing on the page, whatever is above it: few
+                // people need it. A group that only holds actions has nothing
+                // for a URL to run.
+                if draft.kind != .group { urlSection }
             }
             .formStyle(.grouped)
 
@@ -338,66 +348,185 @@ struct ActionEditorView: View {
 
     // MARK: - Icon grid
 
-    /// Type any SF Symbol name; the grid below follows every keystroke.
-    private var iconSearchField: some View {
-        HStack(spacing: 8) {
-            // What the action will show: its picture when it has one.
-            ActionIconView(draft, size: 15, weight: .regular)
-                .frame(width: 24)
-            TextField(L("popbar.editor.icon.search"), text: $iconQuery)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-            if !iconQuery.isEmpty {
-                Button { iconQuery = "" } label: { Image(systemName: "xmark.circle.fill") }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .help(L("popbar.editor.icon.search.clear"))
-            }
-        }
-    }
-
-    /// The curated groups, or — once something is typed — every symbol whose
-    /// name starts with or contains it.
+    /// The curated groups, led by the two ways to something else: any SF Symbol
+    /// by name, or a picture. Each opens its own small window; an icon chosen
+    /// there takes the first tile, where it shows as the one in use.
     private var iconGrid: some View {
-        let found = iconQuery.trimmingCharacters(in: .whitespaces).isEmpty ? nil : SFSymbolCatalog.search(iconQuery)
-        return ScrollView {
+        ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                if let found {
-                    Text(found.isEmpty ? L("popbar.editor.icon.search.none")
-                                       : String(format: L("popbar.editor.icon.search.count"), found.count))
-                        .font(.caption).foregroundStyle(.secondary)
-                    iconRow(found)
-                } else {
-                    ForEach(Self.iconGroups, id: \.title) { group in
-                        Text(L(group.title)).font(.caption).foregroundStyle(.secondary)
-                        iconRow(group.symbols)
+                ForEach(Array(Self.iconGroups.enumerated()), id: \.element.title) { index, group in
+                    Text(L(group.title)).font(.caption).foregroundStyle(.secondary)
+                    LazyVGrid(columns: iconColumns, spacing: 6) {
+                        if index == 0 { leadingTiles }
+                        ForEach(group.symbols, id: \.self) { symbolTile($0) }
                     }
                 }
             }
             .padding(.vertical, 2)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(height: 220)
     }
 
-    /// The user's own picture in place of the symbol.
-    private var iconImageRow: some View {
-        VStack(alignment: .leading, spacing: 6) {
+    /// The symbol in use is one of the curated ones (and no picture hides it).
+    private var usesCuratedSymbol: Bool {
+        draft.iconImage == nil && Self.iconGroups.contains { $0.symbols.contains(draft.iconSymbol) }
+    }
+
+    @ViewBuilder
+    private var leadingTiles: some View {
+        // What is in use, when it is not one of the tiles below.
+        if !usesCuratedSymbol {
+            iconTile(selected: true, help: draft.iconImage == nil ? draft.iconSymbol : L("popbar.editor.icon.image")) {
+                ActionIconView(draft, size: 15, weight: .regular)
+            } action: {}
+        }
+        iconTile(selected: false, dashed: true, help: L("popbar.editor.icon.search.title")) {
+            Image(systemName: "magnifyingglass").font(.system(size: 13))
+        } action: {
+            symbolQuery = ""
+            symbolPick = nil
+            showSymbolSearch = true
+        }
+        .popover(isPresented: $showSymbolSearch, arrowEdge: .bottom) { symbolSearch }
+        iconTile(selected: false, dashed: true, help: L("popbar.editor.icon.image")) {
+            Image(systemName: "photo.badge.plus").font(.system(size: 13))
+        } action: {
+            iconImageError = nil
+            showImagePicker = true
+        }
+        .popover(isPresented: $showImagePicker, arrowEdge: .bottom) { imagePicker }
+    }
+
+    /// One tile of the grid. A curated symbol, or one of the leading three.
+    private func iconTile<Content: View>(selected: Bool, dashed: Bool = false, help: String,
+                                         @ViewBuilder content: () -> Content,
+                                         action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            content()
+                .frame(width: 32, height: 30)
+                .foregroundStyle(dashed ? Color.secondary : Color.primary)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(selected ? Color.accentColor.opacity(0.22)
+                                       : (dashed ? Color.clear : Color.primary.opacity(0.05)))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(selected ? Color.accentColor : (dashed ? Color.secondary.opacity(0.6) : .clear),
+                                      style: StrokeStyle(lineWidth: 1, dash: dashed ? [3, 2] : []))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+
+    private func symbolTile(_ symbol: String) -> some View {
+        iconTile(selected: draft.iconImage == nil && draft.iconSymbol == symbol, help: symbol) {
+            Image(systemName: symbol).font(.system(size: 15))
+        } action: { useSymbol(symbol) }
+    }
+
+    /// Choosing a symbol means the picture, if there was one, is no longer used.
+    private func useSymbol(_ symbol: String) {
+        draft.iconSymbol = symbol
+        draft.iconImage = nil
+    }
+
+    // MARK: Search every SF Symbol
+
+    /// The small window behind the magnifying-glass tile: type any part of a
+    /// symbol's name, the matches follow every keystroke.
+    private var symbolSearch: some View {
+        let found = SFSymbolCatalog.search(symbolQuery)
+        let typed = !symbolQuery.trimmingCharacters(in: .whitespaces).isEmpty
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(L("popbar.editor.icon.search.title")).font(.system(size: 12.5, weight: .semibold))
+            TextField(L("popbar.editor.icon.search"), text: $symbolQuery)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12, design: .monospaced))
+                .autocorrectionDisabled()
+                .focused($symbolSearchFocused)
+                .onSubmit { if let pick = symbolPick ?? found.first { useSymbol(pick); showSymbolSearch = false } }
+            Text(!typed ? L("popbar.editor.icon.search.hint")
+                        : (found.isEmpty ? L("popbar.editor.icon.search.none")
+                                         : String(format: L("popbar.editor.icon.search.count"), found.count)))
+                .font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                    ForEach(found, id: \.self) { symbol in
+                        iconTile(selected: symbolPick == symbol, help: symbol) {
+                            Image(systemName: symbol).font(.system(size: 15))
+                        } action: { symbolPick = symbol }
+                    }
+                }
+                .padding(.vertical, 1)
+            }
+            .frame(height: 150)
+            Divider()
             HStack(spacing: 8) {
+                Text(symbolPick ?? "")
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.middle)
+                Spacer()
+                Button(L("popbar.editor.cancel")) { showSymbolSearch = false }
+                Button(L("popbar.editor.icon.search.use")) {
+                    if let symbolPick { useSymbol(symbolPick) }
+                    showSymbolSearch = false
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(symbolPick == nil)
+            }
+        }
+        .padding(12)
+        .frame(width: 320)
+        .onAppear { symbolSearchFocused = true }
+        // A pick that is no longer among the matches would be used unseen.
+        .onChange(of: symbolQuery) { _ in
+            if let pick = symbolPick, !SFSymbolCatalog.search(symbolQuery).contains(pick) { symbolPick = nil }
+        }
+    }
+
+    // MARK: A picture of the user's own
+
+    /// The small window behind the picture tile. What a picture has to be is
+    /// said here, where one is chosen, and nowhere else.
+    private var imagePicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("popbar.editor.icon.image")).font(.system(size: 12.5, weight: .semibold))
+            VStack(spacing: 6) {
                 if let picture = ActionIconStore.picture(named: draft.iconImage) {
                     Image(nsImage: picture).resizable().interpolation(.high)
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 40, height: 40)
+                } else {
+                    Image(systemName: "photo.badge.plus").font(.system(size: 22)).foregroundStyle(.secondary)
                 }
-                Text(L(draft.iconImage == nil ? "popbar.editor.icon.image.none" : "popbar.editor.icon.image.set"))
-                Spacer()
-                if draft.iconImage != nil {
-                    Button(L("popbar.editor.icon.image.remove")) {
-                        draft.iconImage = nil
-                        iconImageError = nil
+                Text(L("popbar.editor.icon.image.drop")).font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Button(L("popbar.editor.icon.image.choose")) { chooseIconImage() }
+                    if draft.iconImage != nil {
+                        Button(L("popbar.editor.icon.image.remove")) {
+                            draft.iconImage = nil
+                            showImagePicker = false
+                        }
                     }
                 }
-                Button(L("popbar.editor.icon.image.choose")) { chooseIconImage() }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 9)
+                    .strokeBorder(imageDropTargeted ? Color.accentColor : Color.secondary.opacity(0.6),
+                                  style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            )
+            .onDrop(of: [.fileURL], isTargeted: $imageDropTargeted) { providers in
+                guard let provider = providers.first else { return false }
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url else { return }
+                    DispatchQueue.main.async { useIconImage(at: url) }
+                }
+                return true
             }
             Text(L("popbar.editor.icon.image.hint"))
                 .font(.caption).foregroundStyle(.secondary)
@@ -407,6 +536,8 @@ struct ActionEditorView: View {
                     .font(.caption).foregroundStyle(.orange)
             }
         }
+        .padding(12)
+        .frame(width: 290)
     }
 
     private func chooseIconImage() {
@@ -414,16 +545,10 @@ struct ActionEditorView: View {
         panel.allowedContentTypes = [.png]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        // As a sheet on the editor's own window when there is one: an
-        // app-modal panel run from inside a sheet can leave focus in the wrong
-        // window.
-        if let window = NSApp.keyWindow {
-            panel.beginSheetModal(for: window) { response in
-                if response == .OK, let url = panel.url { useIconImage(at: url) }
-            }
-        } else if panel.runModal() == .OK, let url = panel.url {
-            useIconImage(at: url)
-        }
+        // App-modal, on purpose: this is asked from a popover, whose own window
+        // goes away the moment anything else takes the focus — a sheet attached
+        // to it would go with it.
+        if panel.runModal() == .OK, let url = panel.url { useIconImage(at: url) }
     }
 
     private func useIconImage(at url: URL) {
@@ -432,36 +557,13 @@ struct ActionEditorView: View {
             importedPictures.append(name)
             draft.iconImage = name
             iconImageError = nil
+            showImagePicker = false
         } catch ActionIconStore.ImportError.notPNG {
             iconImageError = L("popbar.editor.icon.image.error.notPNG")
         } catch ActionIconStore.ImportError.cannotWrite {
             iconImageError = L("popbar.editor.icon.image.error.cannotWrite")
         } catch {
             iconImageError = L("popbar.editor.icon.image.error.unreadable")
-        }
-    }
-
-    private func iconRow(_ symbols: [String]) -> some View {
-        LazyVGrid(columns: iconColumns, spacing: 6) {
-            ForEach(symbols, id: \.self) { symbol in
-                Button { draft.iconSymbol = symbol } label: {
-                    Image(systemName: symbol)
-                        .font(.system(size: 15))
-                        .frame(width: 32, height: 30)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(draft.iconSymbol == symbol ? Color.accentColor.opacity(0.22)
-                                                                 : Color.primary.opacity(0.05))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(draft.iconSymbol == symbol ? Color.accentColor : .clear)
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(symbol)
-            }
         }
     }
 
