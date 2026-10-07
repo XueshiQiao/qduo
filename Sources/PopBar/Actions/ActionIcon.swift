@@ -65,24 +65,44 @@ enum ActionIconStore {
         Brand.configDirectory.appendingPathComponent("icons", isDirectory: true)
     }
 
-    /// The file an `iconImage` value names: a bare file name is looked up in
-    /// `directory`; anything with a slash is a path (`~` allowed), for a file
-    /// hand-written into the config.
+    /// The file an `iconImage` value names. A bare file name is looked up in
+    /// `directory`. A value hand-written into the config may also be a path:
+    /// absolute, from the home folder (`~/…`), or — anything else with a slash —
+    /// from the folder the config file is in, never from wherever the app
+    /// happened to be started.
     static func url(for name: String) -> URL {
-        if name.contains("/") {
+        if name.hasPrefix("/") || name.hasPrefix("~") {
             return URL(fileURLWithPath: (name as NSString).expandingTildeInPath)
+        }
+        if name.contains("/") {
+            return Brand.configDirectory.appendingPathComponent(name).standardizedFileURL
         }
         return directory.appendingPathComponent(name)
     }
 
-    private static let cache = NSCache<NSString, NSImage>()
+    private static let cache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 200
+        return cache
+    }()
+    /// Names whose file could not be read. Remembered too: this is asked from
+    /// view bodies, and the ring redraws on every pointer move — a missing file
+    /// must not mean a trip to the disk each time. Main thread only, like the
+    /// views that ask. An import never reuses a name, so nothing here goes stale
+    /// except a file added by hand, which shows after a restart (as a hand edit
+    /// of the config does).
+    private static var unreadable = Set<String>()
 
     /// The picture for an `iconImage` value; nil when there is none or its file
     /// cannot be read (the caller then draws the symbol).
     static func picture(named name: String?) -> NSImage? {
         guard let name, !name.isEmpty else { return nil }
         if let cached = cache.object(forKey: name as NSString) { return cached }
-        guard let picture = NSImage(contentsOf: url(for: name)), picture.isValid else { return nil }
+        if unreadable.contains(name) { return nil }
+        guard let picture = NSImage(contentsOf: url(for: name)), picture.isValid else {
+            unreadable.insert(name)
+            return nil
+        }
         cache.setObject(picture, forKey: name as NSString)
         return picture
     }
@@ -105,8 +125,18 @@ enum ActionIconStore {
     /// PNG data of any size → PNG data of exactly `side`×`side`.
     static func normalized(_ data: Data) throws -> Data {
         guard isPNG(data) else { throw ImportError.notPNG }
+        // Scaled down WHILE it is decoded: a 20,000-pixel PNG must not be
+        // unpacked whole just to be drawn at 256. (A smaller one comes out at
+        // its own size and is scaled up by the draw below.)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: side,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+        ]
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { throw ImportError.unreadable }
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            throw ImportError.unreadable
+        }
         guard let context = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
@@ -137,6 +167,17 @@ enum ActionIconStore {
             throw ImportError.cannotWrite
         }
         return name
+    }
+}
+
+extension ActionIconStore {
+    /// Delete pictures this app imported (bare names in `directory` only —
+    /// never a file a hand-written path points at).
+    static func discard(_ names: [String]) {
+        for name in names where !name.contains("/") && name.hasPrefix("icon-") {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+            cache.removeObject(forKey: name as NSString)
+        }
     }
 }
 
@@ -182,11 +223,19 @@ enum SFSymbolCatalog {
         NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil
     }
 
+    /// The last search and its answer. The editor asks from its view body, which
+    /// is re-evaluated for every change to the action being edited, not only for
+    /// a change to what is typed in the search box. Main thread only.
+    private static var last: (query: String, limit: Int, found: [String])?
+
     /// The symbols to offer for what is typed: every match this Mac can draw.
     static func search(_ query: String, limit: Int = 240) -> [String] {
-        var found = matches(query, in: names, limit: limit * 2).filter(exists)
         let typed = normalized(query)
+        if let last, last.query == typed, last.limit == limit { return last.found }
+        var found = matches(query, in: names, limit: limit * 2).filter(exists)
         if found.isEmpty, !typed.isEmpty, exists(typed) { found = [typed] }
-        return Array(found.prefix(limit))
+        found = Array(found.prefix(limit))
+        last = (typed, limit, found)
+        return found
     }
 }

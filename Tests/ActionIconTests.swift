@@ -74,6 +74,9 @@ final class ActionIconTests: XCTestCase {
     func testABareNameIsInTheIconsFolderAndAPathIsAPath() {
         XCTAssertEqual(ActionIconStore.url(for: "icon-1.png").deletingLastPathComponent().lastPathComponent, "icons")
         XCTAssertEqual(ActionIconStore.url(for: "/tmp/a.png").path, "/tmp/a.png")
+        // A relative path is from the config folder, not from where the app was started.
+        XCTAssertTrue(ActionIconStore.url(for: "pictures/a.png").path.hasSuffix("/pictures/a.png"))
+        XCTAssertEqual(ActionIconStore.url(for: "icons/a.png").path, ActionIconStore.url(for: "a.png").path)
         XCTAssertTrue(ActionIconStore.url(for: "~/a.png").path.hasSuffix("/a.png"))
         XCTAssertFalse(ActionIconStore.url(for: "~/a.png").path.contains("~"))
     }

@@ -15,6 +15,10 @@ struct ActionEditorView: View {
     @State private var iconQuery = ""
     /// Why the last picture could not be used, shown under the picture row.
     @State private var iconImageError: String?
+    /// Pictures imported while this sheet has been open. All but the one that
+    /// is saved are deleted again when it closes, so choosing a few and
+    /// cancelling leaves nothing behind in the icons folder.
+    @State private var importedPictures: [String] = []
     /// URL names other actions already use (lower case); this one needs its own.
     private let takenURLNames: Set<String>
     /// The action being edited is a group: it may also be given nothing to do.
@@ -103,10 +107,17 @@ struct ActionEditorView: View {
 
             Divider()
             HStack {
-                Button(L("popbar.editor.cancel")) { onCancel() }
+                Button(L("popbar.editor.cancel")) {
+                    ActionIconStore.discard(importedPictures)
+                    onCancel()
+                }
                     .keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(L("popbar.editor.save")) { onSave(saved) }
+                Button(L("popbar.editor.save")) {
+                    let action = saved
+                    ActionIconStore.discard(importedPictures.filter { $0 != action.iconImage })
+                    onSave(action)
+                }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!isValid)
             }
@@ -331,8 +342,8 @@ struct ActionEditorView: View {
     /// Type any SF Symbol name; the grid below follows every keystroke.
     private var iconSearchField: some View {
         HStack(spacing: 8) {
-            Image(systemName: draft.iconSymbol)
-                .font(.system(size: 15))
+            // What the action will show: its picture when it has one.
+            ActionIconView(draft, size: 15, weight: .regular)
                 .frame(width: 24)
             TextField(L("popbar.editor.icon.search"), text: $iconQuery)
                 .textFieldStyle(.roundedBorder)
@@ -404,9 +415,23 @@ struct ActionEditorView: View {
         panel.allowedContentTypes = [.png]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        // As a sheet on the editor's own window when there is one: an
+        // app-modal panel run from inside a sheet can leave focus in the wrong
+        // window.
+        if let window = NSApp.keyWindow {
+            panel.beginSheetModal(for: window) { response in
+                if response == .OK, let url = panel.url { useIconImage(at: url) }
+            }
+        } else if panel.runModal() == .OK, let url = panel.url {
+            useIconImage(at: url)
+        }
+    }
+
+    private func useIconImage(at url: URL) {
         do {
-            draft.iconImage = try ActionIconStore.importPNG(at: url)
+            let name = try ActionIconStore.importPNG(at: url)
+            importedPictures.append(name)
+            draft.iconImage = name
             iconImageError = nil
         } catch ActionIconStore.ImportError.notPNG {
             iconImageError = L("popbar.editor.icon.image.error.notPNG")
