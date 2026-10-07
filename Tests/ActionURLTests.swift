@@ -16,6 +16,11 @@ final class ActionURLTests: XCTestCase {
         XCTAssertEqual(parse("qduo://run/translate?text=%E4%BD%A0%E5%A5%BD")?.text, "你好")
     }
 
+    func testAPlusIsAPlusAndTheFirstTextWins() {
+        XCTAssertEqual(parse("qduo://run/translate?text=1+1")?.text, "1+1")
+        XCTAssertEqual(parse("qduo://run/translate?text=a&text=b")?.text, "a")
+    }
+
     func testMissingTextIsAnEmptyRequestNotAnInvalidURL() {
         XCTAssertEqual(parse("qduo://run/translate"), ActionURL.Request(name: "translate", text: ""))
         XCTAssertEqual(parse("qduo://run/translate?text=")?.text, "")
@@ -45,6 +50,11 @@ final class ActionURLTests: XCTestCase {
         XCTAssertEqual(ActionURL.suggestedName(title: "翻译", kind: "ai", taken: ["ai", "ai-2"]), "ai-3")
         XCTAssertEqual(ActionURL.suggestedName(title: "翻译", kind: "systemTranslate", taken: []), "systemtranslate")
         XCTAssertTrue(ActionURL.isValidName(ActionURL.suggestedName(title: "Copy -", kind: "copy", taken: [])))
+        // A name already at the length limit still gets a valid, different one.
+        let long = String(repeating: "a", count: 40)
+        let next = ActionURL.suggestedName(title: long, kind: "ai", taken: [long])
+        XCTAssertTrue(ActionURL.isValidName(next), next)
+        XCTAssertNotEqual(next, long)
     }
 
     private func action(_ id: String, _ kind: PopBarActionConfig.Kind = .copy, url: String? = nil,

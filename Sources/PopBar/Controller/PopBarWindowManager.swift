@@ -99,7 +99,17 @@ final class PopBarWindowManager {
     func showTransientAndRun(_ action: PopBarActionConfig, text: String, anchor: CGPoint,
                              actions: [PopBarActionConfig], origin: HistoryOrigin?) {
         showTransient(text: text, url: nil, anchor: anchor, actions: actions, origin: origin)
-        transient.runAction(action)
+        // On the next turn of the main queue, not now: the panel places itself
+        // and comes to the front in a block it has just queued there. Running
+        // first would let the result measure itself against the panel's OLD
+        // frame (a popup at the previous one's position), and an action that
+        // closes the popup (Copy) would be followed by that block bringing it
+        // back. Queued after it, the action runs on a placed, visible panel.
+        let session = transient
+        DispatchQueue.main.async {
+            guard session.isShowingActions else { return }   // dismissed in between
+            session.runAction(action)
+        }
     }
 
     /// Dismiss the transient window (outside click / auto-dismiss). Pinned windows

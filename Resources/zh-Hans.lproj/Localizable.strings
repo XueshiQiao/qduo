@@ -561,7 +561,7 @@
 "popbar.editor.url.name.taken" = "另一个动作已经用了这个名字。";
 "popbar.editor.url.copy" = "复制";
 "popbar.editor.url.footer" = "打开后，其他 app（比如 Alfred、Raycast）打开上面这样的 URL，就会对 text 里的文字运行这个动作，结果显示在鼠标所在的位置。text 里的文字要做 URL 编码。注意：任何 app、任何网页上的链接都能打开这样的 URL，所以默认是关闭的，每个动作要单独打开；会运行脚本、或者会花 API 额度的动作，打开前请想清楚。";
-"popbar.url.error.malformed" = "URL 的格式不对，应该是 run/动作名?text=文字";
+"popbar.url.error.malformed" = "URL 的格式不对，应该是 %@://run/动作名?text=文字";
 "popbar.url.error.unknown" = "没有允许通过 URL 运行的动作叫「%@」";
 "popbar.url.error.noText" = "URL 里没有带文字（text）";
 "popbar.url.error.tooLong" = "URL 里带的文字太长了";

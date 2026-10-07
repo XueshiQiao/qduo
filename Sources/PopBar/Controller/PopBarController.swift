@@ -451,12 +451,15 @@ final class PopBarController {
     /// There is no selection behind the text, so an action whose result would
     /// replace or follow the selection has nowhere to write it; the session
     /// handles that as it does for any text it cannot write back.
+    ///
+    /// Main thread only (AppKit delivers opened URLs there).
     func handleURL(_ url: URL) {
+        dispatchPrecondition(condition: .onQueue(.main))
         guard url.scheme?.lowercased() == Brand.urlScheme.lowercased() else { return }
         let pointer = NSEvent.mouseLocation
         guard let request = ActionURL.parse(url, scheme: Brand.urlScheme) else {
             Self.log.info("URL ignored — not <scheme>://run/<name>")
-            RegionToast.show(L("popbar.url.error.malformed"), atGlobalCocoa: pointer)
+            RegionToast.show(String(format: L("popbar.url.error.malformed"), Brand.urlScheme), atGlobalCocoa: pointer)
             return
         }
         guard let action = ActionURL.action(named: request.name, in: actionStore.actions) else {

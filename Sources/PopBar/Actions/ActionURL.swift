@@ -72,9 +72,16 @@ enum ActionURL {
         if base.isEmpty { base = sanitized(kind) }
         if base.isEmpty { base = "action" }
         guard taken.contains(base) else { return base }
+        // Room is left for the number, so the result is still a valid name.
         var n = 2
-        while taken.contains("\(base)-\(n)") { n += 1 }
-        return "\(base)-\(n)"
+        func numbered() -> String {
+            let suffix = "-\(n)"
+            var stem = String(base.prefix(40 - suffix.count))
+            while stem.hasSuffix("-") { stem.removeLast() }
+            return stem + suffix
+        }
+        while taken.contains(numbered()) { n += 1 }
+        return numbered()
     }
 
     /// The names already given out, lower-cased, leaving out one action (the one

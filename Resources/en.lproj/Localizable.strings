@@ -562,7 +562,7 @@
 "popbar.editor.url.name.taken" = "Another action already uses this name.";
 "popbar.editor.url.copy" = "Copy";
 "popbar.editor.url.footer" = "With this on, another app (Alfred, Raycast…) that opens a URL like the one above runs this action on the text in it; the result appears at the pointer. The text must be URL-encoded. Note: any app, and a link on any web page, can open such a URL. That is why it is off by default and turned on one action at a time; think before turning it on for an action that runs a script or spends API credit.";
-"popbar.url.error.malformed" = "That URL is not run/<action name>?text=<text>";
+"popbar.url.error.malformed" = "That URL is not %@://run/<action name>?text=<text>";
 "popbar.url.error.unknown" = "No action that allows URLs is called “%@”";
 "popbar.url.error.noText" = "The URL carries no text";
 "popbar.url.error.tooLong" = "The text in the URL is too long";
