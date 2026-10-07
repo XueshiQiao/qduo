@@ -11,11 +11,8 @@ struct ActionEditorView: View {
     /// The system translator's languages, loaded when the editor shows a
     /// `systemTranslate` action (the list comes from an async system call).
     @State private var translateTargets: [SystemTranslator.Target] = []
-    /// The symbol-search window: open or not, what is typed, what is picked.
+    /// The symbol-search window is open (`SymbolSearchView`).
     @State private var showSymbolSearch = false
-    @State private var symbolQuery = ""
-    @State private var symbolPick: String?
-    @FocusState private var symbolSearchFocused: Bool
     /// The picture window, and whether a file is being dragged over its drop area.
     @State private var showImagePicker = false
     @State private var imageDropTargeted = false
@@ -382,12 +379,11 @@ struct ActionEditorView: View {
         }
         iconTile(selected: false, dashed: true, help: L("popbar.editor.icon.search.title")) {
             Image(systemName: "magnifyingglass").font(.system(size: 13))
-        } action: {
-            symbolQuery = ""
-            symbolPick = nil
-            showSymbolSearch = true
+        } action: { showSymbolSearch = true }
+        .popover(isPresented: $showSymbolSearch, arrowEdge: .bottom) {
+            SymbolSearchView(onUse: { useSymbol($0); showSymbolSearch = false },
+                             onCancel: { showSymbolSearch = false })
         }
-        .popover(isPresented: $showSymbolSearch, arrowEdge: .bottom) { symbolSearch }
         iconTile(selected: false, dashed: true, help: L("popbar.editor.icon.image")) {
             Image(systemName: "photo.badge.plus").font(.system(size: 13))
         } action: {
@@ -399,26 +395,9 @@ struct ActionEditorView: View {
 
     /// One tile of the grid. A curated symbol, or one of the leading three.
     private func iconTile<Content: View>(selected: Bool, dashed: Bool = false, help: String,
-                                         @ViewBuilder content: () -> Content,
+                                         @ViewBuilder content: @escaping () -> Content,
                                          action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            content()
-                .frame(width: 32, height: 30)
-                .foregroundStyle(dashed ? Color.secondary : Color.primary)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(selected ? Color.accentColor.opacity(0.22)
-                                       : (dashed ? Color.clear : Color.primary.opacity(0.05)))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(selected ? Color.accentColor : (dashed ? Color.secondary.opacity(0.6) : .clear),
-                                      style: StrokeStyle(lineWidth: 1, dash: dashed ? [3, 2] : []))
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(help)
+        EditorIconTile(selected: selected, dashed: dashed, help: help, action: action, content: content)
     }
 
     private func symbolTile(_ symbol: String) -> some View {
@@ -431,60 +410,6 @@ struct ActionEditorView: View {
     private func useSymbol(_ symbol: String) {
         draft.iconSymbol = symbol
         draft.iconImage = nil
-    }
-
-    // MARK: Search every SF Symbol
-
-    /// The small window behind the magnifying-glass tile: type any part of a
-    /// symbol's name, the matches follow every keystroke.
-    private var symbolSearch: some View {
-        let found = SFSymbolCatalog.search(symbolQuery)
-        let typed = !symbolQuery.trimmingCharacters(in: .whitespaces).isEmpty
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(L("popbar.editor.icon.search.title")).font(.system(size: 12.5, weight: .semibold))
-            TextField(L("popbar.editor.icon.search"), text: $symbolQuery)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12, design: .monospaced))
-                .autocorrectionDisabled()
-                .focused($symbolSearchFocused)
-                .onSubmit { if let pick = symbolPick ?? found.first { useSymbol(pick); showSymbolSearch = false } }
-            Text(!typed ? L("popbar.editor.icon.search.hint")
-                        : (found.isEmpty ? L("popbar.editor.icon.search.none")
-                                         : String(format: L("popbar.editor.icon.search.count"), found.count)))
-                .font(.caption).foregroundStyle(.secondary)
-            ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
-                    ForEach(found, id: \.self) { symbol in
-                        iconTile(selected: symbolPick == symbol, help: symbol) {
-                            Image(systemName: symbol).font(.system(size: 15))
-                        } action: { symbolPick = symbol }
-                    }
-                }
-                .padding(.vertical, 1)
-            }
-            .frame(height: 150)
-            Divider()
-            HStack(spacing: 8) {
-                Text(symbolPick ?? "")
-                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
-                    .lineLimit(1).truncationMode(.middle)
-                Spacer()
-                Button(L("popbar.editor.cancel")) { showSymbolSearch = false }
-                Button(L("popbar.editor.icon.search.use")) {
-                    if let symbolPick { useSymbol(symbolPick) }
-                    showSymbolSearch = false
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(symbolPick == nil)
-            }
-        }
-        .padding(12)
-        .frame(width: 320)
-        .onAppear { symbolSearchFocused = true }
-        // A pick that is no longer among the matches would be used unseen.
-        .onChange(of: symbolQuery) { _ in
-            if let pick = symbolPick, !SFSymbolCatalog.search(symbolQuery).contains(pick) { symbolPick = nil }
-        }
     }
 
     // MARK: A picture of the user's own
@@ -522,7 +447,11 @@ struct ActionEditorView: View {
             )
             .onDrop(of: [.fileURL], isTargeted: $imageDropTargeted) { providers in
                 guard let provider = providers.first else { return false }
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                // Asked for as the file-URL type by name: a file dragged from
+                // Finder arrives as that, as data or as a URL.
+                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                    let url = (item as? URL)
+                        ?? (item as? Data).flatMap { URL(dataRepresentation: $0, relativeTo: nil) }
                     guard let url else { return }
                     DispatchQueue.main.async { useIconImage(at: url) }
                 }
@@ -548,7 +477,13 @@ struct ActionEditorView: View {
         // App-modal, on purpose: this is asked from a popover, whose own window
         // goes away the moment anything else takes the focus — a sheet attached
         // to it would go with it.
-        if panel.runModal() == .OK, let url = panel.url { useIconImage(at: url) }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        useIconImage(at: url)
+        // The panel taking the focus can have closed the popover. A picture
+        // that could not be used has its reason shown there, so bring it back.
+        if iconImageError != nil {
+            DispatchQueue.main.async { showImagePicker = true }
+        }
     }
 
     private func useIconImage(at url: URL) {
@@ -659,4 +594,98 @@ struct ActionEditorView: View {
                          "square.on.square"]),
         ("icons.markers", ["info.circle", "exclamationmark.triangle", "hand.thumbsup"]),
     ]
+}
+
+/// One tile of the editor's icon grids: a symbol to choose, or (dashed) a way
+/// to something else.
+private struct EditorIconTile<Content: View>: View {
+    let selected: Bool
+    var dashed = false
+    let help: String
+    let action: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Button(action: action) {
+            content()
+                .frame(width: 32, height: 30)
+                .foregroundStyle(dashed ? Color.secondary : Color.primary)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(selected ? Color.accentColor.opacity(0.22)
+                                       : (dashed ? Color.clear : Color.primary.opacity(0.05)))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(selected ? Color.accentColor : (dashed ? Color.secondary.opacity(0.6) : .clear),
+                                      style: StrokeStyle(lineWidth: 1, dash: dashed ? [3, 2] : []))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+}
+
+/// The small window behind the magnifying-glass tile: type any part of a
+/// symbol's name, the matches follow every keystroke.
+///
+/// Its own view, with its own state: a popover is a window of its own, and
+/// focus set from the sheet that opened it does not reach in.
+private struct SymbolSearchView: View {
+    let onUse: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var query = ""
+    @State private var pick: String?
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let found = SFSymbolCatalog.search(query)
+        let typed = !query.trimmingCharacters(in: .whitespaces).isEmpty
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("popbar.editor.icon.search.title")).font(.system(size: 12.5, weight: .semibold))
+            TextField(L("popbar.editor.icon.search"), text: $query)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12, design: .monospaced))
+                .autocorrectionDisabled()
+                .focused($focused)
+                // Return uses what is picked, or the first match. Handled here
+                // and not by a default button: this window must never pass a
+                // Return on to the sheet's Save.
+                .onSubmit { if let symbol = pick ?? found.first { onUse(symbol) } }
+            Text(!typed ? L("popbar.editor.icon.search.hint")
+                        : (found.isEmpty ? L("popbar.editor.icon.search.none")
+                                         : String(format: L("popbar.editor.icon.search.count"), found.count)))
+                .font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                    ForEach(found, id: \.self) { symbol in
+                        EditorIconTile(selected: pick == symbol, help: symbol, action: { pick = symbol }) {
+                            Image(systemName: symbol).font(.system(size: 15))
+                        }
+                    }
+                }
+                .padding(.vertical, 1)
+            }
+            .frame(height: 150)
+            Divider()
+            HStack(spacing: 8) {
+                Text(pick ?? "")
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.middle)
+                Spacer()
+                Button(L("popbar.editor.cancel"), action: onCancel)
+                Button(L("popbar.editor.icon.search.use")) { if let pick { onUse(pick) } }
+                    .disabled(pick == nil)
+            }
+        }
+        .padding(12)
+        .frame(width: 320)
+        .onAppear { focused = true }
+        // A pick that is no longer among the matches would be used unseen.
+        .onChange(of: query) { _ in
+            if let current = pick, !SFSymbolCatalog.search(query).contains(current) { pick = nil }
+        }
+    }
 }
