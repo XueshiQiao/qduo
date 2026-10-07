@@ -20,7 +20,11 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-26
+    # GitHub's Xcode 27 image (macOS 27, a public preview — actions/runner-images#14404).
+    # The macos-26 image only carries Xcode 26.x, and an app built with the 26.x SDK
+    # does not draw the reading window's word highlight on macOS 27: SwiftUI there
+    # skips a text renderer on selectable text unless the app was built with the 27 SDK.
+    runs-on: xcode-27
 
     env:
       HAS_APPLE_SECRETS: ${{ secrets.MAC_CERTS_P12_BASE64 != '' }}
@@ -52,7 +56,9 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          # Pinned, not latest-stable: the step fails if Xcode 27.0 is missing,
+          # instead of quietly building with an older SDK.
+          xcode-version: '27.0'
 
       - name: Install Build Tools
         run: brew install xcodegen create-dmg
