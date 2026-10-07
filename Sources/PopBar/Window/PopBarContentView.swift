@@ -604,8 +604,7 @@ private struct CapsuleActionButton: View {
                 // the caption down — the "高低不一" the bar showed. Pinning the
                 // icon's vertical band keeps every icon at the same position and
                 // every caption on the same baseline, independent of the glyph.
-                Image(systemName: action.iconSymbol)
-                    .font(.system(size: iconSize, weight: .medium))
+                ActionIconView(action, size: iconSize)
                     .frame(height: iconSlot)
                 HStack(spacing: 2) {
                     Text(action.title)

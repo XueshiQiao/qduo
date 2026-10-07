@@ -507,6 +507,8 @@ struct SubmenuItem: Identifiable, Equatable {
     let id: String
     let title: String
     let symbol: String
+    /// The action's own picture, if it has one (`PopBarActionConfig.iconImage`).
+    var image: String? = nil
 }
 
 /// How the hovered child is marked. The two skins mark it differently: the classic
@@ -663,8 +665,7 @@ struct SubmenuRing<Material: View>: View, Animatable {
             let hot = i == hoveredIndex
             VStack(spacing: 2) {
                 if showIcons {
-                    Image(systemName: item.symbol)
-                        .font(.system(size: 13, weight: .medium))
+                    ActionIconView(symbol: item.symbol, image: item.image, size: 13)
                         .frame(height: 16)   // fixed slot — same baseline fix as the capsule
                 }
                 if showLabels {

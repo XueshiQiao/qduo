@@ -114,7 +114,13 @@ struct ActionsPage: View {
 
     private func actionRow(_ action: PopBarActionConfig) -> some View {
         HStack(spacing: 10) {
-            IconTile(symbol: action.iconSymbol, color: .indigo)
+            if let picture = ActionIconStore.picture(named: action.iconImage) {
+                Image(nsImage: picture).resizable().interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 26, height: 26)
+            } else {
+                IconTile(symbol: action.iconSymbol, color: .indigo)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(action.title.isEmpty ? L("popbar.action.untitled") : action.title)
                 if action.kind == .group {

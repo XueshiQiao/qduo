@@ -573,8 +573,7 @@ struct WheelActionsView: View {
     private func donutGlyph(_ action: PopBarActionConfig, hot: Bool, soft: Bool, dark: Bool) -> some View {
         VStack(spacing: 2) {
             if layout.showIcons {
-                Image(systemName: action.iconSymbol)
-                    .font(.system(size: 15, weight: .medium))
+                ActionIconView(action, size: 15)
                     .frame(height: 18)
             }
             if layout.showLabels {
@@ -784,8 +783,7 @@ struct WheelActionsView: View {
             let hot = hovered == action.id
             VStack(spacing: 2) {
                 if layout.showIcons {
-                    Image(systemName: action.iconSymbol)
-                        .font(.system(size: 15, weight: .medium))
+                    ActionIconView(action, size: 15)
                         .frame(height: 18)
                 }
                 if layout.showLabels {
@@ -1208,7 +1206,7 @@ struct WheelActionsView: View {
             span: expanded ? (plan?.span ?? 0) : 0,
             mid: open?.midDegrees ?? -90,
             items: open?.children.map {
-                SubmenuItem(id: $0.id, title: $0.title, symbol: $0.iconSymbol)
+                SubmenuItem(id: $0.id, title: $0.title, symbol: $0.iconSymbol, image: $0.iconImage)
             } ?? [],
             isFullRing: plan?.isFullRing ?? false,
             canvas: canvas,

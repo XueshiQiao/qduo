@@ -133,6 +133,7 @@ targets:
       - path: Sources/Core/History/HistoryStore.swift
       - path: Sources/PopBar/Trigger/SelectionTrigger.swift
       - path: Sources/PopBar/Selection/SelectionStrategy.swift
+      - path: Sources/PopBar/Actions/ActionIcon.swift
       - path: Sources/PopBar/Selection/CopyFirstStrategy.swift
       - path: Sources/PopBar/Trigger/Gestures.swift
     settings:

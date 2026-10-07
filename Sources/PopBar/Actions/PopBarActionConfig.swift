@@ -107,6 +107,11 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     var id: String
     var title: String
     var iconSymbol: String
+    /// The user's own picture for this action: a file name in
+    /// `ActionIconStore.directory`, or a path. nil = draw `iconSymbol`, which is
+    /// also what is drawn when the file cannot be read and by a build that does
+    /// not know this key.
+    var iconImage: String?
     var kind: Kind
     /// System prompt (used when `kind == .ai`).
     var prompt: String
@@ -214,7 +219,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
 
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case schemaVersion, id, title, iconSymbol, kind, prompt, modelOverride, children
+        case schemaVersion, id, title, iconSymbol, iconImage, kind, prompt, modelOverride, children
         case url, openIn, op, shortcut, script, output, reader, targetLanguage
     }
     private static let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
@@ -224,6 +229,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         id = (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString
         title = (try? c.decode(String.self, forKey: .title)) ?? ""
         iconSymbol = (try? c.decode(String.self, forKey: .iconSymbol)) ?? "sparkles"
+        iconImage = try? c.decodeIfPresent(String.self, forKey: .iconImage)
         let rawKind = try? c.decode(String.self, forKey: .kind)
         let knownKind = rawKind.flatMap(Kind.init(rawValue:))
         kind = knownKind ?? .ai
@@ -279,6 +285,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encode(id, forKey: key(.id))
         try c.encode(title, forKey: key(.title))
         try c.encode(iconSymbol, forKey: key(.iconSymbol))
+        try c.encodeIfPresent(iconImage, forKey: key(.iconImage))
         try c.encode(unsupportedKindRaw ?? kind.rawValue, forKey: key(.kind))
         // Only an action that has a prompt writes one: a Speak or Search action
         // carrying `"prompt": ""` is noise in a file people read. Decoding already

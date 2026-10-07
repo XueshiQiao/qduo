@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Add/edit sheet for a single configurable action: title, icon, type, prompt,
 /// and an optional per-action model override.
@@ -10,6 +11,10 @@ struct ActionEditorView: View {
     /// The system translator's languages, loaded when the editor shows a
     /// `systemTranslate` action (the list comes from an async system call).
     @State private var translateTargets: [SystemTranslator.Target] = []
+    /// What is typed in the icon search box. Empty = the curated groups.
+    @State private var iconQuery = ""
+    /// Why the last picture could not be used, shown under the picture row.
+    @State private var iconImageError: String?
     let onSave: (PopBarActionConfig) -> Void
     let onCancel: () -> Void
 
@@ -68,7 +73,11 @@ struct ActionEditorView: View {
 
                 kindSpecificSections
 
-                Section(L("popbar.editor.icon")) { iconGrid }
+                Section(L("popbar.editor.icon")) {
+                    iconSearchField
+                    iconGrid
+                    iconImageRow
+                }
 
                 if draft.kind == .ai {
                     Section(L("popbar.editor.prompt")) {
@@ -92,7 +101,7 @@ struct ActionEditorView: View {
             }
             .padding(12)
         }
-        .frame(width: 470, height: 600)
+        .frame(width: 470, height: 680)
     }
 
     /// The draft as it will be stored: a transform whose operation was never
@@ -250,17 +259,93 @@ struct ActionEditorView: View {
 
     // MARK: - Icon grid
 
+    /// Type any SF Symbol name; the grid below follows every keystroke.
+    private var iconSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: draft.iconSymbol)
+                .font(.system(size: 15))
+                .frame(width: 24)
+            TextField(L("popbar.editor.icon.search"), text: $iconQuery)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+            if !iconQuery.isEmpty {
+                Button { iconQuery = "" } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(L("popbar.editor.icon.search.clear"))
+            }
+        }
+    }
+
+    /// The curated groups, or — once something is typed — every symbol whose
+    /// name starts with or contains it.
     private var iconGrid: some View {
-        ScrollView {
+        let found = iconQuery.trimmingCharacters(in: .whitespaces).isEmpty ? nil : SFSymbolCatalog.search(iconQuery)
+        return ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(Self.iconGroups, id: \.title) { group in
-                    Text(L(group.title)).font(.caption).foregroundStyle(.secondary)
-                    iconRow(group.symbols)
+                if let found {
+                    Text(found.isEmpty ? L("popbar.editor.icon.search.none")
+                                       : String(format: L("popbar.editor.icon.search.count"), found.count))
+                        .font(.caption).foregroundStyle(.secondary)
+                    iconRow(found)
+                } else {
+                    ForEach(Self.iconGroups, id: \.title) { group in
+                        Text(L(group.title)).font(.caption).foregroundStyle(.secondary)
+                        iconRow(group.symbols)
+                    }
                 }
             }
             .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(height: 220)
+    }
+
+    /// The user's own picture in place of the symbol.
+    private var iconImageRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                if let picture = ActionIconStore.picture(named: draft.iconImage) {
+                    Image(nsImage: picture).resizable().interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 24, height: 24)
+                }
+                Text(L(draft.iconImage == nil ? "popbar.editor.icon.image.none" : "popbar.editor.icon.image.set"))
+                Spacer()
+                if draft.iconImage != nil {
+                    Button(L("popbar.editor.icon.image.remove")) {
+                        draft.iconImage = nil
+                        iconImageError = nil
+                    }
+                }
+                Button(L("popbar.editor.icon.image.choose")) { chooseIconImage() }
+            }
+            Text(L("popbar.editor.icon.image.hint"))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let iconImageError {
+                Label(iconImageError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private func chooseIconImage() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.png]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            draft.iconImage = try ActionIconStore.importPNG(at: url)
+            iconImageError = nil
+        } catch ActionIconStore.ImportError.notPNG {
+            iconImageError = L("popbar.editor.icon.image.error.notPNG")
+        } catch ActionIconStore.ImportError.cannotWrite {
+            iconImageError = L("popbar.editor.icon.image.error.cannotWrite")
+        } catch {
+            iconImageError = L("popbar.editor.icon.image.error.unreadable")
+        }
     }
 
     private func iconRow(_ symbols: [String]) -> some View {
@@ -282,6 +367,7 @@ struct ActionEditorView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help(symbol)
             }
         }
     }
