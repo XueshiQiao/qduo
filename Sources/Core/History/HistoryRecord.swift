@@ -10,7 +10,7 @@ import Foundation
 /// and never rewritten, the same rule `PopBarActionConfig` follows for `kind`.
 struct HistoryRecord: Identifiable, Hashable {
 
-    enum Trigger: String { case selection, hotkey, ocr }
+    enum Trigger: String { case selection, hotkey, ocr, url }
 
     /// Which filter chip a record falls under. Decided when the record is written.
     enum Category: String, CaseIterable { case ai, text, speech, web, automation, error }

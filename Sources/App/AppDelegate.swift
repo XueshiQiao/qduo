@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let updateController = UpdateController()
     private var appState: AppState?
     private var menuBarController: MenuBarController?
+    /// URLs that arrived before the app finished launching (it was started BY a
+    /// URL), run once it has.
+    private var pendingURLs: [URL] = []
 
     /// Set the first time the app is launched, so the onboarding guide opens once —
     /// on a fresh install there is nothing in the menu bar yet that tells you the
@@ -101,6 +104,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let onboarding {
             DispatchQueue.main.async { [weak self] in self?.menuBarController?.showOnboarding(reason: onboarding) }
         }
+        let waiting = pendingURLs
+        pendingURLs = []
+        waiting.forEach { state.controller.handleURL($0) }
+    }
+
+    /// Another app opened one of our URLs (`ActionURL`).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let appState else {
+            pendingURLs.append(contentsOf: urls)
+            return
+        }
+        urls.forEach { appState.controller.handleURL($0) }
     }
 
     /// Set before AppKit starts tearing windows down on quit, so a window's close

@@ -37,6 +37,25 @@
     <string>$(BRAND_BASE_ID)</string>
     <key>BrandRepoURL</key>
     <string>$(BRAND_REPO_URL)</string>
+    <key>BrandURLScheme</key>
+    <string>$(BRAND_URL_SCHEME)</string>
+
+    <!-- Other apps run an action by opening <scheme>://run/<name>?text=…
+         (Sources/PopBar/Actions/ActionURL.swift). Only actions the user turned
+         this on for can be reached. -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>$(BRAND_URL_SCHEME)</string>
+            </array>
+        </dict>
+    </array>
 
     <!-- Sparkle auto-update. The feed URL is a build setting for the same reason.
          This app has its OWN EdDSA key pair (keychain account "qduo", made with

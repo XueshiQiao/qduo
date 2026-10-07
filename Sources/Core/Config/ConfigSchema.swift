@@ -292,6 +292,7 @@ enum ConfigSchema {
               },
               "additionalProperties": true
             },
+            "urlName": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,39}$", "description": "Lets other apps run this action by opening qduo://run/<urlName>?text=<percent-encoded text>. Absent = this action cannot be run from a URL, which is the default for every action. Any app, and a link on a web page, can open such a URL, so turn it on only for actions that are safe to run on text you did not choose. Must be unique." },
             "group": { "type": "boolean", "description": "true = this action is a group even though it has no children yet, so actions can be dragged into it in Settings. Not needed for \\"kind\\": \\"group\\" or once it has children." },
             "children": {
               "type": "array",

@@ -94,6 +94,14 @@ final class PopBarWindowManager {
                        origin: origin)
     }
 
+    /// Show the transient window for text that came with a request to run one
+    /// action on it (a URL from another app), and run that action in it.
+    func showTransientAndRun(_ action: PopBarActionConfig, text: String, anchor: CGPoint,
+                             actions: [PopBarActionConfig], origin: HistoryOrigin?) {
+        showTransient(text: text, url: nil, anchor: anchor, actions: actions, origin: origin)
+        transient.runAction(action)
+    }
+
     /// Dismiss the transient window (outside click / auto-dismiss). Pinned windows
     /// are untouched.
     func dismissTransient() {

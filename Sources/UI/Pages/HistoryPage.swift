@@ -951,6 +951,7 @@ private struct MetaLine: View {
             case .selection: return L("history.trigger.selection")
             case .hotkey:    return L("history.trigger.hotkey")
             case .ocr:       return L("history.trigger.ocr")
+            case .url:       return L("history.trigger.url")
             case nil:        return nil
             }
         }()

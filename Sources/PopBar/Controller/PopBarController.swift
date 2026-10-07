@@ -441,6 +441,49 @@ final class PopBarController {
         windows.dismissOnOutsideClick()
     }
 
+    // MARK: - Run an action from a URL (issue #15)
+
+    /// Another app opened `<scheme>://run/<name>?text=…`. Runs that one action on
+    /// that text, in a popup at the pointer — if, and only if, the user turned
+    /// the URL on for an action of that name. Works while paused and whatever
+    /// app is in front, like the popup hotkey: it was asked for.
+    ///
+    /// There is no selection behind the text, so an action whose result would
+    /// replace or follow the selection has nowhere to write it; the session
+    /// handles that as it does for any text it cannot write back.
+    func handleURL(_ url: URL) {
+        guard url.scheme?.lowercased() == Brand.urlScheme.lowercased() else { return }
+        let pointer = NSEvent.mouseLocation
+        guard let request = ActionURL.parse(url, scheme: Brand.urlScheme) else {
+            Self.log.info("URL ignored — not <scheme>://run/<name>")
+            RegionToast.show(L("popbar.url.error.malformed"), atGlobalCocoa: pointer)
+            return
+        }
+        guard let action = ActionURL.action(named: request.name, in: actionStore.actions) else {
+            // Privacy: the name is the caller's, the text never logged.
+            Self.log.info("URL ignored — no action is callable as '\(request.name)'")
+            RegionToast.show(String(format: L("popbar.url.error.unknown"), request.name), atGlobalCocoa: pointer)
+            return
+        }
+        let text = request.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            RegionToast.show(L("popbar.url.error.noText"), atGlobalCocoa: pointer)
+            return
+        }
+        guard text.count <= ActionURL.maxTextLength else {
+            Self.log.info("URL ignored — \(text.count) char(s) is over the limit")
+            RegionToast.show(L("popbar.url.error.tooLong"), atGlobalCocoa: pointer)
+            return
+        }
+        Self.log.info("URL runs '\(request.name)' (\(action.kind.rawValue)) on \(text.count) char(s)")
+        // A selection still being read must not land on top of this.
+        resolveTask?.cancel()
+        resolveGeneration &+= 1
+        lastAnchor = pointer
+        windows.showTransientAndRun(action, text: text, anchor: pointer, actions: actionStore.actions,
+                                    origin: HistoryOrigin(trigger: .url, app: nil))
+    }
+
     // MARK: - Onboarding sample
 
     /// Show the popup for text selected in the onboarding guide's "Try it" sample.

@@ -1,13 +1,13 @@
 # ═══════════════════════════════════════════════════════════════════════════
 #  THE NAME LIVES HERE AND NOWHERE ELSE.
 #
-#  Renaming the app is: edit the five values in this block, rename the GitHub
+#  Renaming the app is: edit the six values in this block, rename the GitHub
 #  repo, swap the icon in Assets.xcassets, and fix the README. That is all —
 #  no Swift file contains the product name, no directory is named after it,
 #  and no localized string spells it out. Everything downstream reads it back
 #  from the built bundle (see Sources/Core/Brand.swift).
 #
-#  Keep the five in sync by hand; YAML cannot concatenate strings, so the
+#  Keep the six in sync by hand; YAML cannot concatenate strings, so the
 #  bundle id is spelled out rather than derived from the name.
 # ═══════════════════════════════════════════════════════════════════════════
 name: &APP_NAME QDuo
@@ -21,6 +21,9 @@ name: &APP_NAME QDuo
   # be installed at once.
   bundleID: &BUNDLE_ID me.xueshi.qduo
   repoURL: &REPO_URL https://github.com/XueshiQiao/qduo
+  # The URL scheme other apps call actions through (qduo://run/…). Debug uses
+  # its own below, or the two builds would fight over one scheme.
+  urlScheme: &URL_SCHEME qduo
   feedURL: &FEED_URL https://github.com/XueshiQiao/qduo/releases/latest/download/appcast.xml
 
 options:
@@ -66,6 +69,7 @@ targets:
         # this out. See Sources/Core/Brand.swift.
         BRAND_BASE_ID: *BASE_ID
         BRAND_REPO_URL: *REPO_URL
+        BRAND_URL_SCHEME: *URL_SCHEME
         SU_FEED_URL: *FEED_URL
         # Restricted entitlement: must match the Developer ID provisioning
         # profile's allowlist, or AMFI kills the notarized app at launch.
@@ -89,6 +93,7 @@ targets:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.debug
           PRODUCT_NAME: QDuo-Debug
+          BRAND_URL_SCHEME: qduo-debug
     dependencies:
       - package: Sparkle
       - package: Aptabase
@@ -135,6 +140,7 @@ targets:
       - path: Sources/PopBar/Selection/SelectionStrategy.swift
       - path: Sources/PopBar/Actions/ActionIcon.swift
       - path: Sources/PopBar/Actions/ActionTree.swift
+      - path: Sources/PopBar/Actions/ActionURL.swift
       - path: Sources/PopBar/Selection/CopyFirstStrategy.swift
       - path: Sources/PopBar/Trigger/Gestures.swift
     settings:

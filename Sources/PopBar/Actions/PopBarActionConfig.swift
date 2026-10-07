@@ -170,6 +170,11 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// something this UI can actually show instead of silently hiding actions.
     var children: [PopBarActionConfig] = []
 
+    /// The name other apps run this action by, through the app's URL scheme
+    /// (`ActionURL`). nil = it cannot be run that way, which is how every action
+    /// starts: each one is turned on by itself.
+    var urlName: String?
+
     /// It has sub-actions right now, so the popup unfolds it.
     var hasChildren: Bool { !children.isEmpty }
 
@@ -238,6 +243,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case schemaVersion, id, title, iconSymbol, iconImage, kind, prompt, modelOverride, children
         case url, openIn, op, shortcut, script, output, reader, targetLanguage
         case marksGroup = "group"
+        case urlName
     }
     private static let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
     init(from decoder: Decoder) throws {
@@ -265,6 +271,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         reader = try? c.decodeIfPresent(String.self, forKey: .reader)
         targetLanguage = try? c.decodeIfPresent(String.self, forKey: .targetLanguage)
         marksGroup = try? c.decodeIfPresent(Bool.self, forKey: .marksGroup)
+        urlName = try? c.decodeIfPresent(String.self, forKey: .urlName)
         // Flatten anything deeper than one level (see `children`). Decoding is
         // deliberately lenient here for the same reason every other field is: a
         // malformed children array must not throw away the whole action list.
@@ -319,6 +326,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(reader, forKey: key(.reader))
         try c.encodeIfPresent(targetLanguage, forKey: key(.targetLanguage))
         if marksGroup == true { try c.encode(true, forKey: key(.marksGroup)) }
+        try c.encodeIfPresent(urlName, forKey: key(.urlName))
         // Only written when there is something to write, so an action that never
         // had children does not grow an empty array.
         if !children.isEmpty { try c.encode(children, forKey: key(.children)) }

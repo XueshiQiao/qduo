@@ -28,6 +28,11 @@ enum Brand {
     static let baseID: String =
         (Bundle.main.object(forInfoDictionaryKey: "BrandBaseID") as? String) ?? "app"
 
+    /// The URL scheme other apps run actions through. Differs between Debug and
+    /// Release, like `bundleID`, so the two never answer each other's URLs.
+    static let urlScheme: String =
+        (Bundle.main.object(forInfoDictionaryKey: "BrandURLScheme") as? String) ?? slug
+
     /// Lowercase one-word form, taken from the last component of `baseID`. Used
     /// where a filesystem-friendly name is needed (`~/.config/<slug>/`).
     static let slug: String = baseID.split(separator: ".").last.map(String.init) ?? "app"

@@ -15,15 +15,18 @@ struct ActionEditorView: View {
     @State private var iconQuery = ""
     /// Why the last picture could not be used, shown under the picture row.
     @State private var iconImageError: String?
+    /// URL names other actions already use (lower case); this one needs its own.
+    private let takenURLNames: Set<String>
     /// The action being edited is a group: it may also be given nothing to do.
     private let wasGroup: Bool
     let onSave: (PopBarActionConfig) -> Void
     let onCancel: () -> Void
 
-    init(action: PopBarActionConfig, llm: LLMService,
+    init(action: PopBarActionConfig, llm: LLMService, takenURLNames: Set<String> = [],
          onSave: @escaping (PopBarActionConfig) -> Void, onCancel: @escaping () -> Void) {
         _draft = State(initialValue: action)
         wasGroup = action.isGroup
+        self.takenURLNames = takenURLNames
         _llm = ObservedObject(wrappedValue: llm)
         self.onSave = onSave
         self.onCancel = onCancel
@@ -84,6 +87,9 @@ struct ActionEditorView: View {
                     iconImageRow
                 }
 
+                // A group that only unfolds has nothing for a URL to run.
+                if draft.kind != .group { urlSection }
+
                 if draft.kind == .ai {
                     Section(L("popbar.editor.prompt")) {
                         TextEditor(text: $draft.prompt)
@@ -116,12 +122,14 @@ struct ActionEditorView: View {
         if action.kind == .transform, action.op == nil { action.op = TextTransform.uppercase.rawValue }
         // A group given something to do stays a group even while it is empty.
         if wasGroup { action.marksGroup = action.kind == .group ? nil : true }
+        if action.kind == .group { action.urlName = nil }
         return action
     }
 
     private var isValid: Bool {
         let titleOK = !draft.title.trimmingCharacters(in: .whitespaces).isEmpty
         func filled(_ s: String?) -> Bool { !(s ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard urlNameProblem == nil else { return false }
         switch draft.kind {
         case .ai:        return titleOK && filled(draft.prompt)
         case .openURL:   return titleOK && filled(draft.url)
@@ -132,6 +140,60 @@ struct ActionEditorView: View {
         case .script:    return titleOK && filled(draft.script)
         case .systemTranslate: return titleOK && filled(draft.targetLanguage)
         default:         return titleOK
+        }
+    }
+
+    // MARK: - Running it from another app (issue #15)
+
+    /// Why the URL name cannot be saved as it is; nil when it can (or the URL is off).
+    private var urlNameProblem: String? {
+        guard draft.kind != .group, let name = draft.urlName else { return nil }
+        if !ActionURL.isValidName(name) { return L("popbar.editor.url.name.invalid") }
+        if takenURLNames.contains(name) { return L("popbar.editor.url.name.taken") }
+        return nil
+    }
+
+    /// Off for every action until it is turned on here, one action at a time.
+    private var urlSection: some View {
+        Section {
+            Toggle(L("popbar.editor.url.toggle"), isOn: Binding(
+                get: { draft.urlName != nil },
+                set: { on in
+                    draft.urlName = on ? ActionURL.suggestedName(title: draft.title, kind: draft.kind.rawValue,
+                                                                 taken: takenURLNames) : nil
+                }))
+            if let name = draft.urlName {
+                TextField(L("popbar.editor.url.name"), text: Binding(
+                    get: { name },
+                    // Typed straight into the allowed form, so what is shown is
+                    // what the URL will carry. Emptied → still on, and invalid
+                    // until a name is typed.
+                    set: { draft.urlName = ActionURL.sanitized($0) }))
+                    .autocorrectionDisabled()
+                if let problem = urlNameProblem {
+                    Label(problem, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                } else {
+                    let example = ActionURL.example(scheme: Brand.urlScheme, name: name, text: "Hello world")
+                    HStack {
+                        Text(example)
+                            .font(.system(size: 11, design: .monospaced))
+                            .textSelection(.enabled)
+                            .lineLimit(2)
+                        Spacer()
+                        Button(L("popbar.editor.url.copy")) {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(example, forType: .string)
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text(L("popbar.editor.url.header"))
+        } footer: {
+            Text(L("popbar.editor.url.footer"))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
