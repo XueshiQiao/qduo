@@ -68,28 +68,66 @@ final class ClipboardCopyStrategy: SelectionStrategy {
     /// No check that anything is selected: the caller has already established
     /// that (the gate in `selectedText`, or `CopyFirstStrategy` having read the
     /// selection through Accessibility).
+    ///
+    /// Once the ⌘C is sent, the wait for the app's copy and the restore run to
+    /// the end even if this read is cancelled (a newer trigger took over): the
+    /// app copies asynchronously, and a restore done before its write lands
+    /// would be overwritten by it, leaving the selection on the user's
+    /// clipboard. For the same reason one copy finishes before the next starts —
+    /// otherwise the next one could back up the previous one's copied text as if
+    /// it were the user's.
     func copyAndRead(_ context: SelectionContext) async throws -> SelectionResult? {
+        try Task.checkCancellation()
+        let abandoned = Abandoned()
+        let result = await withTaskCancellationHandler {
+            let task = await MainActor.run { () -> Task<SelectionResult?, Never> in
+                let previous = inFlight
+                let task = Task.detached { [self] () -> SelectionResult? in
+                    _ = await previous?.value
+                    // Given up while waiting its turn: no ⌘C on its account.
+                    if abandoned.isSet { return nil }
+                    return await performCopy(context)
+                }
+                inFlight = task
+                return task
+            }
+            return await task.value
+        } onCancel: {
+            abandoned.set()
+        }
+        try Task.checkCancellation()
+        return result
+    }
+
+    /// The copy still running or waiting, if any. Main thread only.
+    private var inFlight: Task<SelectionResult?, Never>?
+
+    /// Set when the read that asked for a copy was cancelled.
+    private final class Abandoned: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+        var isSet: Bool { lock.lock(); defer { lock.unlock() }; return value }
+        func set() { lock.lock(); value = true; lock.unlock() }
+    }
+
+    /// Runs outside the read's own task, so a cancellation cannot stop it half-way.
+    private func performCopy(_ context: SelectionContext) async -> SelectionResult? {
         let backup = await MainActor.run { Pasteboard.backup() }
         let initialChangeCount = await MainActor.run { NSPasteboard.general.changeCount }
 
         await MainActor.run { KeySender.copy() }
 
         var captured: String?
+        var clipboardChanged = false
         let start = Date()
         while Date().timeIntervalSince(start) < pollTimeout {
-            do {
-                try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
-            } catch {
-                // Cancelled (a newer trigger took over) with the ⌘C already sent:
-                // the user's clipboard still has to come back.
-                await MainActor.run { _ = Pasteboard.restore(backup) }
-                throw error
-            }
+            try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
             let (changeCount, string, isFileCopy) = await MainActor.run { () -> (Int, String?, Bool) in
                 let pb = NSPasteboard.general
                 return (pb.changeCount, pb.string(forType: .string), pb.types?.contains(.fileURL) ?? false)
             }
             if changeCount != initialChangeCount {
+                clipboardChanged = true
                 // The Copy command also enables on NON-text selections — files in
                 // Finder, list / sidebar rows — which the `copy-menu-enabled` second
                 // chance can't tell apart from text up front. Those land a FILE URL on
@@ -117,8 +155,13 @@ final class ClipboardCopyStrategy: SelectionStrategy {
             }
         }
 
-        // Always restore, whether or not we captured anything.
-        await MainActor.run { Pasteboard.restore(backup) }
+        // Restore whenever the clipboard changed, whether or not we captured
+        // anything. Unchanged (the app ignored the ⌘C) → it still holds the
+        // user's content, and writing it back would only be one more change for
+        // a clipboard manager to look at.
+        if clipboardChanged {
+            await MainActor.run { _ = Pasteboard.restore(backup) }
+        }
 
         guard let text = captured else {
             Self.log.debug("clipboard copy did not land within \(Int(self.pollTimeout * 1000))ms")

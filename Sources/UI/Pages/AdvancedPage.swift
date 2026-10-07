@@ -109,7 +109,7 @@ struct AdvancedPage: View {
             // Only the installed ones, as with the terminals below.
             let installed = store.copyFirstApps.filter { appURL(for: $0) != nil }
             if installed.isEmpty {
-                Text(L("popbar.copyFirst.empty"))
+                Text(L(store.copyFirstApps.isEmpty ? "popbar.copyFirst.none" : "popbar.copyFirst.empty"))
                     .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(installed, id: \.self) { id in

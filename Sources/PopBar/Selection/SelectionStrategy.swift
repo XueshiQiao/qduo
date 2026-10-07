@@ -12,7 +12,7 @@ import ApplicationServices
 /// Adding a new way to read text (AppleScript for browsers, a per-app special
 /// case, a future API) means writing one `SelectionStrategy` and registering it
 /// in the resolver — nothing else in the pipeline changes. Strategies can also
-/// be reordered or combined freely; today we ship two.
+/// be reordered or combined freely.
 
 /// Identifies which strategy produced a result — for logging, and so a caller
 /// can later adapt behavior to *how* the text was obtained.

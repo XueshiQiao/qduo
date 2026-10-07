@@ -62,7 +62,11 @@ final class CopyFirstStrategy: SelectionStrategy {
         result.sourceElement = direct.sourceElement
         result.bounds = direct.bounds
         if result.focusedElement == nil { result.focusedElement = direct.focusedElement }
-        Self.log.debug("⌘C text used: \(result.text.count) char(s), read directly: \(direct.text.count)")
+        // Privacy: sizes only. "same" = the two reads differ in whitespace alone,
+        // which is all this strategy is for; false means the page changed what a
+        // copy gives (an added "Read more at…", list numbers, image text).
+        let same = result.text.filter { !$0.isWhitespace } == direct.text.filter { !$0.isWhitespace }
+        Self.log.debug("⌘C text used: \(result.text.count) char(s), read directly: \(direct.text.count), same apart from whitespace: \(same)")
         return result
     }
 }

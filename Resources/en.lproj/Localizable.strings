@@ -408,7 +408,8 @@
 "popbar.excluded.footer" = "Selecting text in these apps never opens the popup. The screenshot OCR hotkey still works in them.";
 "popbar.copyFirst.header" = "Apps always read with ⌘C";
 "popbar.copyFirst.empty" = "None of the listed apps is installed.";
-"popbar.copyFirst.footer" = "Some apps hand over selected text that is incomplete: Chrome drops the line breaks between paragraphs, so several paragraphs arrive as one. In these apps the popup presses ⌘C for you on every selection and puts your clipboard back afterwards. This list does nothing while the ⌘C switch above is off.";
+"popbar.copyFirst.none" = "The list is empty.";
+"popbar.copyFirst.footer" = "Some apps hand over selected text that is incomplete: Chrome drops the line breaks between paragraphs, so several paragraphs arrive as one. In these apps the popup presses ⌘C for you on every selection and puts your clipboard back afterwards. A clipboard history tool may still record the selected text. This list does nothing while the ⌘C switch above is off.";
 "popbar.terminals.header" = "Terminals";
 "popbar.terminals.empty" = "None of the listed terminals is installed.";
 "popbar.terminals.footer" = "Some programs running in a terminal (herdr, tmux with mouse mode, vim) make the selection themselves and copy it to the clipboard, so the terminal itself has nothing selected. In these apps, when the clipboard changes while you select, the popup uses what was copied.";

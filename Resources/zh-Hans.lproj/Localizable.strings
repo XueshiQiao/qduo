@@ -407,7 +407,8 @@
 "popbar.excluded.footer" = "在这些 app 里选中文字不会弹出弹框。截图 OCR 快捷键在这些 app 里照常可用。";
 "popbar.copyFirst.header" = "每次都用 ⌘C 读取的 app";
 "popbar.copyFirst.empty" = "名单里的 app 都没有安装。";
-"popbar.copyFirst.footer" = "有些 app 直接提供的选中文字不完整，比如 Chrome 会丢掉段落之间的换行，几段文字连成一段。在这些 app 里，每次选中文字都会替你按一次 ⌘C 来读取，读完把剪贴板恢复原样。上面的 ⌘C 开关关掉时，这个名单不起作用。";
+"popbar.copyFirst.none" = "名单是空的。";
+"popbar.copyFirst.footer" = "有些 app 直接提供的选中文字不完整，比如 Chrome 会丢掉段落之间的换行，几段文字连成一段。在这些 app 里，每次选中文字都会替你按一次 ⌘C 来读取，读完把剪贴板恢复原样。如果你用剪贴板历史工具，选中的文字有可能被它记录下来。上面的 ⌘C 开关关掉时，这个名单不起作用。";
 "popbar.terminals.header" = "终端";
 "popbar.terminals.empty" = "名单里的终端都没有安装。";
 "popbar.terminals.footer" = "有些在终端里运行的程序（herdr、开了鼠标模式的 tmux、vim）会自己选中文字、自己复制到剪贴板，终端本身并没有选中任何东西。在这些 app 里，如果你选择的过程中剪贴板变了，弹框就用刚复制的内容。";

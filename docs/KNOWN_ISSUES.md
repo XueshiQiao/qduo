@@ -5,34 +5,45 @@ we have. Add new ones at the top; when one is fixed, delete its entry (git keeps
 
 ---
 
-## Text selected in Chrome loses its paragraph breaks
+## Text selected in Chromium browsers and Electron apps loses its paragraph breaks
 
-**Found:** 2026-09-30 · **Status:** open, left as is on purpose
+**Found:** 2026-09-30 · **Status:** fixed for Chrome on 2026-10-07; open for the others
 
-**What you see:** select several paragraphs or a list on a web page in Chrome and
-run an action (e.g. Speak). The text arrives as one run, paragraphs glued together:
+**What you see:** select several paragraphs or a list on a web page and run an
+action (e.g. Speak). The text arrives as one run, paragraphs glued together:
 
 ```
 …isn't available here.If you didn't know either, here's how:1. Download and install…Mac App Store.2. Connect your iPhone…
 ```
 
-Pressing ⌘C in Chrome on the same selection gives the text with its line breaks.
+Pressing ⌘C on the same selection gives the text with its line breaks.
 
 **Why:** we read the selection through the Accessibility API
 (`AccessibilityStrategy`: `kAXSelectedTextAttribute`, then `AXStringForTextMarkerRange`).
 Chromium builds all of these answers with `AXRange::GetText()`, whose paragraph-break
 option defaults to off (`ui/accessibility/ax_range.h`), so `"A<div>B</div>C"` comes
 back as `"ABC"`. `AXAttributedStringForTextMarkerRange` is the same. Every app that
-reads Chrome through Accessibility has this; it affects Chrome, other Chromium
-browsers, and Electron apps. Measured on the real selection: 727 characters, 0 line
-breaks, from both attributes.
+reads Chromium through Accessibility has this. Measured on a real selection in
+Chrome: 727 characters, 0 line breaks, from both attributes. Safari keeps them.
 
-**Options if we fix it:**
+**What is done:** apps on the `popup.copyFirstApps` list (Settings › Advanced;
+default: Chrome only) are read with a simulated ⌘C once Accessibility has found a
+selection (`CopyFirstStrategy`). Other Chromium browsers (Edge, Arc, Brave) and
+Electron apps still lose the breaks until the user adds them to that list; they
+were not added by default because none was checked.
+
+**What that costs, in listed apps:** the clipboard is written and put back on every
+selection. A clipboard manager can record Chrome's write if it looks before the
+restore, and we can't mark it transient because Chrome writes it, not us. A page
+that changes what a copy gives (adds "Read more at…", or blocks copying) changes or
+delays what the popup reads; the log line `same apart from whitespace` from
+`PopBar.CopyFirst` shows how often the two reads differ.
+
+**The other option, not taken:**
 
 | Option | How | Pros | Cons |
 |---|---|---|---|
 | **AppleScript + page JavaScript** (what Easydict does) | For browsers, ask the browser for the selection over AppleScript and run `window.getSelection().toString()` in the active tab. Chrome: `tell application id "com.google.Chrome" to tell active tab of front window to execute javascript "window.getSelection().toString();"`. Safari has the same through `do JavaScript`. Fall back to Accessibility when it fails. | Paragraph breaks come back; the clipboard is not touched; no browser extension needed | Chrome needs **View → Developer → Allow JavaScript from Apple Events** turned on by the user (off by default, no prompt). macOS asks once for Automation permission ("QDuo wants to control Google Chrome"), so the app needs `NSAppleEventsUsageDescription` (and the Apple Events entitlement if sandboxed). Only browsers with an AppleScript dictionary. List numbers ("1.", "2.") are dropped: `getSelection()` returns list items without their markers (checked in headless Chrome 154). Easydict uses a 0.2 s timeout. |
-| Simulate ⌘C for browsers | Use the existing `ClipboardCopyStrategy` first for Chromium apps | Exactly what the user gets by copying, list numbers included | Touches the clipboard on every read. Clipboard managers record Chrome's write, and we can't mark it transient because Chrome writes it, not us. |
 
 Not an option: rebuilding paragraphs from Chrome's Accessibility paragraph markers
 (`AXNextParagraphEndTextMarkerForTextMarker`). It only works for one app's internals,
