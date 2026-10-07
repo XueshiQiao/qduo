@@ -228,7 +228,10 @@ struct PopBarActionListSection: View {
         let height = rowHeights[row.id] ?? 30
         // Only a top-level GROUP has a "drop inside me" middle. Everything else is
         // split in half, so every point on the row means something.
-        guard row.isGroup, !row.isChild else {
+        // And not for a dragged GROUP: it can never go inside another, so the
+        // middle would be a stretch of the row where nothing can be dropped.
+        let draggingGroup = dragging.flatMap { actions.action(id: $0) }?.isGroup ?? false
+        guard row.isGroup, !row.isChild, !draggingGroup else {
             return y < height / 2 ? .above : .below
         }
         if y < height * 0.28 { return .above }

@@ -53,6 +53,27 @@ final class GroupAsActionTests: XCTestCase {
         XCTAssertEqual(out?.first?.children.map(\.id), ["c1", "c2"])
     }
 
+    func testDissolvingKeepsEverything() {
+        let folder = [action("g", .group, children: [action("c1"), action("c2")]), action("z")]
+        XCTAssertEqual(ActionTree.dissolve(groupID: "g", in: folder)?.map(\.id), ["c1", "c2", "z"])
+        // A group that is an action too is not thrown away with its children's folder.
+        let runs = [action("g", .ai, children: [action("c1"), action("c2")], marked: true), action("z")]
+        let out = ActionTree.dissolve(groupID: "g", in: runs)
+        XCTAssertEqual(out?.map(\.id), ["g", "c1", "c2", "z"])
+        XCTAssertEqual(out?.first?.isGroup, false)
+        XCTAssertEqual(out?.first?.kind, .ai)
+    }
+
+    func testAnEmptiedGroupThatRunsIsStillAGroup() throws {
+        let json = #"[{ "id": "g", "title": "G", "iconSymbol": "star", "kind": "ai", "prompt": "p","#
+                 + #"   "children": [{ "id": "c", "title": "C", "iconSymbol": "star", "kind": "copy" }] }]"#
+        let list = try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8))
+        let moved = ActionTree.move("c", to: .topBefore(nil), in: list)
+        XCTAssertEqual(moved?.map(\.id), ["g", "c"])
+        XCTAssertEqual(moved?.first?.isGroup, true)
+        XCTAssertTrue(ActionTree.canMove("c", to: .insideBefore(groupID: "g", childID: nil), in: moved ?? []))
+    }
+
     func testTheMarkIsWrittenOnlyWhenSet() throws {
         let json = #"[{ "id": "g", "title": "G", "iconSymbol": "star", "kind": "ai", "prompt": "p", "group": true },"#
                  + #" { "id": "a", "title": "A", "iconSymbol": "star", "kind": "copy" },"#
@@ -62,7 +83,10 @@ final class GroupAsActionTests: XCTestCase {
         XCTAssertEqual(actions.map(\.isGroup), [true, false, true])
         XCTAssertEqual(actions[2].kind, .speak)
         let written = String(decoding: try JSONEncoder().encode(actions), as: UTF8.self)
-        XCTAssertEqual(written.components(separatedBy: "\"group\":true").count - 1, 1)
+        // The one that arrived holding children is marked too, so it stays a
+        // group after its last child is dragged out; the plain one never is.
+        XCTAssertEqual(written.components(separatedBy: "\"group\":true").count - 1, 2)
+        XCTAssertNil(actions[1].marksGroup)
         let again = try JSONDecoder().decode([PopBarActionConfig].self, from: Data(written.utf8))
         XCTAssertEqual(again, actions)
     }

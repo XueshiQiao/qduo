@@ -133,14 +133,22 @@ enum ActionTree {
         return out
     }
 
-    /// Remove a group but KEEP what was in it: the children take its place at the
-    /// top level, in order. Nothing the user configured is thrown away.
+    /// Stop a group being a group but KEEP what was in it: the children take its
+    /// place at the top level, in order. Nothing the user configured is thrown
+    /// away — so a group that is an action too stays, as that action, ahead of
+    /// what it held; only a group that runs nothing (`kind: group`) goes.
     static func dissolve(groupID: String, in list: [PopBarActionConfig]) -> [PopBarActionConfig]? {
         guard let g = list.firstIndex(where: { $0.id == groupID }) else { return nil }
         var out = list
         let children = out[g].children
-        out.remove(at: g)
-        out.insert(contentsOf: children, at: g)
+        if out[g].kind == .group {
+            out.remove(at: g)
+            out.insert(contentsOf: children, at: g)
+        } else {
+            out[g].children = []
+            out[g].marksGroup = nil
+            out.insert(contentsOf: children, at: g + 1)
+        }
         return out
     }
 

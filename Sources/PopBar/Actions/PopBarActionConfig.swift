@@ -281,6 +281,10 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
             flat.children = []
             return flat
         }
+        // An action that arrives holding others is a group for good: marked, so
+        // that dragging its last child out does not quietly turn it back into
+        // an ordinary action that nothing can be dropped into.
+        if kind != .group, !children.isEmpty { marksGroup = true }
 
         // Anything else the object carried. Read through a container keyed by a
         // key type that accepts any string, minus the fields above.

@@ -133,7 +133,6 @@ struct ActionEditorView: View {
         if action.kind == .transform, action.op == nil { action.op = TextTransform.uppercase.rawValue }
         // A group given something to do stays a group even while it is empty.
         if wasGroup { action.marksGroup = action.kind == .group ? nil : true }
-        if action.kind == .group { action.urlName = nil }
         return action
     }
 
