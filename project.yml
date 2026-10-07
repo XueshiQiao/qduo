@@ -131,6 +131,8 @@ targets:
       - path: Sources/Core/Config/ConfigSchema.swift
       - path: Sources/Core/History/HistoryRecord.swift
       - path: Sources/Core/History/HistoryStore.swift
+      - path: Sources/PopBar/Trigger/SelectionTrigger.swift
+      - path: Sources/PopBar/Trigger/Gestures.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

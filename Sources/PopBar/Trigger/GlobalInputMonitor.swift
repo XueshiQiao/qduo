@@ -3,8 +3,8 @@ import AppKit
 /// The trigger layer's engine. Installs a single **global** `NSEvent` monitor,
 /// normalizes events, broadcasts them to the gesture recognizers, and reports:
 ///  - `onTrigger` — a selection gesture completed (after a short debounce);
-///  - `onDismiss` — a mouse-down / scroll / key-down happened elsewhere (used to
-///    close an open popup).
+///  - `onDismiss` — a mouse-down / drag / scroll / key-down happened elsewhere
+///    (used to close an open popup).
 ///
 /// Deliberately **global-only**. A global monitor observes events delivered to
 /// *other* apps and can't consume them (exactly what we want — we never disturb
@@ -20,18 +20,20 @@ final class GlobalInputMonitor {
     private let debounce: TimeInterval
     private var globalMonitor: Any?
     /// Trailing-edge debounce: the pending (not-yet-fired) trigger. A new gesture
-    /// firing cancels and reschedules it, so a rapid multi-click (double→triple, which
-    /// fires the click gesture on BOTH the 2nd and 3rd mouse-down) collapses into a
-    /// SINGLE `onTrigger` after the last click. This matters for the clipboard-⌘C
-    /// selection path: without it, the earlier click's resolve injects a synthetic ⌘C
-    /// mid-multi-click and disrupts the app's own selection (apps whose selection is
-    /// AX-readable don't show this, since their resolve is a side-effect-free AX read).
+    /// firing cancels and reschedules it, and the next mouse-down cancels it, so a
+    /// rapid multi-click (double→triple, which fires the click gesture on BOTH the 2nd
+    /// and 3rd mouse-up) collapses into a SINGLE `onTrigger` after the last click. This
+    /// matters for the clipboard-⌘C selection path: without it, the earlier click's
+    /// resolve injects a synthetic ⌘C mid-multi-click and disrupts the app's own
+    /// selection (apps whose selection is AX-readable don't show this, since their
+    /// resolve is a side-effect-free AX read).
     private var pendingTrigger: DispatchWorkItem?
 
     /// Fired (on main) after a gesture completes and the debounce elapses.
     var onTrigger: (() -> Void)?
     /// Fired (on main) for events that may dismiss an open popup. Carries the
-    /// event so the controller can ignore multi-click continuations.
+    /// event so the controller can ignore multi-click continuations and tell when
+    /// a press has turned into a drag.
     var onDismiss: ((InputEvent) -> Void)?
 
     /// Screen-coordinate location of the last mouse-up — where the gesture ended.
@@ -90,6 +92,10 @@ final class GlobalInputMonitor {
             // Snapshot the clipboard at gesture start so a later strategy can
             // detect a "copy on select" write that lands before we read.
             gestureStartClipboardChangeCount = NSPasteboard.general.changeCount
+            // A press is the start of something new: a trigger still waiting out
+            // its debounce must not fire while the button is down (issue #13).
+            pendingTrigger?.cancel()
+            pendingTrigger = nil
         case .leftMouseDragged: input = .mouseDragged(event)
         case .leftMouseUp:      input = .mouseUp(event); lastMouseUpLocation = screenLocation(event)
         case .scrollWheel:      input = .scroll(event)
@@ -97,9 +103,10 @@ final class GlobalInputMonitor {
         default:                return
         }
 
-        // Any of these, happening in another app, should close an open popup.
+        // Any of these, happening in another app, may close an open popup (the
+        // controller decides: a drag only counts once it is clearly a drag).
         switch input {
-        case .mouseDown, .scroll, .keyDown: onDismiss?(input)
+        case .mouseDown, .mouseDragged, .scroll, .keyDown: onDismiss?(input)
         default: break
         }
 

@@ -29,12 +29,28 @@ final class DragSelectGesture: SelectionGesture {
 
 /// Double- (or triple-) click to select a word/line. `NSEvent` tracks the click
 /// count for us.
+///
+/// Completes when the button of that click is RELEASED, not when it goes down
+/// (issue #13): the second press can be held and dragged to grow the selection
+/// word by word, and a popup opened on the press sat on top of the text still
+/// being selected. The press is remembered here rather than read off the
+/// mouse-up, so nothing depends on what click count a mouse-up carries after a
+/// drag.
 final class DoubleClickGesture: SelectionGesture {
     let id = "double-click"
+    /// The button that is down now went down as a 2nd (or later) click.
+    private var armed = false
 
     func consume(_ event: InputEvent) -> Bool {
-        if case let .mouseDown(nsEvent) = event {
-            return nsEvent.clickCount >= 2
+        switch event {
+        case let .mouseDown(nsEvent):
+            armed = nsEvent.clickCount >= 2
+        case .mouseUp:
+            let fired = armed
+            armed = false
+            return fired
+        default:
+            break
         }
         return false
     }

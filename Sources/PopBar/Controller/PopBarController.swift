@@ -33,11 +33,21 @@ final class PopBarController {
     /// How close a new trigger must be to the current capsule to be treated as
     /// the same selection (keep it, don't re-read/re-show).
     private let sameSelectionRadius: CGFloat = 40
+    /// Drag events since the last mouse-down. A popup kept open through a multi-
+    /// click press is closed once that press turns into a drag.
+    private var dragsSincePress = 0
+    /// How many drag events make a press a drag — the same number
+    /// `DragSelectGesture` is given, so a hand that shakes during a click closes
+    /// nothing.
+    private static let dragThreshold = 3
     /// The popup hotkey (issue #4), registered while `popupHotKeyEnabled` is on.
     private var popupHotKey: GlobalHotKey?
     private var resolveTask: Task<Void, Never>?
     /// Bumped per trigger so a slow/canceled resolve can't act on the panel after
-    /// a newer trigger has taken over.
+    /// a newer trigger has taken over — and per mouse-down, so a read still running
+    /// when the next press begins shows nothing (`handleDismiss`). A scroll or a
+    /// key-down does not bump it. The read itself is left to finish: cancelling it
+    /// part-way could skip the clipboard restore after a simulated ⌘C.
     private var resolveGeneration = 0
     /// A popup's Pause action was used. The store answers it, because the paused
     /// state is the store's: it persists it and the menu bar and sidebar show it.
@@ -57,7 +67,7 @@ final class PopBarController {
             ClipboardCopyStrategy(),   // fallback for browsers / Electron / custom views
         ])
         monitor = GlobalInputMonitor(gestures: [
-            DragSelectGesture(),
+            DragSelectGesture(dragThreshold: Self.dragThreshold),
             DoubleClickGesture(),
         ])
         windows.onPause = { [weak self] in self?.onPauseRequested?() }
@@ -400,11 +410,26 @@ final class PopBarController {
     }
 
     private func handleDismiss(_ event: InputEvent) {
+        switch event {
+        case .mouseDown:
+            dragsSincePress = 0
+            // A selection still being read belongs to the gesture before this
+            // press: drop it, or its popup would open while the button is down.
+            resolveGeneration &+= 1
+        case .mouseDragged:
+            // Only the drag's start closes anything, and only once per press.
+            dragsSincePress += 1
+            guard dragsSincePress == Self.dragThreshold else { return }
+        default:
+            break
+        }
         // Only the transient (unpinned) window auto-dismisses; pinned windows
         // persist until their own close button.
         guard windows.hasDismissableWindow else { return }
         // A multi-click continuation (e.g. double-click then an accidental triple)
         // shouldn't dismiss — that would hide then immediately reshow (flicker).
+        // Dragging with that press is different: the selection is being grown
+        // under the popup, so the drag (above) does close it (issue #13).
         if case let .mouseDown(nsEvent) = event, nsEvent.clickCount >= 2 { return }
         windows.dismissOnOutsideClick()
     }
