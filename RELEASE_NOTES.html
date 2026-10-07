@@ -1,3 +1,23 @@
+<h3>What's New in 26.10.23</h3>
+<ul>
+  <li><b>The popup waits until you let go</b> — After a double-click or triple-click, the popup now opens when you release the mouse button, not while it is still down. Holding the second click and dragging to select more words no longer has the popup sitting on top of the text. Thanks <a href="https://x.com/elviscai">@elviscai</a> on X for <a href="https://github.com/XueshiQiao/qduo/issues/13">#13</a>.</li>
+  <li><b>Paragraphs from Chrome stay paragraphs</b> — Several paragraphs selected in Chrome used to arrive as one run of text, for every action. Chrome is now read by pressing ⌘C for you (your clipboard is put back afterwards), which keeps the line breaks. The list of apps read this way is in Settings → Advanced; a clipboard history tool may record the selected text.</li>
+  <li><b>Translations keep your line breaks</b> — The built-in Translate prompt for new installs now asks for every line break to stay where it is, and the result panel shows a single line break as a line break instead of joining the lines.</li>
+  <li><b>Any SF Symbol, or your own image, as an action's icon</b> — In an action's editor, the magnifying-glass tile searches every SF Symbol by name as you type, and the picture tile takes a PNG of your own (128×128; other sizes are scaled to fit). Thanks <a href="https://x.com/elviscai">@elviscai</a> on X for <a href="https://github.com/XueshiQiao/qduo/issues/17">#17</a>.</li>
+  <li><b>A group can be an action too</b> — Give a group any type other than Group and it runs that when clicked, while pointing at it still unfolds the actions inside. Group is now simply the first entry in the Type list. Thanks <a href="https://x.com/elviscai">@elviscai</a> on X for <a href="https://github.com/XueshiQiao/qduo/issues/16">#16</a>.</li>
+  <li><b>Run an action from other apps</b> — Alfred, Raycast and other tools can run a QDuo action on text they supply by opening <code>qduo://run/&lt;name&gt;?text=…</code>. It is off for every action; turn it on, one action at a time, at the bottom of that action's editor, which also shows the URL to use. Thanks <a href="https://x.com/elviscai">@elviscai</a> on X for <a href="https://github.com/XueshiQiao/qduo/issues/15">#15</a>.</li>
+</ul>
+
+<h3>26.10.23 更新内容</h3>
+<ul>
+  <li><b>松开鼠标后才弹出</b> — 双击或三击选字时，现在等你松开鼠标才弹出，按着的时候不弹。双击后按住不放、继续拖动多选几个词，弹框不会再挡在文字上面。感谢 X 上的 <a href="https://x.com/elviscai">@elviscai</a> 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/13">#13</a>。</li>
+  <li><b>Chrome 里选中的几段文字不再连成一段</b> — 以前在 Chrome 里选中好几段，交给任何动作的都是连在一起的一整段。现在在 Chrome 里会替你按一次 ⌘C 来读取（读完把剪贴板恢复原样），段落之间的换行就保留下来了。用这种方式读取的 App 名单在「设置 → 高级」里；如果你用剪贴板历史工具，选中的文字有可能被它记录下来。</li>
+  <li><b>翻译保留原文的换行</b> — 新安装时自带的「翻译」提示词现在要求每个换行都留在原来的位置；结果面板里，单独一个换行也会显示成换行，不再把两行连在一起。</li>
+  <li><b>图标可以用任意 SF Symbol，也可以用自己的图片</b> — 在动作的编辑页里，点放大镜格子可以按名字搜索所有 SF Symbol，边输入边出结果；点图片格子可以用自己的 PNG（128×128，其他尺寸会自动缩放）。感谢 X 上的 <a href="https://x.com/elviscai">@elviscai</a> 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/17">#17</a>。</li>
+  <li><b>分组自己也可以是一个动作</b> — 把分组的类型换成「分组」以外的任何一种，点击它就执行那个动作，鼠标指着它照旧展开里面的动作。「分组」现在就是类型列表里的第一项。感谢 X 上的 <a href="https://x.com/elviscai">@elviscai</a> 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/16">#16</a>。</li>
+  <li><b>从其他 App 运行动作</b> — Alfred、Raycast 这类工具可以打开 <code>qduo://run/动作名?text=文字</code>，让 QDuo 对这段文字运行某个动作。所有动作默认都不允许，要在动作编辑页的最下面一个一个打开，打开后那里会显示要用的 URL。感谢 X 上的 <a href="https://x.com/elviscai">@elviscai</a> 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/15">#15</a>。</li>
+</ul>
+
 <h3>What's New in 26.10.22</h3>
 <ul>
   <li><b>Read-aloud highlights each word again on macOS 27</b> — On macOS 27, the reading window and the History page showed the text but did not mark the word being spoken. The downloaded app was built with an older Xcode, and macOS 27 skips the highlight for apps built that way. QDuo is now built with Xcode 27, so the highlight follows the voice word by word as before.</li>
