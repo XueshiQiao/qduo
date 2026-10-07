@@ -154,7 +154,7 @@
 "popbar.editor.icon.search.count" = "找到 %d 个，名字以它开头的排在前面";
 "popbar.editor.icon.image.choose" = "选择文件…";
 "popbar.editor.icon.image.remove" = "移除图片";
-"popbar.editor.icon.image.hint" = "要求：PNG，256×256 像素，建议透明背景。其他尺寸会缩放成 256×256；图片按原样显示，不跟随主题变色。";
+"popbar.editor.icon.image.hint" = "要求：PNG，128×128 像素，建议透明背景。其他尺寸会缩放成 128×128；图片按原样显示，不跟随主题变色。";
 "popbar.editor.icon.image.error.notPNG" = "这个文件不是 PNG。";
 "popbar.editor.icon.image.error.unreadable" = "这个文件读不出图片。";
 "popbar.editor.icon.image.error.cannotWrite" = "图片存不进图标文件夹。";

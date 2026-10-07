@@ -46,10 +46,10 @@ final class ActionIconTests: XCTestCase {
     }
 
     func testAnyPNGComesOutAtTheStoredSize() throws {
-        for (w, h) in [(256, 256), (1024, 1024), (64, 64), (400, 100)] {
+        for (w, h) in [(128, 128), (256, 256), (1024, 1024), (64, 64), (400, 100)] {
             let out = try ActionIconStore.normalized(png(width: w, height: h))
             XCTAssertTrue(ActionIconStore.isPNG(out))
-            XCTAssertEqual(pixelSize(out), CGSize(width: 256, height: 256), "\(w)×\(h)")
+            XCTAssertEqual(pixelSize(out), CGSize(width: ActionIconStore.side, height: ActionIconStore.side), "\(w)×\(h)")
         }
     }
 

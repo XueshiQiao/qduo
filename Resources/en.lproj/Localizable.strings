@@ -155,7 +155,7 @@
 "popbar.editor.icon.search.count" = "%d found; names that start with it come first";
 "popbar.editor.icon.image.choose" = "Choose File…";
 "popbar.editor.icon.image.remove" = "Remove Image";
-"popbar.editor.icon.image.hint" = "What it has to be: PNG, 256×256 pixels, ideally on a transparent background. Other sizes are scaled into 256×256; the image is drawn as it is and does not take the theme's colours.";
+"popbar.editor.icon.image.hint" = "What it has to be: PNG, 128×128 pixels, ideally on a transparent background. Other sizes are scaled into 128×128; the image is drawn as it is and does not take the theme's colours.";
 "popbar.editor.icon.image.error.notPNG" = "This file is not a PNG.";
 "popbar.editor.icon.image.error.unreadable" = "No picture could be read from this file.";
 "popbar.editor.icon.image.error.cannotWrite" = "The picture could not be saved to the icons folder.";

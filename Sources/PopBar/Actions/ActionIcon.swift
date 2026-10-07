@@ -44,14 +44,18 @@ struct ActionIconView: View {
 
 /// Where the user's icon pictures live and how one gets there.
 ///
-/// The rule for a picture is ours to set, and it is short: a PNG file, 256×256.
-/// Any PNG is accepted; one of another size is scaled into 256×256 when it is
+/// The rule for a picture is ours to set, and it is short: a PNG file, 128×128.
+/// Any PNG is accepted; one of another size is scaled into 128×128 when it is
 /// imported (kept whole and centred, never stretched), and that copy is what the
 /// app draws from then on. Nothing else about the picture is checked.
 enum ActionIconStore {
 
-    /// The side of a stored picture, in pixels.
-    static let side = 256
+    /// The side of a stored picture, in pixels. The largest a picture is ever
+    /// drawn is 40 points (80 pixels on a Retina screen), in the editor's
+    /// preview; on the ring and the capsule it is 18 points. 128 leaves room
+    /// above that, and asking for no more says what an icon this small needs:
+    /// a simple shape, not detail.
+    static let side = 128
 
     enum ImportError: Error {
         case notPNG
@@ -126,7 +130,7 @@ enum ActionIconStore {
     static func normalized(_ data: Data) throws -> Data {
         guard isPNG(data) else { throw ImportError.notPNG }
         // Scaled down WHILE it is decoded: a 20,000-pixel PNG must not be
-        // unpacked whole just to be drawn at 256. (A smaller one comes out at
+        // unpacked whole just to be drawn at 128. (A smaller one comes out at
         // its own size and is scaled up by the draw below.)
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
