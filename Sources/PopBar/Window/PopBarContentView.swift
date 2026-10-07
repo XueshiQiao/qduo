@@ -325,6 +325,11 @@ struct PopBarContentView: View {
                             // copies the RAW `text`, not this rendered view.
                             Markdown(text)
                                 .markdownTheme(Theme.popBar(baseSize: model.resultFontSize))
+                                // A single line break in the result is a line
+                                // break on screen. Markdown's own rule joins such
+                                // lines with a space, which turned a translation
+                                // that kept the original's lines into one block.
+                                .markdownSoftBreakMode(.lineBreak)
                                 // The result is untrusted LLM output. MarkdownUI's
                                 // default provider would auto-fetch any `![](http…)`
                                 // image, so a prompt-injected response could make us

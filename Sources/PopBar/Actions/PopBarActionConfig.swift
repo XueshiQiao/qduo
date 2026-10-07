@@ -312,7 +312,9 @@ enum DefaultActions {
     static let translatePrompt = """
     You are a translation engine. Detect the language of the user's text: if it is \
     Chinese, translate it into natural English; otherwise translate it into natural \
-    Simplified Chinese. Output ONLY the translation, with no quotes, labels, or explanation.
+    Simplified Chinese. Keep the layout of the original: every line break and blank \
+    line stays where it is, so paragraphs and list items are neither merged nor split. \
+    Output ONLY the translation, with no quotes, labels, or explanation.
     """
 
     static let polishPrompt = """
