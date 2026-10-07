@@ -61,10 +61,14 @@ final class PopBarController {
         self.actionStore = actionStore
         self.windows = PopBarWindowManager(llm: llm)
         self.ocr = ScreenOCRController(windows: windows, actionStore: actionStore)
+        let accessibility = AccessibilityStrategy()
+        let clipboardCopy = ClipboardCopyStrategy()
         resolver = SelectionResolver(strategies: [
-            AccessibilityStrategy(),   // fast, side-effect-free; preferred
+            // Listed apps only (Chrome): readable, but the text is taken from a ⌘C
+            CopyFirstStrategy(accessibility: accessibility, copy: clipboardCopy.copyAndRead),
+            accessibility,             // fast, side-effect-free; preferred
             CopyOnSelectStrategy(),    // terminals (OTTY) that copy-on-select; reads the clipboard directly
-            ClipboardCopyStrategy(),   // fallback for browsers / Electron / custom views
+            clipboardCopy,             // fallback for browsers / Electron / custom views
         ])
         monitor = GlobalInputMonitor(gestures: [
             DragSelectGesture(dragThreshold: Self.dragThreshold),
@@ -341,6 +345,9 @@ final class PopBarController {
             allowsSimulatedCopy: PopBarPreferences.simulateCopy,
             isTerminalApp: frontID.map { id in
                 PopBarPreferences.terminalApps.contains { $0.caseInsensitiveCompare(id) == .orderedSame }
+            } ?? false,
+            prefersSimulatedCopy: frontID.map { id in
+                PopBarPreferences.copyFirstApps.contains { $0.caseInsensitiveCompare(id) == .orderedSame }
             } ?? false)
         Self.log.debug("trigger (\(source == .gesture ? "selection" : "hotkey")) — front=\(front?.bundleIdentifier ?? front?.localizedName ?? "nil") inPlace=\(inPlace) resolvesLinks=\(resolvesLinks)")
 

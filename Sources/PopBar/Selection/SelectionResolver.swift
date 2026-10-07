@@ -28,7 +28,7 @@ final class SelectionResolver {
         for strategy in strategies where strategy.canHandle(context) {
             do {
                 if let result = try await strategy.selectedText(context), !result.text.isBlankSelection {
-                    Self.log.info("resolved \(result.text.count) char(s) via \(strategy.id.rawValue)")
+                    Self.log.info("resolved \(result.text.count) char(s) via \(result.via.rawValue)")
                     return result
                 }
             } catch let error as SelectionError where error.isFatal {

@@ -40,6 +40,7 @@ enum PopBarPreferences {
         static let simulateCopy       = "popup.simulateCopy"
         static let excludedApps       = "popup.excludedApps"
         static let terminalApps       = "popup.terminalApps"
+        static let copyFirstApps      = "popup.copyFirstApps"
         static let ignoreAddressBars  = "popup.ignoreAddressBars"
         static let wheelDonutDividers = "wheel.donutDividers"
         static let wheelLiquidDividers = "wheel.liquidDividers"
@@ -389,6 +390,28 @@ enum PopBarPreferences {
         "dev.warp.Warp-Stable",
         "me.xueshi.attache",
     ]
+
+    /// Apps whose selection is read with ⌘C even though they hand it over
+    /// directly, because what they hand over is lossy (see `CopyFirstStrategy`).
+    /// Has no effect while `simulateCopy` is off.
+    ///
+    /// Not in the file yet → the built-in list is written into it, and from then
+    /// on the file is what counts, as with `terminalApps`.
+    static var copyFirstApps: [String] {
+        get {
+            guard config.value(P.copyFirstApps) != nil else {
+                config.set(P.copyFirstApps, defaultCopyFirstApps)
+                return defaultCopyFirstApps
+            }
+            return config.stringArray(P.copyFirstApps)
+        }
+        set { config.set(P.copyFirstApps, newValue) }
+    }
+
+    /// Chrome only: its accessibility text of a web page was seen to lose the
+    /// line breaks between paragraphs (1,500 characters, no line break). Other
+    /// Chromium browsers were not checked, so they are left for the user to add.
+    static let defaultCopyFirstApps = ["com.google.Chrome"]
 
     // MARK: - Screenshot OCR
 

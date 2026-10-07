@@ -83,6 +83,10 @@ enum ConfigSchema {
               "type": "boolean",
               "description": "Selecting text in a browser's address bar (Chrome and other Chromium browsers, Safari) does not open the popup. Default true."
             },
+            "copyFirstApps": {
+              "type": "array", "items": { "type": "string" },
+              "description": "Bundle IDs of apps whose selection is read by pressing Cmd+C even though they hand it over directly, because what they hand over loses something: Chrome drops the line breaks between paragraphs. The clipboard is restored afterwards. No effect while simulateCopy is false. Written with the built-in list (Chrome) the first time it is missing."
+            },
             "terminalApps": {
               "type": "array", "items": { "type": "string" },
               "description": "Bundle IDs of terminals where a program running inside (herdr, tmux with mouse mode, vim) may select and copy text by itself. Selecting there reads the clipboard when it changes during the drag. Written with the built-in list the first time it is missing."

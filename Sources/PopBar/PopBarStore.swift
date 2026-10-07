@@ -29,6 +29,7 @@ final class PopBarStore: ObservableObject {
     @Published private(set) var ignoreAddressBars: Bool
     @Published private(set) var excludedApps: [String]
     @Published private(set) var terminalApps: [String]
+    @Published private(set) var copyFirstApps: [String]
 
     // Popup hotkey (issue #4)
     @Published private(set) var popupHotKeyEnabled: Bool
@@ -74,6 +75,7 @@ final class PopBarStore: ObservableObject {
         self.ignoreAddressBars = PopBarPreferences.ignoreAddressBars
         self.excludedApps = PopBarPreferences.excludedApps
         self.terminalApps = PopBarPreferences.terminalApps
+        self.copyFirstApps = PopBarPreferences.copyFirstApps
         self.popupHotKeyEnabled = PopBarPreferences.popupHotKeyEnabled
         self.popupHotKey = PopBarPreferences.popupHotKey
         self.popupHotKeyRegistered = controller.popupHotKeyIsRegistered
@@ -337,6 +339,18 @@ final class PopBarStore: ObservableObject {
     func removeTerminalApp(_ bundleID: String) {
         terminalApps.removeAll { $0 == bundleID }
         PopBarPreferences.terminalApps = terminalApps
+    }
+
+    /// Read at trigger time, so the next selection honors it.
+    func addCopyFirstApp(_ bundleID: String) {
+        guard !copyFirstApps.contains(bundleID) else { return }
+        copyFirstApps.append(bundleID)
+        PopBarPreferences.copyFirstApps = copyFirstApps
+    }
+
+    func removeCopyFirstApp(_ bundleID: String) {
+        copyFirstApps.removeAll { $0 == bundleID }
+        PopBarPreferences.copyFirstApps = copyFirstApps
     }
 
     func requestPermission() { AccessibilityAuthorizer.prompt() }

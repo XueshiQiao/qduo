@@ -61,7 +61,14 @@ final class ClipboardCopyStrategy: SelectionStrategy {
             return nil
         }
         Self.log.debug("send ⌘C — via \(via) (role=\(decision.role) selRangeLen=\(decision.rangeLength))")
+        return try await copyAndRead(context)
+    }
 
+    /// Press ⌘C, read what lands on the clipboard, put the clipboard back.
+    /// No check that anything is selected: the caller has already established
+    /// that (the gate in `selectedText`, or `CopyFirstStrategy` having read the
+    /// selection through Accessibility).
+    func copyAndRead(_ context: SelectionContext) async throws -> SelectionResult? {
         let backup = await MainActor.run { Pasteboard.backup() }
         let initialChangeCount = await MainActor.run { NSPasteboard.general.changeCount }
 
@@ -70,7 +77,14 @@ final class ClipboardCopyStrategy: SelectionStrategy {
         var captured: String?
         let start = Date()
         while Date().timeIntervalSince(start) < pollTimeout {
-            try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            do {
+                try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            } catch {
+                // Cancelled (a newer trigger took over) with the ⌘C already sent:
+                // the user's clipboard still has to come back.
+                await MainActor.run { _ = Pasteboard.restore(backup) }
+                throw error
+            }
             let (changeCount, string, isFileCopy) = await MainActor.run { () -> (Int, String?, Bool) in
                 let pb = NSPasteboard.general
                 return (pb.changeCount, pb.string(forType: .string), pb.types?.contains(.fileURL) ?? false)

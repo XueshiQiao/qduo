@@ -27,6 +27,7 @@ struct AdvancedPage: View {
         Form {
             popupHotKeySection
             readingSection
+            copyFirstAppsSection
             excludedAppsSection
             terminalAppsSection
             diagnosticsSection
@@ -82,7 +83,7 @@ struct AdvancedPage: View {
         Section {
             Toggle(isOn: Binding(get: { store.simulateCopy }, set: { store.setSimulateCopy($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    iconLabel("command", .blue, L("popbar.simulateCopy.title"))
+                    iconLabel("command", .blue, String(format: L("popbar.simulateCopy.title"), Brand.name))
                     Text(L("popbar.simulateCopy.body"))
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -99,6 +100,30 @@ struct AdvancedPage: View {
         } header: {
             Text(L("popbar.reading.header"))
         }
+    }
+
+    // MARK: - Apps read with ⌘C first
+
+    private var copyFirstAppsSection: some View {
+        Section {
+            // Only the installed ones, as with the terminals below.
+            let installed = store.copyFirstApps.filter { appURL(for: $0) != nil }
+            if installed.isEmpty {
+                Text(L("popbar.copyFirst.empty"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(installed, id: \.self) { id in
+                AppListRow(bundleID: id) { store.removeCopyFirstApp(id) }
+            }
+            AddAppMenu(skipping: store.copyFirstApps) { store.addCopyFirstApp($0) }
+        } header: {
+            Text(L("popbar.copyFirst.header"))
+        } footer: {
+            Text(L("popbar.copyFirst.footer"))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .disabled(!store.simulateCopy)
     }
 
     // MARK: - Excluded apps

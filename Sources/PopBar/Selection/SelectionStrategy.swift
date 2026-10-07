@@ -50,6 +50,11 @@ struct SelectionContext {
     /// clipboard write during the gesture counts as the selection there even when
     /// the app reports none. Sampled on main at trigger time.
     var isTerminalApp: Bool = false
+    /// Whether the app is in the user's ⌘C-first list (`popup.copyFirstApps`):
+    /// what it hands over directly is readable but lossy (Chrome drops the line
+    /// breaks between paragraphs), so the text is taken from a ⌘C instead. See
+    /// `CopyFirstStrategy`. Sampled on main at trigger time.
+    var prefersSimulatedCopy: Bool = false
 
     var bundleID: String? { frontmostApp?.bundleIdentifier }
     var pid: pid_t? { frontmostApp?.processIdentifier }
