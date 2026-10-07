@@ -60,6 +60,12 @@ jobs:
           # instead of quietly building with an older SDK.
           xcode-version: '27.0'
 
+      # The app has a Metal shader, and the xcode-27 image ships Xcode without the
+      # Metal compiler (a separate download since Xcode 26); without it the build
+      # stops at "cannot execute tool 'metal' due to missing Metal Toolchain".
+      - name: Install Metal Toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
       - name: Install Build Tools
         run: brew install xcodegen create-dmg
 
