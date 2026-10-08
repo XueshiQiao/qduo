@@ -519,7 +519,11 @@
 "popbar.editor.settings.hint.format" = "打开 %@ 的设置窗口，不使用选中的文字。";
 
 "popbar.editor.kind.systemTranslate" = "系统翻译";
-"popbar.editor.systemTranslate.hint" = "用 macOS 自带的本地翻译：不用模型、不用 API key、断网也能用。原文语言自动识别；列表里是 macOS 能译成的全部语言。某个语言第一次用时，macOS 可能会要求先下载。";
+"popbar.editor.systemTranslate.hint" = "用 macOS 自带的本地翻译：不用模型、不用 API key、断网也能用（下面的快捷指令除外）。原文语言自动识别；列表里是 macOS 能译成的全部语言。某个语言第一次用时，macOS 可能会要求先下载。";
+"popbar.editor.systemTranslate.shortcut" = "不下载语言也能翻译";
+"popbar.editor.systemTranslate.shortcut.add" = "添加快捷指令…";
+"popbar.editor.systemTranslate.shortcut.added" = "快捷指令已添加";
+"popbar.editor.systemTranslate.shortcut.hint" = "可选。添加这个快捷指令之后，遇到还没下载的语言，会改用「快捷指令」App 来翻译，不再要求先下载。点「添加快捷指令」，然后在「快捷指令」App 里确认。随后「快捷指令」App 会询问一次是否允许，请选「始终允许」。用这种方式翻译时，文字会发送到 Apple 的翻译服务器，不是在这台 Mac 上翻译，所以需要联网。";
 "template.systemTranslate" = "系统翻译";
 "systemTranslate.window.title" = "翻译语言";
 "systemTranslate.window.body" = "macOS 需要先下载语言才能翻译这段文字。请在弹出的面板里点「下载」，下载完成后译文会自动出现。";

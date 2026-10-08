@@ -42,7 +42,7 @@ enum ProcessRunner {
     /// selection as its input file and its output file read back.
     static func runShortcut(_ name: String, input: String) async -> Result<String, Failure> {
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("qduo-shortcut-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("\(Brand.slug)-shortcut-\(UUID().uuidString)", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         } catch {
@@ -68,6 +68,15 @@ enum ProcessRunner {
             let written = (try? String(contentsOf: outFile, encoding: .utf8)) ?? ""
             return .success(written.isEmpty ? stdout : written)
         }
+    }
+
+    /// The names of the user's Shortcuts, as `shortcuts list` prints them (one
+    /// per line). Empty when the tool could not be run.
+    static func shortcutNames() async -> [String] {
+        let result = await run(URL(fileURLWithPath: "/usr/bin/shortcuts"), ["list"],
+                               stdin: nil, environment: nil, timeout: scriptTimeout)
+        guard case .success(let stdout) = result else { return [] }
+        return stdout.split(whereSeparator: \.isNewline).map(String.init)
     }
 
     // MARK: - Process

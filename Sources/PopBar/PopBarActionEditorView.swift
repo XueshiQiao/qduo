@@ -29,6 +29,10 @@ struct ActionEditorView: View {
     private let wasGroup: Bool
     /// "Group" is offered as a kind: the action is at the top level, or new.
     private let canBeGroup: Bool
+    /// Whether the user has the app's translate Shortcut. nil until checked.
+    @State private var translateShortcutInstalled: Bool?
+    /// Add Shortcut was clicked here and the Shortcut has not shown up yet.
+    @State private var translateShortcutRequested = false
     let onSave: (PopBarActionConfig) -> Void
     let onCancel: () -> Void
 
@@ -317,6 +321,34 @@ struct ActionEditorView: View {
                 Text(L(SystemTranslator.isAvailable ? "popbar.editor.systemTranslate.hint"
                                                     : "systemTranslate.error.needsNewerSystem"))
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            if SystemTranslator.isAvailable {
+                Section {
+                    LabeledContent(L("popbar.editor.systemTranslate.shortcut")) {
+                        if translateShortcutInstalled == true {
+                            Label(L("popbar.editor.systemTranslate.shortcut.added"), systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Button(L("popbar.editor.systemTranslate.shortcut.add")) {
+                                translateShortcutRequested = SystemTranslator.addShortcut()
+                            }
+                            .disabled(translateShortcutInstalled == nil)
+                        }
+                    }
+                    .task { translateShortcutInstalled = await SystemTranslator.isShortcutInstalled() }
+                    // The user adds it in the Shortcuts app and comes back.
+                    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                        Task {
+                            translateShortcutInstalled = await SystemTranslator.isShortcutInstalled()
+                            guard translateShortcutInstalled == true, translateShortcutRequested else { return }
+                            translateShortcutRequested = false
+                            await SystemTranslator.authorizeShortcut()
+                        }
+                    }
+                } footer: {
+                    Text(L("popbar.editor.systemTranslate.shortcut.hint"))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         case .ai:
             Section { outputPicker }

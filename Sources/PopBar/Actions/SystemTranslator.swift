@@ -3,8 +3,9 @@ import SwiftUI
 import NaturalLanguage
 import Translation
 
-/// The `systemTranslate` kind: translate with macOS's own on-device translator
-/// (the Translation framework), no model and no API key.
+/// The `systemTranslate` kind: translate with macOS's own translator (the
+/// Translation framework), no model and no API key. On the device, with one
+/// exception: the Shortcut route below.
 ///
 /// The target language is the action's own `targetLanguage`, chosen by the user
 /// from the list the system supports — never guessed. Only the SOURCE is
@@ -20,6 +21,10 @@ import Translation
 ///   the only route that shows the system's "Download Languages" sheet, and the
 ///   sheet is shown ON that window — so for a pair that still needs downloading
 ///   the window is made visible; for a downloaded one it stays transparent.
+///
+/// Before asking for a download, the app's own Shortcut is tried, if the user
+/// has added it (`viaShortcut`). Unlike everything above, that route sends the
+/// text to Apple's translation server and needs a connection.
 ///
 /// macOS 13/14 have no API that returns a translation to the app, so the kind is
 /// not offered there (`isAvailable`).
@@ -167,10 +172,132 @@ enum SystemTranslator {
             }
             return await viaView(text, source: source, target: target, needsDownload: false, started: started)
         case .supported:
-            return await viaView(text, source: source, target: target, needsDownload: true, started: started)
+            break
         @unknown default:
-            return await viaView(text, source: source, target: target, needsDownload: true, started: started)
+            break
         }
+        // The pair still needs downloading. A Shortcut can translate it without
+        // the download, if the user has the one this looks for.
+        if let out = await viaShortcut(text, sourceID: sourceID, targetID: targetID, started: started) {
+            return .success(out)
+        }
+        if Task.isCancelled { return .failure(.cancelled) }
+        return await viaView(text, source: source, target: target, needsDownload: true, started: started)
+    }
+
+    // MARK: - Shortcut (pair not downloaded)
+
+    /// The Shortcut looked for, by name. It is this app's own, built by
+    /// `scripts/make-translate-shortcut.py` and shipped as `Translate.shortcut`;
+    /// the user adds it from the action's editor (`addShortcut`).
+    ///
+    /// Its "Translate Text" step runs in the system's Shortcut runner, which
+    /// translates a pair that is not downloaded by asking Apple's server (the
+    /// Translation framework, above, never does). Measured on macOS 27: about
+    /// half a second once the runner is warm; offline it fails after 11 s with
+    /// "Translation server did not respond in time", and the download is asked
+    /// for as before.
+    ///
+    /// Named after the slug, not the app name, so Debug and Release share it.
+    static let shortcutName = "\(Brand.slug)-translate"
+
+    static func isShortcutInstalled() async -> Bool {
+        await ProcessRunner.shortcutNames().contains(shortcutName)
+    }
+
+    /// Hand the bundled Shortcut to the Shortcuts app, which asks the user to
+    /// add it. Nothing can add one silently: the system refuses an import from
+    /// an app without Apple's own entitlement (measured: "Unauthorized add
+    /// attempt"). The Shortcut is named after its file, hence the copy.
+    @MainActor
+    @discardableResult
+    static func addShortcut() -> Bool {
+        guard let bundled = Bundle.main.url(forResource: "Translate", withExtension: "shortcut") else {
+            log.error("add shortcut: Translate.shortcut is not in the bundle")
+            return false
+        }
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(Brand.slug)-shortcut", isDirectory: true)
+        let file = dir.appendingPathComponent("\(shortcutName).shortcut")
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: file)
+            try FileManager.default.copyItem(at: bundled, to: file)
+        } catch {
+            log.error("add shortcut: could not copy the file — \(error.localizedDescription)")
+            return false
+        }
+        let opened = NSWorkspace.shared.open(file)
+        log.info("add shortcut: handed '\(shortcutName)' to the Shortcuts app: \(opened)")
+        return opened
+    }
+
+    /// Run the Shortcut once on a fixed word, right after the user added it. The
+    /// first run of a new Shortcut makes the Shortcuts app ask for permission;
+    /// asked for here, the question comes up over Settings. Left to the first
+    /// real translation, it would come up beside the popup, and the click that
+    /// answers it would close the popup and lose that translation.
+    static func authorizeShortcut() async {
+        let result = await ProcessRunner.runShortcut(shortcutName, input: "text=Hello&to=es_ES&from=en_US")
+        switch result {
+        case .success: log.info("shortcut '\(shortcutName)': first run done")
+        case .failure(let failure): log.error("shortcut '\(shortcutName)': first run failed — \(failure)")
+        }
+    }
+
+    /// nil = the route was not taken or did not work: fall back to the download.
+    @available(macOS 15.0, *)
+    private static func viaShortcut(_ text: String, sourceID: String?, targetID: String,
+                                    started: Date) async -> String? {
+        guard await ProcessRunner.shortcutNames().contains(shortcutName) else {
+            log.info("shortcut route: '\(shortcutName)' is not installed")
+            return nil
+        }
+        let languages = await LanguageAvailability().supportedLanguages
+        guard let to = shortcutCode(for: targetID, among: languages) else {
+            log.info("shortcut route: no code for target \(targetID)")
+            return nil
+        }
+        // Percent-encode everything but unreserved characters: the Shortcut
+        // splits its input on "&" and "=".
+        var unreserved = CharacterSet(charactersIn: "-._~")
+        unreserved.insert(charactersIn: "a"..."z")
+        unreserved.insert(charactersIn: "A"..."Z")
+        unreserved.insert(charactersIn: "0"..."9")
+        guard let encoded = text.addingPercentEncoding(withAllowedCharacters: unreserved) else { return nil }
+        var input = "text=\(encoded)&to=\(to)"
+        // Without a source the Shortcut detects it itself.
+        let from = sourceID.flatMap { shortcutCode(for: $0, among: languages) }
+        if let from { input += "&from=\(from)" }
+
+        switch await ProcessRunner.runShortcut(shortcutName, input: input) {
+        case .success(let out):
+            // As it came, like the other two routes (measured: the Shortcut
+            // adds no newline of its own).
+            guard !out.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                log.error("shortcut route (\(from ?? "auto") → \(to)): empty output")
+                return nil
+            }
+            log.info("shortcut route (\(from ?? "auto") → \(to)): done in \(ms(since: started))")
+            return out
+        case .failure(let failure):
+            log.error("shortcut route (\(from ?? "auto") → \(to)): \(failure)")
+            return nil
+        }
+    }
+
+    /// The Shortcut's "Translate Text" step only takes a language WITH its
+    /// region, as the system lists it: "es_ES", "zh_CN", "zh_TW", "en_GB".
+    /// Measured: "es", "zh", "zh-Hans" and "es_MX" are all refused.
+    @available(macOS 15.0, *)
+    private static func shortcutCode(for id: String, among languages: [Locale.Language]) -> String? {
+        let match = languages.first { $0.minimalIdentifier == id }
+            ?? languages.first { isSameLanguage($0.minimalIdentifier, id) }
+        guard let match, let code = match.languageCode?.identifier,
+              let region = match.region?.identifier
+                ?? Locale.Language(identifier: match.maximalIdentifier).region?.identifier
+        else { return nil }
+        return "\(code)_\(region)"
     }
 
     @available(macOS 15.0, *)

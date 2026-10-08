@@ -72,6 +72,12 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
+      # The translate Shortcut is committed already signed, so nothing here signs
+      # it. Apple's signature on it runs out about 13 months after it was made;
+      # this only warns. shortcut-signature.yml is what fails, weekly, near the end.
+      - name: Check the translate Shortcut's signature
+        run: python3 scripts/make-translate-shortcut.py --check
+
       # Before anything is built for release: the pure-logic tests. They run in a
       # second or two, need no signing and no app host, so there is no reason for a
       # tagged build to get as far as notarising something that fails them.

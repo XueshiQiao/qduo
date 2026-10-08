@@ -520,7 +520,11 @@
 "popbar.editor.settings.hint.format" = "Opens the %@ settings window. The selected text is not used.";
 
 "popbar.editor.kind.systemTranslate" = "System Translate";
-"popbar.editor.systemTranslate.hint" = "Translates with macOS's own on-device translator: no model, no API key, works offline. The language of the text is detected; the list shows every language macOS can translate into. The first time a language pair is used, macOS may ask to download it.";
+"popbar.editor.systemTranslate.hint" = "Translates with macOS's own on-device translator: no model, no API key, works offline (except through the Shortcut below). The language of the text is detected; the list shows every language macOS can translate into. The first time a language pair is used, macOS may ask to download it.";
+"popbar.editor.systemTranslate.shortcut" = "Translate without downloading";
+"popbar.editor.systemTranslate.shortcut.add" = "Add Shortcut…";
+"popbar.editor.systemTranslate.shortcut.added" = "Shortcut added";
+"popbar.editor.systemTranslate.shortcut.hint" = "Optional. With this Shortcut added, a language that isn't downloaded yet is translated through the Shortcuts app instead of asking for the download. Click Add Shortcut, then confirm in the Shortcuts app. The Shortcuts app then asks for permission once: choose Always Allow. Text translated this way is sent to Apple's translation server instead of being translated on this Mac, so it needs an internet connection.";
 "template.systemTranslate" = "System Translate";
 "systemTranslate.window.title" = "Translation Languages";
 "systemTranslate.window.body" = "macOS needs to download a language before it can translate this. Choose Download in the sheet; the translation appears once it is done.";
