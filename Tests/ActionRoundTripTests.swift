@@ -159,7 +159,76 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(URLTemplate.fill("dict://{text}", with: "你好")?.absoluteString,
                        "dict://%E4%BD%A0%E5%A5%BD")
         XCTAssertNil(URLTemplate.fill("   ", with: "x"), "no scheme, no URL")
+        // The scheme has to be the template's own: a template that begins with
+        // the placeholder would take it from the selection.
+        XCTAssertNil(URLTemplate.fill("{text}?x=1", with: "http://x.com"))
+        XCTAssertNil(URLTemplate.fill("{text}//evil.com", with: "http:"))
+        XCTAssertEqual(URLTemplate.writtenScheme(of: "dict://{text}"), "dict")
+        XCTAssertEqual(URLTemplate.writtenScheme(of: "svn+ssh://{text}"), "svn+ssh")
+        XCTAssertEqual(URLTemplate.writtenScheme(of: "https://a/{text}:{text}"), "https")
+        XCTAssertEqual(URLTemplate.writtenScheme(of: "obsidian://open"), "obsidian")
+        for template in ["{text}", "{text}:x", "1a:{text}", "x y:{text}", "www.google.com/search?q={text}"] {
+            XCTAssertNil(URLTemplate.writtenScheme(of: template), template)
+        }
+        XCTAssertNil(URLTemplate.fill("{text}?x=1", with: "tel:10086"))
+        XCTAssertNil(URLTemplate.fill("{text}?x=1", with: "file:///Applications/Calculator.app"))
+        XCTAssertNil(URLTemplate.fill("t{text}", with: "el:10086"))
+        XCTAssertEqual(URLTemplate.fill("tel:{text}", with: "10086")?.absoluteString, "tel:10086")
+        XCTAssertEqual(URLTemplate.fill("TEL:{text}", with: "10086")?.absoluteString, "TEL:10086")
+        XCTAssertEqual(URLTemplate.fill("maps://?q={text}", with: "tel:1")?.absoluteString, "maps://?q=tel:1")
+        XCTAssertEqual(URLTemplate.fill("https://s.com/?q={text}", with: "tel:10086")?.absoluteString,
+                       "https://s.com/?q=tel:10086")
+        XCTAssertEqual(URLTemplate.fill("obsidian://open", with: "x")?.absoluteString, "obsidian://open",
+                       "a template with no placeholder opens as written")
         XCTAssertFalse(URLTemplate.isWeb(try XCTUnwrap(URL(string: "obsidian://new"))))
+    }
+
+    func testATemplateThatIsOnlyThePlaceholderOpensTheSelectionItself() {
+        XCTAssertTrue(URLTemplate.isSelectionOnly("  {text}\n"))
+        XCTAssertFalse(URLTemplate.isSelectionOnly("https://{text}"))
+        XCTAssertFalse(URLTemplate.isSelectionOnly(""))
+
+        func address(_ selection: String) -> String? { URLTemplate.webAddress(in: selection)?.absoluteString }
+        // Written out in full: opened as written, structure intact.
+        XCTAssertEqual(address("https://example.com/a?b=1&c=2#d"), "https://example.com/a?b=1&c=2#d")
+        XCTAssertEqual(address("  HTTP://Example.com/A \n"), "HTTP://Example.com/A")
+        XCTAssertEqual(address("http://localhost:3000/x"), "http://localhost:3000/x")
+        XCTAssertEqual(address("https://zh.wikipedia.org/wiki/中文"), "https://zh.wikipedia.org/wiki/%E4%B8%AD%E6%96%87")
+        // No scheme: the link detector completes it.
+        XCTAssertEqual(address("example.com"), "http://example.com")
+        XCTAssertEqual(address("github.com/apple/swift"), "http://github.com/apple/swift")
+        // The detector knows neither of these.
+        XCTAssertEqual(address("localhost:3000"), "http://localhost:3000")
+        XCTAssertEqual(address("192.168.1.1:8080/admin"), "http://192.168.1.1:8080/admin")
+        XCTAssertNil(address("999.1.1.1"))
+        XCTAssertNil(address("localhost:99999"))
+        // Nor a bare Chinese domain; written out in full it opens.
+        XCTAssertNil(address("中文.com"))
+        XCTAssertNotNil(address("https://中文.com/路径"))
+        // A user name in front of the host is how a link passes for another site.
+        XCTAssertNil(address("https://a.com@evil.com"))
+        XCTAssertNil(address("https:////example.com"))
+        // Far too long to be an address — and quick to say so.
+        XCTAssertNil(address("localhost/" + String(repeating: "a", count: URLTemplate.maxAddressLength)))
+        XCTAssertNil(address("https://example.com/" + String(repeating: ")", count: 200_000)))
+        // What a sentence wraps an address in is not part of it.
+        XCTAssertEqual(address("(https://example.com)"), "https://example.com")
+        XCTAssertEqual(address("https://example.com/a。"), "https://example.com/a")
+        XCTAssertEqual(address("“example.com”，"), "http://example.com")
+        XCTAssertEqual(address("https://en.wikipedia.org/wiki/Swift_(programming_language)"),
+                       "https://en.wikipedia.org/wiki/Swift_(programming_language)")
+        // Not an address, or an address among other words.
+        for selection in ["", "   ", "123", "hello world", "readme.md", "3.14", "localhost:3000 is up",
+                          "see example.com for details", "example.com\nsecond line", "https://"] {
+            XCTAssertNil(address(selection), selection)
+        }
+        // Anything but a web page would make the system act on text somebody
+        // else wrote.
+        for selection in ["file:///Applications/Calculator.app", "ssh://root@1.2.3.4", "tel:10086",
+                          "foo@bar.com", "mailto:foo@bar.com", "javascript:alert(1)", "ftp://example.com/f",
+                          "x-apple.systempreferences:com.apple.preference.security"] {
+            XCTAssertNil(address(selection), selection)
+        }
     }
 
     func testTemplatesAreValidActions() {
@@ -169,7 +238,8 @@ final class ActionRoundTripTests: XCTestCase {
                 XCTAssertNotNil(action.op.flatMap(TextTransform.init(rawValue:)), action.title)
             }
             for action in section.actions where action.kind == .openURL {
-                XCTAssertNotNil(URLTemplate.fill(action.url ?? "", with: "x"), action.title)
+                let url = action.url ?? ""
+                XCTAssertTrue(URLTemplate.isSelectionOnly(url) || URLTemplate.fill(url, with: "x") != nil, action.title)
             }
         }
     }

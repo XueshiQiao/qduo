@@ -611,6 +611,9 @@ enum ActionTemplates {
 /// outside `urlQueryAllowed` is escaped, and so are `& = + # ? /`, which would
 /// otherwise change the query's structure. A space becomes `%20`. This is fixed
 /// on purpose — changing it later would change what every saved template does.
+///
+/// One template is not filled at all: `{text}` alone. There the selection is
+/// the address — see `webAddress(in:)`.
 enum URLTemplate {
 
     static let placeholder = "{text}"
@@ -621,14 +624,31 @@ enum URLTemplate {
         return set
     }()
 
-    /// nil when the result is not a URL at all (an empty or malformed template).
+    /// nil when the result is not a URL at all (an empty or malformed template),
+    /// or when its scheme is one the template did not write.
+    ///
+    /// `:` is not escaped, so a template that begins with the placeholder
+    /// (`{text}?x=1`) takes its scheme from the selection: `tel:10086` would
+    /// place a call. The scheme has to be the one the template wrote.
     static func fill(_ template: String, with text: String) -> URL? {
         let value = text.addingPercentEncoding(withAllowedCharacters: valueAllowed) ?? ""
-        let filled = template
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: placeholder, with: value)
-        guard let url = URL(string: filled), url.scheme != nil else { return nil }
+        let trimmed = template.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filled = trimmed.replacingOccurrences(of: placeholder, with: value)
+        guard let url = URL(string: filled), let scheme = url.scheme?.lowercased() else { return nil }
+        guard scheme == writtenScheme(of: trimmed) else { return nil }
         return url
+    }
+
+    /// The scheme the template itself spells out before its first placeholder
+    /// (`dict` in `dict://{text}`), lowercased; nil when it has none there.
+    static func writtenScheme(of template: String) -> String? {
+        let head = template.components(separatedBy: placeholder)[0]
+        guard let colon = head.firstIndex(of: ":") else { return nil }
+        let scheme = head[..<colon]
+        guard let first = scheme.unicodeScalars.first, first.isASCII, first.properties.isAlphabetic,
+              scheme.unicodeScalars.allSatisfy({ $0.isASCII && ($0.properties.isAlphabetic || "0123456789+-.".unicodeScalars.contains($0)) })
+        else { return nil }
+        return scheme.lowercased()
     }
 
     /// Whether a page at this URL can be shown in the popup's own mini-browser.
@@ -636,4 +656,109 @@ enum URLTemplate {
     static func isWeb(_ url: URL) -> Bool {
         ["http", "https"].contains(url.scheme?.lowercased() ?? "")
     }
+
+    // MARK: - A template that is only `{text}`: the selection is the address
+
+    /// Whether the template is the placeholder and nothing else. Such an action
+    /// opens the selection itself (`webAddress(in:)`) instead of filling it in.
+    static func isSelectionOnly(_ template: String) -> Bool {
+        template.trimmingCharacters(in: .whitespacesAndNewlines) == placeholder
+    }
+
+    /// The web page the selection names, or nil when the selection is not one
+    /// address and nothing else.
+    ///
+    /// Only `http` and `https` ever come out of this. The selection is text
+    /// somebody else wrote: handing `file:`, `ssh:` or `tel:` from it to the
+    /// system would launch an app, open a connection or place a call. (A scheme
+    /// written in the template is the user's own choice and is not limited.)
+    ///
+    /// Three ways to qualify, each on the WHOLE selection:
+    ///  1. it starts with `http://` or `https://` — opened as written;
+    ///  2. the system's link detector reads it as a web address
+    ///     (`example.com` → `http://example.com`);
+    ///  3. it is `localhost` or an IPv4 address, with an optional port and path —
+    ///     the detector knows neither.
+    static func webAddress(in selection: String) -> URL? {
+        // An address is never this long, and a whole minified file selected in
+        // an editor has no whitespace to stop it below.
+        guard selection.utf16.count <= maxAddressLength else { return nil }
+        let text = unwrapped(selection)
+        guard !text.isEmpty, text.rangeOfCharacter(from: .whitespacesAndNewlines) == nil else { return nil }
+
+        let lowered = text.lowercased()
+        if lowered.hasPrefix("http://") || lowered.hasPrefix("https://") {
+            if let url = URL(string: text), isOpenable(url) { return url }
+            // Before macOS 14 `URL(string:)` refuses characters that need
+            // escaping (a Chinese path); the detector below escapes them.
+        }
+
+        let whole = NSRange(text.startIndex..., in: text)
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue),
+           let match = detector.matches(in: text, options: [], range: whole).first,
+           match.range == whole, let url = match.url, isOpenable(url) {
+            return url
+        }
+
+        if isLocalHost(text), let url = URL(string: "http://" + text), isOpenable(url) { return url }
+        return nil
+    }
+
+    static let maxAddressLength = 4096
+
+    /// A web page with a host and no user name. `https://bank.com@evil.com`
+    /// opens evil.com: an address written by somebody else does not get to
+    /// dress its host up that way.
+    private static func isOpenable(_ url: URL) -> Bool {
+        isWeb(url) && !(url.host ?? "").isEmpty && url.user == nil
+    }
+
+    /// The selection without what a sentence wraps an address in: surrounding
+    /// whitespace, opening brackets and quotes before it, punctuation after it.
+    /// A closing bracket is dropped only when it has no opening partner inside
+    /// the text, so `…/wiki/Swift_(language)` keeps its own.
+    static func unwrapped(_ selection: String) -> String {
+        var text = Substring(selection.trimmingCharacters(in: .whitespacesAndNewlines))
+        while let first = text.first, leadingWrappers.contains(first) { text.removeFirst() }
+        // How many closing brackets of each kind have no opening partner.
+        var unpaired: [Character: Int] = [:]
+        for (closer, opener) in closingBrackets {
+            unpaired[closer] = text.filter { $0 == closer }.count - text.filter { $0 == opener }.count
+        }
+        while let last = text.last {
+            if trailingPunctuation.contains(last) {
+                text.removeLast()
+            } else if let extra = unpaired[last], extra > 0 {
+                text.removeLast()
+                unpaired[last] = extra - 1
+            } else {
+                break
+            }
+        }
+        return String(text)
+    }
+
+    private static let leadingWrappers: Set<Character> = ["(", "[", "{", "<", "（", "【", "《", "「", "『", "“", "‘", "\"", "'"]
+    private static let trailingPunctuation: Set<Character> = [".", ",", ";", ":", "!", "?", "。", "，", "；", "：", "！", "？", "、", "”", "’", "\"", "'"]
+    private static let closingBrackets: [Character: Character] = [
+        ")": "(", "]": "[", "}": "{", ">": "<", "）": "（", "】": "【", "》": "《", "」": "「", "』": "『",
+    ]
+
+    /// `localhost` or a dotted IPv4 address, optionally followed by `:port` and
+    /// by a path, query or fragment.
+    private static func isLocalHost(_ text: String) -> Bool {
+        guard let match = localHostPattern?.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text))
+        else { return false }
+        // Each part of an IPv4 address is at most 255 and a port at most 65535.
+        // `localhost` has no parts, and the port is optional.
+        func number(_ group: Int, atMost limit: Int) -> Bool {
+            guard let range = Range(match.range(at: group), in: text) else { return true }
+            return (Int(text[range]) ?? .max) <= limit
+        }
+        return (1...4).allSatisfy { number($0, atMost: 255) } && number(5, atMost: 65535)
+    }
+
+    private static let localHostPattern = try? NSRegularExpression(
+        pattern: #"^(?:localhost|([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3}))(?::([0-9]{1,5}))?(?:[/?#].*)?$"#,
+        options: [.caseInsensitive])
 }

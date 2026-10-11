@@ -145,9 +145,22 @@ enum ActionRegistry {
     }
 
     private static func openURLPresentation(_ action: PopBarActionConfig, text: String) -> PopBarPresentation {
-        guard let template = action.url, let url = URLTemplate.fill(template, with: text) else {
-            log.debug("openURL '\(action.title)': no usable address")
-            return .error("⚠️ \(L("popbar.error.badurl"))")
+        let url: URL
+        if let template = action.url, URLTemplate.isSelectionOnly(template) {
+            // The selection is the address. Only a web page comes back, so the
+            // selection can never make the system launch something else.
+            guard let address = URLTemplate.webAddress(in: text) else {
+                // Privacy: never log the selection itself — it can be anything.
+                log.debug("openURL '\(action.title)': selection (\(text.count) chars) is not a web address")
+                return .error("⚠️ \(L("popbar.error.notaurl"))")
+            }
+            url = address
+        } else {
+            guard let template = action.url, let filled = URLTemplate.fill(template, with: text) else {
+                log.debug("openURL '\(action.title)': no usable address")
+                return .error("⚠️ \(L("popbar.error.badurl"))")
+            }
+            url = filled
         }
         // The mini-browser can only show web pages; any other scheme belongs to
         // the app that owns it, whatever the action asked for.

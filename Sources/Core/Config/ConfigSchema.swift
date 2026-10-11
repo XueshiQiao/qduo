@@ -264,7 +264,7 @@ enum ConfigSchema {
             "prompt": { "type": "string",
               "description": "For \\"ai\\": the instruction sent with the selection." },
             "url": { "type": "string",
-              "description": "For \\"openURL\\": the address. {text} is replaced by the selection, encoded as one query value. e.g. https://www.google.com/search?q={text} or dict://{text}" },
+              "description": "For \\"openURL\\": the address. {text} is replaced by the selection, encoded as one query value. e.g. https://www.google.com/search?q={text} or dict://{text}. {text} alone opens the selection itself, when the selection is a web address (example.com, https://example.com/page, localhost:3000); any other selection shows a message." },
             "openIn": { "type": "string", "enum": ["browser", "preview"],
               "description": "For \\"openURL\\": browser (default) or the popup's preview window. Addresses that are not web pages always open in the app that handles them." },
             "op": { "type": "string",

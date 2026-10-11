@@ -212,7 +212,7 @@
 "popbar.editor.kind.shortcut" = "运行快捷指令";
 "popbar.editor.kind.script" = "运行 Shell 脚本";
 "popbar.editor.url" = "网址";
-"popbar.editor.url.hint" = "{text} 会被替换成选中的文字。网页可以在浏览器或弹窗的预览窗口里打开；其他地址（dict://、obsidian://）交给对应的 app 打开。";
+"popbar.editor.url.hint" = "{text} 会被替换成选中的文字。网页可以在浏览器或弹窗的预览窗口里打开；其他地址（dict://、obsidian://）交给对应的 app 打开。\n\n只填 {text} 时，选中的文字本身就是要打开的网址（比如 example.com 或 https://example.com/page），选中的不是网址时会提示。想搜索选中的文字，请填搜索引擎的网址，比如 https://www.google.com/search?q={text}。";
 "popbar.editor.openIn" = "打开方式";
 "popbar.editor.openIn.browser" = "默认浏览器";
 "popbar.editor.openIn.preview" = "预览窗口";
@@ -240,6 +240,7 @@
 "popbar.error.noshortcut" = "这个动作没有填快捷指令名称。请到「设置 → 动作」里编辑。";
 "popbar.error.noscript" = "这个动作没有填脚本。请到「设置 → 动作」里编辑。";
 "popbar.error.badurl" = "这个动作的网址没填或者格式不对。请到「设置 → 动作」里编辑。";
+"popbar.error.notaurl" = "选中的文字不是一个网址，所以没有打开任何网页。";
 "popbar.error.unknownop" = "这个版本的 app 不认识这个动作的文本操作。";
 "popbar.error.invalidjson" = "选中的内容不是有效的 JSON。";
 "popbar.error.notdecodable" = "选中的内容不是有效的 URL 编码文本。";
