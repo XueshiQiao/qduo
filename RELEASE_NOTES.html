@@ -1,3 +1,17 @@
+<h3>What's New in 26.10.24</h3>
+<ul>
+  <li><b>Open the address you selected</b> — An Open URL action whose address is just <code>{text}</code> now opens the selected text itself when it is a web address: <code>https://example.com/page</code>, <code>example.com</code> or <code>localhost:3000</code>. It used to say the action's URL was missing or invalid. A selection that is not a web address shows a message saying so, and nothing is opened.</li>
+  <li><b>Selected text cannot choose which app opens</b> — An Open URL action now opens an address only when its beginning (<code>https:</code>, <code>dict:</code>, <code>obsidian:</code>) is the one written in the action itself. Before, an action whose address started with <code>{text}</code> could be made to start a call or open a file by selecting text such as <code>tel:10086</code>.</li>
+  <li><b>System Translate without downloading a language</b> — When a language is not on your Mac yet, System Translate can now get the translation through a Shortcut instead of asking you to download the language. Click Add Shortcut in the action's editor to turn this on; it needs an internet connection. Without the Shortcut, or when it fails, the download window comes up as before (<a href="https://github.com/XueshiQiao/qduo/issues/14">#14</a>).</li>
+</ul>
+
+<h3>26.10.24 更新内容</h3>
+<ul>
+  <li><b>直接打开选中的网址</b> — 「打开网址」动作的网址一栏只填 <code>{text}</code> 时，选中的文字如果是一个网址，现在会直接打开它，比如 <code>https://example.com/page</code>、<code>example.com</code> 或 <code>localhost:3000</code>。以前这样填会提示「网址没填或者格式不对」。选中的文字不是网址时，会提示不是网址，不会打开任何东西。</li>
+  <li><b>选中的文字不能决定用哪个 App 打开</b> — 「打开网址」动作现在只打开开头（<code>https:</code>、<code>dict:</code>、<code>obsidian:</code>）是动作里自己写好的地址。以前如果网址一栏是以 <code>{text}</code> 开头的，选中 <code>tel:10086</code> 这样的文字就能让它去拨电话或者打开文件。</li>
+  <li><b>系统翻译不用先下载语言</b> — 要翻译的语言还没下载到这台 Mac 上时，「系统翻译」现在可以通过一个快捷指令拿到译文，不再要求你先下载语言。在动作的编辑页里点「添加快捷指令…」就能打开这个功能，使用时需要联网。没有添加快捷指令或者快捷指令失败时，和以前一样弹出下载窗口（<a href="https://github.com/XueshiQiao/qduo/issues/14">#14</a>）。</li>
+</ul>
+
 <h3>What's New in 26.10.23</h3>
 <ul>
   <li><b>The popup waits until you let go</b> — After a double-click or triple-click, the popup now opens when you release the mouse button, not while it is still down. Holding the second click and dragging to select more words no longer has the popup sitting on top of the text. Thanks <a href="https://x.com/elviscai">@elviscai</a> on X for <a href="https://github.com/XueshiQiao/qduo/issues/13">#13</a>.</li>
