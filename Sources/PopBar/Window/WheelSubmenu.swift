@@ -3,7 +3,7 @@ import SwiftUI
 /// Geometry for the wheel's SECOND ring — the submenu that unfolds outside the
 /// main ring when the pointer rests on an action that owns children.
 ///
-/// The rule was locked with the user against `docs/popbar-wheel-submenu-mockup.html`:
+/// The rule, as agreed with the user:
 ///
 ///  - every child occupies the SAME angle (`stepDegrees`), worked out from a fixed
 ///    width along the ring (`WheelLayout.submenuItemWidth`, 60 pt by default);

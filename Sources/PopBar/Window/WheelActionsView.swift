@@ -55,9 +55,19 @@ struct WheelLayout: Equatable {
     var submenuStepDegrees: Double {
         SubmenuPlan.stepDegrees(width: submenuItemWidth, atRadius: submenuMidRadius)
     }
-    /// Max width of a child's name when each child is `stepDegrees` wide.
-    func submenuLabelWidth(stepDegrees: Double) -> CGFloat {
-        SubmenuPlan.labelWidth(stepDegrees: stepDegrees, atRadius: submenuMidRadius, cap: labelWidth)
+    /// The angle each of `count` children gets. A lone child is never narrower
+    /// than the band is thick: the 3D skin rounds the ends of the arc with caps
+    /// as wide as the band, so a narrower child would be drawn wider than the
+    /// part of it that answers the pointer.
+    func submenuStepDegrees(count: Int) -> Double {
+        guard count == 1 else { return submenuStepDegrees }
+        return max(submenuStepDegrees,
+                   SubmenuPlan.stepDegrees(width: submenuThickness, atRadius: submenuMidRadius))
+    }
+    /// Max width of a child's name when each child is `stepDegrees` wide, for a
+    /// name drawn at `radius` (the midline unless a skin draws it elsewhere).
+    func submenuLabelWidth(stepDegrees: Double, atRadius radius: CGFloat? = nil) -> CGFloat {
+        SubmenuPlan.labelWidth(stepDegrees: stepDegrees, atRadius: radius ?? submenuMidRadius, cap: labelWidth)
     }
 
     /// The square content side the wheel needs.
@@ -562,7 +572,10 @@ struct WheelActionsView: View {
                 let step = s.span / Double(open.children.count)
                 // From the plan, not from `step`: that one grows from nothing as the
                 // ring unfolds, and the names would re-truncate on every frame.
-                let childLabelWidth = layout.submenuLabelWidth(stepDegrees: open.plan.step)
+                // At the radius the names are drawn at (below), once the ring is out.
+                let childLabelWidth = layout.submenuLabelWidth(
+                    stepDegrees: open.plan.step,
+                    atRadius: layout.submenuMidRadius - layout.submenuThickness / 2 * 0.22)
                 ZStack {
                     ForEach(Array(open.children.enumerated()), id: \.element.id) { j, child in
                         let a = s.mid - s.span / 2 + (Double(j) + 0.5) * step
@@ -1140,7 +1153,7 @@ struct WheelActionsView: View {
                     children: action.children,
                     plan: SubmenuPlan(count: action.children.count,
                                       midDegrees: mid,
-                                      stepDegrees: layout.submenuStepDegrees))
+                                      stepDegrees: layout.submenuStepDegrees(count: action.children.count)))
     }
 
     /// Fold the submenu shut. `submenu` is deliberately KEPT: the ring animates back
