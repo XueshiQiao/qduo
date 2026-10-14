@@ -1,7 +1,7 @@
 # Developing QDuo
 
 How to build, test, release and change QDuo. For what the app is and how to
-install it, see the [README](README.md).
+install it, see the [README](README.en.md) ([中文](README.md)).
 
 ## Build and run
 
@@ -81,7 +81,7 @@ spells it out — everything reads it back from the built bundle through
 `Sources/Core/Brand.swift`, and strings take it as `%@`.
 
 To rename: edit those five values, rename the GitHub repo, redraw the icon, and
-fix README.md, README_CN.md and this file.
+fix README.md, README.en.md and this file.
 
 ## The icon
 
