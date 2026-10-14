@@ -312,6 +312,18 @@ final class WheelAimTests: XCTestCase {
         XCTAssertTrue(plan.contains(degrees: -25, tolerance: 12), "slack must wrap, not clip")
     }
 
+    func testASecondRingChildIsAFixedWidthNotAFixedAngle() {
+        // Default ring: outer 114, seam 6, thickness 52 → the midline is at 146.
+        let step = SubmenuPlan.stepDegrees(width: 60, atRadius: 146)
+        XCTAssertEqual(step, 23.546, accuracy: 0.001)
+        // A bigger ring: the same width, so a smaller angle.
+        XCTAssertLessThan(SubmenuPlan.stepDegrees(width: 60, atRadius: 182), step)
+        // A name is kept a little narrower than its child…
+        XCTAssertEqual(SubmenuPlan.labelWidth(stepDegrees: step, atRadius: 146, cap: 64), 56, accuracy: 0.001)
+        // …and never wider than a main-ring name.
+        XCTAssertEqual(SubmenuPlan.labelWidth(stepDegrees: 90, atRadius: 146, cap: 64), 64)
+    }
+
     func testAFullRingContainsEveryAngle() {
         let plan = SubmenuPlan(count: 12, midDegrees: 0, stepDegrees: 40)   // closes up
         XCTAssertTrue(plan.isFullRing)

@@ -74,6 +74,9 @@ enum PopBarPreferences {
     static let wheelSubThicknessRange: ClosedRange<Double> = 34...72
     static let wheelSubSeamDefault: Double = 6
     static let wheelSubThicknessDefault: Double = 52
+    /// Width of one child of the second ring, along the ring, in points.
+    static let wheelSubItemWidthRange: ClosedRange<Double> = 40...110
+    static let wheelSubItemWidthDefault: Double = 60
 
 
     /// Whether the result panel auto-grows its HEIGHT to fit the content (up to a
@@ -176,6 +179,11 @@ enum PopBarPreferences {
             get { clamped(config.double(key("subThickness"), default: wheelSubThicknessDefault), wheelSubThicknessRange) }
             nonmutating set { config.set(key("subThickness"), clamped(newValue, wheelSubThicknessRange)) }
         }
+        /// Width of one child of the submenu ring, along the ring.
+        var subItemWidth: Double {
+            get { clamped(config.double(key("subItemWidth"), default: wheelSubItemWidthDefault), wheelSubItemWidthRange) }
+            nonmutating set { config.set(key("subItemWidth"), clamped(newValue, wheelSubItemWidthRange)) }
+        }
 
         var layout: WheelLayout {
             let outer = outerRadius
@@ -183,7 +191,8 @@ enum PopBarPreferences {
             return WheelLayout(outerRadius: CGFloat(outer), innerRadius: CGFloat(inner),
                                showIcons: showIcons, showLabels: showLabels,
                                submenuSeam: CGFloat(subSeam),
-                               submenuThickness: CGFloat(subThickness))
+                               submenuThickness: CGFloat(subThickness),
+                               submenuItemWidth: CGFloat(subItemWidth))
         }
 
         /// Every knob back to its default. Writes the defaults rather than deleting
@@ -196,10 +205,11 @@ enum PopBarPreferences {
             autoHideOnExit = true
             subSeam = wheelSubSeamDefault
             subThickness = wheelSubThicknessDefault
+            subItemWidth = wheelSubItemWidthDefault
         }
 
         static let knobNames = ["outerRadius", "innerRadius", "showIcons", "showLabels",
-                                "autoHideOnExit", "subSeam", "subThickness"]
+                                "autoHideOnExit", "subSeam", "subThickness", "subItemWidth"]
     }
 
     /// A ring style's own knobs. The capsule has none; asking for it gets Liquid's,

@@ -38,15 +38,27 @@ struct WheelLayout: Equatable {
     /// Corner radius of the submenu arc's four corners. Locked at 14 with the user
     /// against `docs/popbar-wheel-submenu-mockup.html` (the "一整条 + 圆角" option).
     var submenuCorner: CGFloat = 14
-    /// Angular width of ONE child. Locked at 40° with the user: narrower than a
-    /// parent slice, so a 3-4 item submenu stays a compact arc rather than sweeping
-    /// half the ring.
-    var submenuStepDegrees: Double = 40
+    /// Width of ONE child, measured along the second ring's midline. User-adjustable
+    /// (`popbar.wheel.subItemWidth`).
+    ///
+    /// A width and not an angle: the second ring sits far out, so a fixed angle
+    /// (it used to be 40°) came out at about 100 pt per child — twice a main-ring
+    /// slice — and grew further whenever the ring was made bigger. Half a turn
+    /// held four and a half children. The angle is worked out from this instead.
+    var submenuItemWidth: CGFloat = 60
 
     var submenuInnerRadius: CGFloat { outerRadius + submenuSeam }
     var submenuOuterRadius: CGFloat { submenuInnerRadius + submenuThickness }
     /// Radius at which a child's icon/label sits.
     var submenuMidRadius: CGFloat { (submenuInnerRadius + submenuOuterRadius) / 2 }
+    /// Angular width of ONE child: `submenuItemWidth` along the midline.
+    var submenuStepDegrees: Double {
+        SubmenuPlan.stepDegrees(width: submenuItemWidth, atRadius: submenuMidRadius)
+    }
+    /// Max width of a child's name when each child is `stepDegrees` wide.
+    func submenuLabelWidth(stepDegrees: Double) -> CGFloat {
+        SubmenuPlan.labelWidth(stepDegrees: stepDegrees, atRadius: submenuMidRadius, cap: labelWidth)
+    }
 
     /// The square content side the wheel needs.
     var diameter: CGFloat { (outerRadius + pad) * 2 }
@@ -548,10 +560,14 @@ struct WheelActionsView: View {
 
             if let open = submenu, let s = m.sub, !open.children.isEmpty {
                 let step = s.span / Double(open.children.count)
+                // From the plan, not from `step`: that one grows from nothing as the
+                // ring unfolds, and the names would re-truncate on every frame.
+                let childLabelWidth = layout.submenuLabelWidth(stepDegrees: open.plan.step)
                 ZStack {
                     ForEach(Array(open.children.enumerated()), id: \.element.id) { j, child in
                         let a = s.mid - s.span / 2 + (Double(j) + 0.5) * step
-                        donutGlyph(child, hot: hoveredChild == child.id, soft: false, dark: surfaceDark)
+                        donutGlyph(child, hot: hoveredChild == child.id, soft: false, dark: surfaceDark,
+                                   labelWidth: childLabelWidth)
                             // A little inside the tube's midline: out on the second ring
                             // the lean carries the names outward the most, and at the
                             // midline they read as sliding off the outer edge.
@@ -571,14 +587,15 @@ struct WheelActionsView: View {
     /// surfaces, near-white on the dark ones, the brand gradient when hovered).
     /// `dark` is the SURFACE's darkness, not the system's — the light glass keeps its
     /// dark ink in dark mode.
-    private func donutGlyph(_ action: PopBarActionConfig, hot: Bool, soft: Bool, dark: Bool) -> some View {
+    private func donutGlyph(_ action: PopBarActionConfig, hot: Bool, soft: Bool, dark: Bool,
+                            labelWidth: CGFloat? = nil) -> some View {
         VStack(spacing: 2) {
             if layout.showIcons {
                 ActionIconView(action, size: 15)
                     .frame(height: 18)
             }
             if layout.showLabels {
-                sliceLabel(action, weight: hot ? .bold : .medium)
+                sliceLabel(action, weight: hot ? .bold : .medium, maxWidth: labelWidth)
             }
         }
         .foregroundStyle(donutGlyphStyle(hot: hot, dark: dark).opacity(soft ? 0.55 : 1))
@@ -636,7 +653,8 @@ struct WheelActionsView: View {
     /// never crowd an arc or edge of the ring, and it takes the hover paint with the
     /// name. The name truncates first; the › always stays.
     @ViewBuilder
-    private func sliceLabel(_ action: PopBarActionConfig, weight: Font.Weight) -> some View {
+    private func sliceLabel(_ action: PopBarActionConfig, weight: Font.Weight,
+                            maxWidth: CGFloat? = nil) -> some View {
         HStack(spacing: 1) {
             Text(action.title)
                 .lineLimit(1)
@@ -646,7 +664,7 @@ struct WheelActionsView: View {
             }
         }
         .font(.system(size: 9, weight: weight))
-        .frame(maxWidth: layout.labelWidth)
+        .frame(maxWidth: maxWidth ?? layout.labelWidth)
     }
 
     /// A short mark at the outer edge of every slice that owns children, so it is
@@ -1217,7 +1235,7 @@ struct WheelActionsView: View {
             corner: layout.submenuCorner,
             showIcons: layout.showIcons,
             showLabels: layout.showLabels,
-            labelWidth: layout.labelWidth,
+            labelWidth: layout.submenuLabelWidth(stepDegrees: plan?.step ?? layout.submenuStepDegrees),
             hoveredIndex: open.flatMap { hoveredChildIndex($0) },
             highlight: submenuHighlightStyle,
             dividerColor: Color.primary.opacity(skin == .liquid ? 0.16 : 0.12),

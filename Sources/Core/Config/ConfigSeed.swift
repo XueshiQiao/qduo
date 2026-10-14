@@ -68,6 +68,8 @@ enum ConfigSeed {
                default: PopBarPreferences.wheelSubSeamDefault)
         number("wheel.subThickness", "popbar.wheel.subThickness",
                default: PopBarPreferences.wheelSubThicknessDefault)
+        // Newer than the UserDefaults era: nothing to carry across.
+        doc.set(path: "wheel.subItemWidth", to: .number(PopBarPreferences.wheelSubItemWidthDefault))
         bool("wheel.showIcons", "popbar.wheel.showIcons", default: true)
         bool("wheel.showLabels", "popbar.wheel.showLabels", default: true)
         bool("wheel.autoHideOnExit", "popbar.wheel.autoHideOnExit", default: true)

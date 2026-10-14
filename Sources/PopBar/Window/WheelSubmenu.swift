@@ -5,7 +5,8 @@ import SwiftUI
 ///
 /// The rule was locked with the user against `docs/popbar-wheel-submenu-mockup.html`:
 ///
-///  - every child occupies the SAME fixed angle (`stepDegrees`, 40° by default);
+///  - every child occupies the SAME angle (`stepDegrees`), worked out from a fixed
+///    width along the ring (`WheelLayout.submenuItemWidth`, 60 pt by default);
 ///  - the whole run is centred on the parent slice's angle bisector, so the
 ///    submenu always reads as "hanging off" that one slice;
 ///  - once the run would wrap past a full turn it closes up into a COMPLETE outer
@@ -27,6 +28,20 @@ struct SubmenuPlan: Equatable {
     let isFullRing: Bool
     /// Leading edge of the first child.
     let start: Double
+
+    /// The angle a child `width` points wide takes up at `radius`.
+    static func stepDegrees(width: CGFloat, atRadius radius: CGFloat) -> Double {
+        Double(width / max(radius, 1)) * 180 / .pi
+    }
+
+    /// Max width of a child's name when each child is `stepDegrees` wide at
+    /// `radius` (a run that closed into a full ring has narrower children than
+    /// asked for). A little under the child's own width, so two long names never
+    /// touch, and never more than `cap`, the main ring's limit.
+    static func labelWidth(stepDegrees: Double, atRadius radius: CGFloat, cap: CGFloat) -> CGFloat {
+        let arc = CGFloat(stepDegrees * .pi / 180) * radius
+        return max(min(cap, arc - 4), 12)
+    }
 
     init(count: Int, midDegrees: Double, stepDegrees: Double) {
         self.count = count

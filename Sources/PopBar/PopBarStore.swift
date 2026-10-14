@@ -19,6 +19,7 @@ final class PopBarStore: ObservableObject {
     @Published var wheelLiquidDividers: Bool
     @Published var wheelSubSeam: Double
     @Published var wheelSubThickness: Double
+    @Published var wheelSubItemWidth: Double
     @Published var capsuleIconSize: Double
     @Published var capsuleLabelSize: Double
     @Published var capsuleBorder: Bool
@@ -66,6 +67,7 @@ final class PopBarStore: ObservableObject {
         self.wheelLiquidDividers = PopBarPreferences.wheelLiquidDividers
         self.wheelSubSeam = ring.subSeam
         self.wheelSubThickness = ring.subThickness
+        self.wheelSubItemWidth = ring.subItemWidth
         self.capsuleIconSize = PopBarPreferences.capsuleIconSize
         self.capsuleLabelSize = PopBarPreferences.capsuleLabelSize
         self.capsuleBorder = PopBarPreferences.capsuleBorder
@@ -162,6 +164,7 @@ final class PopBarStore: ObservableObject {
         wheelAutoHideOnExit = r.autoHideOnExit
         wheelSubSeam = r.subSeam
         wheelSubThickness = r.subThickness
+        wheelSubItemWidth = r.subItemWidth
         wheelDonutDividers = PopBarPreferences.wheelDonutDividers
         wheelLiquidDividers = PopBarPreferences.wheelLiquidDividers
         capsuleIconSize = PopBarPreferences.capsuleIconSize
@@ -234,6 +237,11 @@ final class PopBarStore: ObservableObject {
     func setWheelSubThickness(_ v: Double) {
         wheelSubThickness = v
         ring.subThickness = v
+        controller.updateShowingWheel()
+    }
+    func setWheelSubItemWidth(_ v: Double) {
+        wheelSubItemWidth = v
+        ring.subItemWidth = v
         controller.updateShowingWheel()
     }
     /// Auto-hide the ring when the pointer leaves it (wheel + liquid-glass only).

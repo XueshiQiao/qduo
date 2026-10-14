@@ -111,6 +111,8 @@ enum ConfigSchema {
               "description": "Gap between the main ring and a group's second ring." },
             "subThickness": { "type": "number", "minimum": 34, "maximum": 72,
               "description": "Band width of the second ring." },
+            "subItemWidth": { "type": "number", "minimum": 40, "maximum": 110,
+              "description": "Width of one item of the second ring, measured along the ring. Default 60." },
             "showIcons": { "type": "boolean", "description": "Draw each action's icon." },
             "showLabels": { "type": "boolean", "description": "Draw each action's name." },
             "autoHideOnExit": { "type": "boolean",
@@ -131,6 +133,7 @@ enum ConfigSchema {
             "innerRadius": { "type": "number", "minimum": 28, "maximum": 140 },
             "subSeam": { "type": "number", "minimum": 0, "maximum": 20 },
             "subThickness": { "type": "number", "minimum": 34, "maximum": 72 },
+            "subItemWidth": { "type": "number", "minimum": 40, "maximum": 110 },
             "showIcons": { "type": "boolean" },
             "showLabels": { "type": "boolean" },
             "autoHideOnExit": { "type": "boolean" }

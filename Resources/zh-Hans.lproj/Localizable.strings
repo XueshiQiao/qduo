@@ -79,6 +79,7 @@
 "popbar.wheel.inner" = "内环半径";
 "popbar.wheel.subSeam" = "二级菜单间距";
 "popbar.wheel.subThickness" = "二级菜单环厚";
+"popbar.wheel.subItemWidth" = "二级菜单每项宽度";
 "popbar.wheel.showIcons" = "显示图标";
 "popbar.wheel.showLabels" = "显示文字";
 "popbar.wheel.autoHide" = "鼠标移出圆环时自动隐藏";

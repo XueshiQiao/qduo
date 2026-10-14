@@ -189,6 +189,11 @@ struct GeneralPage: View {
                               range: PopBarPreferences.wheelSubThicknessRange) {
                         store.setWheelSubThickness($0)
                     }
+                    radiusRow(label: L("popbar.wheel.subItemWidth"), symbol: "arrow.left.and.right",
+                              value: store.wheelSubItemWidth,
+                              range: PopBarPreferences.wheelSubItemWidthRange) {
+                        store.setWheelSubItemWidth($0)
+                    }
                     Toggle(isOn: Binding(get: { store.wheelShowIcons },
                                          set: { store.setWheelShowIcons($0) })) {
                         iconLabel("square.grid.2x2", .indigo, L("popbar.wheel.showIcons"))

@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>二级菜单宽度对比</title>
+<style>
+  :root {
+    --bg: #f4f5f8;
+    --card: #ffffff;
+    --ink: #1c2230;
+    --muted: #6b7280;
+    --line: #e3e6ec;
+    --ring: rgba(120, 140, 175, 0.16);
+    --ring-edge: rgba(90, 110, 150, 0.30);
+    --sub: rgba(120, 140, 175, 0.20);
+    --divider: rgba(28, 34, 48, 0.16);
+    --hot: #2563eb;
+    --hot-fill: rgba(37, 99, 235, 0.14);
+    --chip: #eef1f6;
+    --chip-on: #1c2230;
+    --chip-on-ink: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171d;
+      --card: #1c2028;
+      --ink: #e8ebf1;
+      --muted: #9aa3b2;
+      --line: #2b313c;
+      --ring: rgba(170, 185, 215, 0.12);
+      --ring-edge: rgba(170, 185, 215, 0.22);
+      --sub: rgba(170, 185, 215, 0.16);
+      --divider: rgba(232, 235, 241, 0.16);
+      --hot: #60a5fa;
+      --hot-fill: rgba(96, 165, 250, 0.20);
+      --chip: #262b35;
+      --chip-on: #e8ebf1;
+      --chip-on-ink: #14171d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+  }
+  main { max-width: 1280px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 18px;
+  }
+  .controls label { color: var(--muted); margin-right: 8px; }
+  .chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 0; border-radius: 999px; padding: 4px 12px; cursor: pointer;
+    background: var(--chip); color: var(--ink); font: inherit;
+  }
+  .chip.on { background: var(--chip-on); color: var(--chip-on-ink); }
+  input[type=range] { vertical-align: middle; width: 140px; }
+  .val { display: inline-block; min-width: 3.5em; font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 14px 10px; min-width: 0;
+  }
+  .card h2 { font-size: 16px; margin: 0 0 2px; }
+  .card .how { color: var(--muted); font-size: 13px; margin: 0 0 6px; }
+  svg { display: block; width: 100%; height: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+  td { padding: 3px 0; border-top: 1px solid var(--line); }
+  td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .warn { color: #d97706; }
+  .note { color: var(--muted); font-size: 13px; margin-top: 18px; }
+  .note p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>二级菜单宽度对比</h1>
+  <p class="sub">二级菜单就是鼠标停在一个分组上时，在主圆环外面展开的那一圈。三张图用的是同一份数据：你现在 config.json 里的动作和分组、圆环尺寸（内半径 54、外半径 114、间隙 6、厚度 52）。只有「二级菜单里每一项占多大」这一条规则不一样。</p>
+
+  <div class="controls">
+    <div><label>展开哪个分组</label><span class="chips" id="groups"></span></div>
+    <div><label>主圆环外半径</label><input type="range" id="outer" min="90" max="150" step="1" value="114"><span class="val" id="outerVal"></span></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="note">
+    <p>图上每一格里，上面的小方块代表图标（13 pt），下面是名字（9 号字）。名字太长、放不下时会在末尾显示省略号，和 app 里一样。</p>
+    <p>「相邻名字之间最小的空隙」是用浏览器量出来的名字宽度算的，字体和 app 里的 SF 字体略有差别，数值只作比较用。</p>
+    <p>把「主圆环外半径」拖大，可以看到：按角度分的那一种，每一格会跟着变宽；按宽度分的两种，每一格的宽度不变。</p>
+  </div>
+</main>
+
+<script>
+// The user's own actions, in ring order, from ~/.config/qduo/config.json.
+const ACTIONS = [
+  { title: "系统翻译" }, { title: "翻译" }, { title: "解释" },
+  { title: "英文", children: ["润色", "润色替换", "单词", "中译英", "Typo"] },
+  { title: "日语", children: ["日文发音", "解释句子"] },
+  { title: "文字", children: ["总结", "思辨"] },
+  { title: "工具", children: ["Google", "Finder", "预览", "打开网址"] },
+  { title: "测试", children: ["复制", "设置", "暂停 QDuo", "检查元素", "全部大写"] },
+  { title: "朗读", children: ["系统朗读", "朗读MiniMax", "朗读 Eleven", "朗读 Qwen"] },
+  { title: "回复 X" },
+];
+// Not in the config: a made-up large group, to show when the second ring closes into a full circle.
+const EXAMPLE = { title: "测试", fake: true,
+  children: ["复制", "设置", "暂停 QDuo", "检查元素", "全部大写", "系统朗读", "朗读MiniMax", "朗读 Eleven", "朗读 Qwen"] };
+
+const L = { inner: 54, seam: 6, thick: 52, labelWidth: 64, font: 9 };
+
+const OPTIONS = [
+  { name: "现在：每一项固定 40°", how: "代码里的 submenuStepDegrees = 40", step: (r) => 40 },
+  { name: "按宽度：每一项 60 pt", how: "先定弧长 60 pt，再除以半径换算成角度", step: (r) => 60 / r * 180 / Math.PI, arc: 60 },
+  { name: "按宽度：每一项 52 pt", how: "和现在主圆环一格差不多宽（10 项时约 53 pt）", step: (r) => 52 / r * 180 / Math.PI, arc: 52 },
+];
+
+let groupIndex = 3;      // 英文
+let useExample = false;
+let outer = 114;
+
+const measureCtx = document.createElement("canvas").getContext("2d");
+measureCtx.font = `500 ${L.font}px -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif`;
+const textWidth = (s) => measureCtx.measureText(s).width;
+function fit(s, max) {
+  if (textWidth(s) <= max) return s;
+  let t = s;
+  while (t.length > 1 && textWidth(t + "…") > max) t = t.slice(0, -1);
+  return t + "…";
+}
+
+const rad = (d) => d * Math.PI / 180;
+const pt = (c, r, deg) => [c + Math.cos(rad(deg)) * r, c + Math.sin(rad(deg)) * r];
+
+function sector(c, r0, r1, a0, a1) {
+  if (a1 - a0 >= 359.999) {
+    return `M ${c + r1} ${c} A ${r1} ${r1} 0 1 1 ${c - r1} ${c} A ${r1} ${r1} 0 1 1 ${c + r1} ${c} Z
+            M ${c + r0} ${c} A ${r0} ${r0} 0 1 0 ${c - r0} ${c} A ${r0} ${r0} 0 1 0 ${c + r0} ${c} Z`;
+  }
+  const large = a1 - a0 > 180 ? 1 : 0;
+  const [x0, y0] = pt(c, r1, a0), [x1, y1] = pt(c, r1, a1);
+  const [x2, y2] = pt(c, r0, a1), [x3, y3] = pt(c, r0, a0);
+  return `M ${x0} ${y0} A ${r1} ${r1} 0 ${large} 1 ${x1} ${y1} L ${x2} ${y2} A ${r0} ${r0} 0 ${large} 0 ${x3} ${y3} Z`;
+}
+
+function glyph(x, y, label, hot) {
+  const color = hot ? "var(--hot)" : "var(--ink)";
+  return `<rect x="${x - 5.5}" y="${y - 12}" width="11" height="11" rx="3" fill="${color}" opacity="${hot ? 0.9 : 0.35}"/>
+          <text x="${x}" y="${y + 8}" text-anchor="middle" font-size="${L.font}" font-weight="${hot ? 600 : 500}" fill="${color}">${label}</text>`;
+}
+
+function render() {
+  document.getElementById("outerVal").textContent = outer;
+  const group = useExample ? EXAMPLE : ACTIONS[groupIndex];
+  const parentIdx = ACTIONS.findIndex((a) => a.title === group.title);
+  const n = ACTIONS.length;
+  const mainStep = 360 / n;
+  const parentMid = -90 + (parentIdx + 0.5) * mainStep;
+  const mainMid = (L.inner + outer) / 2;
+  const subInner = outer + L.seam, subOuter = subInner + L.thick, subMid = (subInner + subOuter) / 2;
+  const reach = subOuter + 8;
+  const size = reach * 2, c = reach;
+  const items = group.children;
+
+  document.getElementById("grid").innerHTML = OPTIONS.map((opt) => {
+    let step = opt.step(subMid);
+    let span = items.length * step;
+    const full = span >= 360;
+    if (full) { step = 360 / items.length; span = 360; }
+    const start = parentMid - span / 2;
+    const arcLen = rad(step) * subMid;
+    const labelMax = Math.min(L.labelWidth, arcLen - 6);
+
+    let svg = `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">`;
+    // Main ring.
+    svg += `<path d="${sector(c, L.inner, outer, 0, 360)}" fill="var(--ring)" stroke="var(--ring-edge)" stroke-width="0.6" fill-rule="evenodd"/>`;
+    svg += `<path d="${sector(c, L.inner, outer, parentMid - mainStep / 2, parentMid + mainStep / 2)}" fill="var(--hot-fill)"/>`;
+    for (let i = 0; i < n; i++) {
+      const a = -90 + i * mainStep;
+      const [x0, y0] = pt(c, L.inner + 1, a), [x1, y1] = pt(c, outer - 1, a);
+      svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--divider)" stroke-width="0.75"/>`;
+      const [gx, gy] = pt(c, mainMid, a + mainStep / 2);
+      const t = ACTIONS[i].title + (ACTIONS[i].children ? " ›" : "");
+      svg += glyph(gx, gy, fit(t, Math.min(L.labelWidth, rad(mainStep) * mainMid - 6)), i === parentIdx);
+    }
+    // Second ring.
+    svg += `<path d="${sector(c, subInner, subOuter, start, start + span)}" fill="var(--sub)" stroke="var(--ring-edge)" stroke-width="0.6" fill-rule="evenodd"/>`;
+    const dividers = full ? items.length : items.length - 1;
+    for (let j = 0; j < dividers; j++) {
+      const a = start + (j + 1) * step;
+      const [x0, y0] = pt(c, subInner + 1, a), [x1, y1] = pt(c, subOuter - 1, a);
+      svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--divider)" stroke-width="0.75"/>`;
+    }
+    let minGap = Infinity, truncated = 0;
+    const widths = [];
+    items.forEach((t, j) => {
+      const shown = fit(t, labelMax);
+      if (shown !== t) truncated++;
+      widths.push(Math.max(textWidth(shown), 11));
+      const [gx, gy] = pt(c, subMid, start + (j + 0.5) * step);
+      svg += glyph(gx, gy, shown, false);
+    });
+    for (let j = 0; j + 1 < items.length; j++) {
+      minGap = Math.min(minGap, arcLen - widths[j] / 2 - widths[j + 1] / 2);
+    }
+    if (full && items.length > 1) minGap = Math.min(minGap, arcLen - widths[0] / 2 - widths[items.length - 1] / 2);
+    svg += `</svg>`;
+
+    const halfFits = Math.floor(180 / opt.step(subMid) * 10) / 10;
+    const fullAt = Math.ceil(360 / opt.step(subMid));
+    const rows = [
+      ["每一项占的角度", `${step.toFixed(1)}°`],
+      ["每一项在弧上的宽度（半径 " + subMid + "）", `${arcLen.toFixed(0)} pt`],
+      [`这个分组（${items.length} 项）一共占`, full ? "合成一整圈" : `${span.toFixed(0)}°`],
+      ["相邻名字之间最小的空隙", items.length > 1 ? `${minGap.toFixed(0)} pt` : "—"],
+      ["半圈 180° 能放几项", `${halfFits} 项`],
+      ["多少项起合成一整圈", `${fullAt} 项`],
+      ["名字被截断的项", truncated ? `<span class="warn">${truncated} 项</span>` : "没有"],
+    ];
+    return `<section class="card"><h2>${opt.name}</h2><p class="how">${opt.how}</p>${svg}
+      <table>${rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table></section>`;
+  }).join("");
+}
+
+const groupsEl = document.getElementById("groups");
+const choices = ACTIONS.map((a, i) => ({ label: `${a.title}（${a.children ? a.children.length : 0}）`, i }))
+  .filter((c) => ACTIONS[c.i].children)
+  .concat([{ label: "9 项（虚构的示例）", example: true }]);
+function drawChips() {
+  groupsEl.innerHTML = "";
+  choices.forEach((ch) => {
+    const b = document.createElement("button");
+    b.className = "chip" + ((ch.example ? useExample : (!useExample && ch.i === groupIndex)) ? " on" : "");
+    b.textContent = ch.label;
+    b.onclick = () => {
+      if (ch.example) { useExample = true; } else { useExample = false; groupIndex = ch.i; }
+      drawChips(); render();
+    };
+    groupsEl.appendChild(b);
+  });
+}
+document.getElementById("outer").addEventListener("input", (e) => { outer = +e.target.value; render(); });
+drawChips();
+render();
+</script>
+</body>
+</html>
