@@ -71,6 +71,37 @@ struct KeychainStore {
         }
     }
 
+    /// Every item this store's service holds, by account. For a backup: the
+    /// query is the same service and access group as `get`, so nothing that
+    /// belongs to another app comes back. No items is an empty dictionary, not
+    /// an error.
+    func allItems() throws -> [String: String] {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnAttributes as String: true,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        if let group = KeychainAccessGroup.resolved {
+            query[kSecUseDataProtectionKeychain as String] = true
+            query[kSecAttrAccessGroup as String] = group
+        }
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return [:] }
+        guard status == errSecSuccess else { throw KeychainError.unhandled(status) }
+        guard let rows = result as? [[String: Any]] else { throw KeychainError.unexpectedData }
+        var items: [String: String] = [:]
+        for row in rows {
+            guard let account = row[kSecAttrAccount as String] as? String,
+                  let data = row[kSecValueData as String] as? Data,
+                  let value = String(data: data, encoding: .utf8) else { continue }
+            items[account] = value
+        }
+        return items
+    }
+
     func remove(_ account: String) {
         SecItemDelete(baseQuery(account: account) as CFDictionary)
     }

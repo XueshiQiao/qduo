@@ -149,6 +149,10 @@ targets:
       - path: Sources/PopBar/Capture/KeyCombo+Config.swift
       - path: Sources/PopBar/Capture/HotKeyTrigger.swift
       - path: Sources/PopBar/Capture/ModifierDoubleTapDetector.swift
+      - path: Sources/Core/Backup/BackupManifest.swift
+      - path: Sources/Core/Backup/BackupCrypto.swift
+      - path: Sources/Core/Backup/BackupEntryRules.swift
+      - path: Sources/Core/Backup/BackupArchive.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

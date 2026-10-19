@@ -47,7 +47,7 @@ final class ConfigStore: ObservableObject {
     /// a regular file: the dotfiles copy would keep the old contents and the two
     /// would silently drift apart. Re-resolved every time, since the link can be
     /// re-pointed while the app is running.
-    private var resolvedFileURL: URL { fileURL.resolvingSymlinksInPath() }
+    var resolvedFileURL: URL { fileURL.resolvingSymlinksInPath() }
 
     /// Exactly the bytes we last wrote or last successfully read. Content identity
     /// is the loop breaker: a file whose bytes are these is one we already know
@@ -55,6 +55,13 @@ final class ConfigStore: ObservableObject {
     private var lastKnownBytes: Data?
 
     private var saveWorkItem: DispatchWorkItem?
+
+    /// Set while a backup is being restored. The document in memory is then the
+    /// OLD settings, and the file is about to become (or already is) the
+    /// imported one; any write — the debounced save, or `flush()` at quit —
+    /// would put the old settings back. The app restarts after a restore, so
+    /// this is never cleared on success.
+    private var writesSuspended = false
 
     /// How long to sit on a change before writing. Dragging a slider produces a
     /// change per frame; without this the file would be rewritten sixty times a
@@ -132,6 +139,7 @@ final class ConfigStore: ObservableObject {
     }
 
     private func writeNow() {
+        guard !writesSuspended else { return }
         guard let data = encoded() else { return }
         guard data != lastKnownBytes else { return }          // nothing actually changed
 
@@ -159,6 +167,56 @@ final class ConfigStore: ObservableObject {
         } catch {
             Self.log.error("could not write \(url.path): \(error)")
         }
+    }
+
+    // MARK: - Restoring a backup
+
+    /// Stop writing the file until the app restarts. Called before a restore
+    /// touches anything, because the quit that follows a restore ends in
+    /// `flush()`, and a pending change in memory would then move the imported
+    /// file aside as `.bak-` and write the old settings over it.
+    func prepareForRestore() {
+        saveWorkItem?.cancel()
+        saveWorkItem = nil
+        writesSuspended = true
+        Self.log.info("writes suspended for a restore")
+    }
+
+    /// Undo `prepareForRestore` when the restore failed before the imported
+    /// settings were written: the document in memory is still the one on disk.
+    func resumeWrites() {
+        writesSuspended = false
+        // `prepareForRestore` cancelled any save that was waiting. Put it back;
+        // when nothing changed, `writeNow` finds the bytes the same and skips.
+        scheduleSave()
+        Self.log.info("writes resumed — the restore did not replace the settings")
+    }
+
+    /// Put a backup's config in place of the current one. The current file is
+    /// kept beside it first, named the way a changed-underneath file is
+    /// (`config.json.bak-<time>`), so a wrong backup can be undone by hand. The
+    /// write goes to the resolved path, so a config symlinked into a dotfiles
+    /// repo stays a symlink. Only valid between `prepareForRestore()` and the
+    /// restart: the document in memory is not reloaded.
+    func replaceWithImported(_ data: Data) throws {
+        // Without the suspension, the next save would write the old document
+        // straight back over the imported one.
+        guard writesSuspended else { throw CocoaError(.fileWriteNoPermission) }
+        guard let decoded = try? JSONDecoder().decode(JSONValue.self, from: data),
+              decoded.objectValue != nil else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let url = resolvedFileURL
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        if let current = try? Data(contentsOf: url), current != data {
+            let backup = url.appendingPathExtension("bak-" + Self.timestamp())
+            try current.write(to: backup, options: .atomic)
+            Self.log.info("kept the settings being replaced as \(backup.lastPathComponent)")
+        }
+        try data.write(to: url, options: .atomic)
+        lastKnownBytes = data
+        Self.log.info("wrote the imported settings to \(url.path)")
     }
 
     private func encoded() -> Data? {
