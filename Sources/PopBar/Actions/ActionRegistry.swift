@@ -113,7 +113,8 @@ enum ActionRegistry {
             }
 
         case .systemTranslate:
-            let translated = await SystemTranslator.translate(text, to: action.targetLanguage)
+            let translated = await SystemTranslator.translate(text, to: action.targetLanguage,
+                                                              second: action.secondLanguage)
             // Given up on while it ran (popup closed, another action): nothing
             // to show, and above all nothing to write into a document.
             if Task.isCancelled { return .none }

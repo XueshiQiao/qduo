@@ -538,7 +538,7 @@
 "popbar.editor.settings.hint.format" = "打开 %@ 的设置窗口，不使用选中的文字。";
 
 "popbar.editor.kind.systemTranslate" = "系统翻译";
-"popbar.editor.systemTranslate.hint" = "用 macOS 自带的本地翻译：不用模型、不用 API key、断网也能用（下面的快捷指令除外）。原文语言自动识别；列表里是 macOS 能译成的全部语言。某个语言第一次用时，macOS 可能会要求先下载。";
+"popbar.editor.systemTranslate.hint" = "用 macOS 自带的本地翻译：不用模型、不用 API key、断网也能用（下面的快捷指令除外）。原文语言自动识别；列表里是 macOS 能译成的全部语言。某个语言第一次用时，macOS 可能会要求先下载。原文如果已经是要译成的语言，就改译成第二种语言。默认跟着系统的第二语言走。简体和繁体不会送去翻译，而是在这台 Mac 上逐个字转换，所以「軟體」会变成「软体」，不会变成「软件」。";
 "popbar.editor.systemTranslate.shortcut" = "不下载语言也能翻译";
 "popbar.editor.systemTranslate.shortcut.add" = "添加快捷指令…";
 "popbar.editor.systemTranslate.shortcut.added" = "快捷指令已添加";
@@ -553,6 +553,9 @@
 "systemTranslate.error.prefix" = "系统翻译失败。";
 "popbar.editor.targetLanguage" = "译成";
 "popbar.editor.targetLanguage.choose" = "请选择语言";
+"popbar.editor.secondLanguage" = "原文已经是这种语言时，改译成";
+"popbar.editor.secondLanguage.system" = "跟随系统（%@）";
+"popbar.editor.secondLanguage.none" = "不翻译，只提示";
 "systemTranslate.error.noTarget" = "这个动作还没有选目标语言。请到「设置 → 动作」里选择。";
 "systemTranslate.error.alreadyInTarget" = "这段文字已经是%@了。";
 "systemTranslate.error.notDownloaded" = "语言还没下载好，macOS 暂时翻译不了。如果正在下载，请等下载完成后再试；下载进度可以在「系统设置 → 通用 → 语言与地区 → 翻译语言」里查看。";

@@ -150,6 +150,11 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// `systemTranslate`: the language to translate into, as the system names
     /// it ("zh", "zh-TW", "en-GB"). Chosen by the user; nil until they do.
     var targetLanguage: String?
+    /// `systemTranslate`: what to do when the text is already in `targetLanguage`.
+    /// nil follows the system's second language. "none" does not translate and
+    /// shows the "already in this language" message. Any other value is a
+    /// language id in the same form as `targetLanguage`.
+    var secondLanguage: String?
     /// `ai`, `transform`, `shortcut`, `script`, `systemTranslate`: an `ActionOutput` raw value.
     /// nil = the panel.
     var output: String?
@@ -247,7 +252,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, id, title, iconSymbol, iconImage, kind, prompt, modelOverride, children
-        case url, openIn, op, shortcut, script, keys, output, reader, targetLanguage
+        case url, openIn, op, shortcut, script, keys, output, reader, targetLanguage, secondLanguage
         case marksGroup = "group"
         case urlName
     }
@@ -277,6 +282,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         output = try? c.decodeIfPresent(String.self, forKey: .output)
         reader = try? c.decodeIfPresent(String.self, forKey: .reader)
         targetLanguage = try? c.decodeIfPresent(String.self, forKey: .targetLanguage)
+        secondLanguage = try? c.decodeIfPresent(String.self, forKey: .secondLanguage)
         marksGroup = try? c.decodeIfPresent(Bool.self, forKey: .marksGroup)
         urlName = try? c.decodeIfPresent(String.self, forKey: .urlName)
         // Flatten anything deeper than one level (see `children`). Decoding is
@@ -337,6 +343,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(output, forKey: key(.output))
         try c.encodeIfPresent(reader, forKey: key(.reader))
         try c.encodeIfPresent(targetLanguage, forKey: key(.targetLanguage))
+        try c.encodeIfPresent(secondLanguage, forKey: key(.secondLanguage))
         if marksGroup == true { try c.encode(true, forKey: key(.marksGroup)) }
         try c.encodeIfPresent(urlName, forKey: key(.urlName))
         // Only written when there is something to write, so an action that never

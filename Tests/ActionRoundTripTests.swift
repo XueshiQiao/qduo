@@ -129,6 +129,37 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(out?[path: "targetLanguage"]?.stringValue, "zh-TW")
     }
 
+    func testSystemTranslateSecondLanguageRoundTrips() throws {
+        let json = """
+        [{ "id": "t", "title": "Translate", "iconSymbol": "translate", "kind": "systemTranslate",
+           "targetLanguage": "zh", "secondLanguage": "en" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertEqual(action.secondLanguage, "en")
+        XCTAssertEqual(try roundTrip(json).arrayValue?.first?[path: "secondLanguage"]?.stringValue, "en")
+    }
+
+    func testSystemTranslateNoneSecondLanguageRoundTrips() throws {
+        let json = """
+        [{ "id": "t", "title": "Translate", "iconSymbol": "translate", "kind": "systemTranslate",
+           "targetLanguage": "zh", "secondLanguage": "none" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertEqual(action.secondLanguage, "none")
+        XCTAssertEqual(try roundTrip(json).arrayValue?.first?[path: "secondLanguage"]?.stringValue, "none")
+    }
+
+    func testSystemTranslateWithoutSecondLanguageOmitsTheKey() throws {
+        let json = """
+        [{ "id": "t", "title": "Translate", "iconSymbol": "translate", "kind": "systemTranslate",
+           "targetLanguage": "zh-TW" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertNil(action.secondLanguage)
+        let out = try XCTUnwrap(try roundTrip(json).arrayValue?.first)
+        XCTAssertNil(out[path: "secondLanguage"], "a missing second language must not be written back")
+    }
+
     func testTheCompareOutputLoadsAndSavesAsCompare() throws {
         let json = """
         [{ "id": "p", "title": "Polish", "iconSymbol": "wand.and.stars", "kind": "ai", "prompt": "p", "output": "compare" }]

@@ -262,7 +262,7 @@ enum ConfigSchema {
               "type": "string",
               "enum": ["ai", "copy", "webPreview", "quickLook", "revealInFinder", "openURL", "speak",
                        "transform", "shortcut", "script", "keystroke", "systemTranslate", "pause", "inspect", "settings", "group"],
-              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. keystroke = press one key combination (keys) in the app the text was selected in. systemTranslate = translate with macOS's own on-device translator into targetLanguage (macOS 15+). pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). settings = open the app's settings window. group = hold children. The rest act on links and paths."
+              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. keystroke = press one key combination (keys) in the app the text was selected in. systemTranslate = translate with macOS's own on-device translator into targetLanguage (macOS 15+). secondLanguage says what happens when the text is already in that language. pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). settings = open the app's settings window. group = hold children. The rest act on links and paths."
             },
             "prompt": { "type": "string",
               "description": "For \\"ai\\": the instruction sent with the selection." },
@@ -286,6 +286,8 @@ enum ConfigSchema {
               "description": "For ai, transform, shortcut, script and systemTranslate: where the result goes. panel (default) shows it in the popup, which offers a Replace button; compare shows the selection above the result with the changes marked, then Replace; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
             "targetLanguage": { "type": "string",
               "description": "For \\"systemTranslate\\": the language to translate into, as macOS names it, e.g. \\"zh\\" (Simplified Chinese), \\"zh-TW\\" (Traditional Chinese), \\"en\\", \\"en-GB\\", \\"ja\\", \\"fr\\"." },
+            "secondLanguage": { "type": "string",
+              "description": "For \\"systemTranslate\\": what to do when the text is already in targetLanguage. Written the same way as targetLanguage. Absent = follow the system's second preferred language. \\"none\\" = do not translate, and show the message that the text is already in that language. Any other value = translate into that language." },
             "reader": { "type": "string",
               "description": "For \\"speak\\": the id of the reader (see speech.readers, or \\"system\\"). Absent = speech.defaultReader." },
             "modelOverride": {

@@ -26,6 +26,15 @@ final class ConfigSchemaTests: XCTestCase {
         XCTAssertNoThrow(try schema())
     }
 
+    func testSystemTranslateSecondLanguageIsDescribed() throws {
+        let description = try actionDescription("secondLanguage")
+        XCTAssertTrue(description.contains("\"none\""))
+        XCTAssertTrue(description.contains("Absent"))
+        XCTAssertTrue(description.localizedCaseInsensitiveContains("system"))
+        XCTAssertTrue(description.contains("Any other value"))
+        XCTAssertTrue(try actionDescription("kind").contains("secondLanguage"))
+    }
+
     func testHotKeyPatternsAcceptWhatTheAppWrites() throws {
         let ocr = try pattern("ocr", "hotKey")
         XCTAssertTrue(matches(ocr, "shift+cmd+s"))
