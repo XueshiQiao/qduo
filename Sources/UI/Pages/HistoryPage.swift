@@ -431,6 +431,7 @@ private extension HistoryRecord {
         case .quickLook, .revealInFinder: return .teal
         case .shortcut:        return .pink
         case .script:          return Color(nsColor: .darkGray)
+        case .keystroke:       return .mint
         case .copy:            return .green
         default:               return .gray
         }

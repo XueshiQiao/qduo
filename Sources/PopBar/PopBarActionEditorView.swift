@@ -74,6 +74,7 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.transform")).tag(PopBarActionConfig.Kind.transform)
                         Text(L("popbar.editor.kind.shortcut")).tag(PopBarActionConfig.Kind.shortcut)
                         Text(L("popbar.editor.kind.script")).tag(PopBarActionConfig.Kind.script)
+                        Text(L("popbar.editor.kind.keystroke")).tag(PopBarActionConfig.Kind.keystroke)
                         // Offered on macOS 15+ only — but an action that already
                         // is one keeps its entry, so the picker never shows blank.
                         if SystemTranslator.isAvailable || draft.kind == .systemTranslate {
@@ -159,6 +160,7 @@ struct ActionEditorView: View {
         case .transform: return titleOK && (draft.op == nil || draft.op.flatMap(TextTransform.init(rawValue:)) != nil)
         case .shortcut:  return titleOK && filled(draft.shortcut)
         case .script:    return titleOK && filled(draft.script)
+        case .keystroke: return titleOK && keystrokeCombo != nil
         case .systemTranslate: return titleOK && filled(draft.targetLanguage)
         default:         return titleOK
         }
@@ -298,6 +300,33 @@ struct ActionEditorView: View {
             } footer: {
                 Text(L("popbar.editor.script.hint")).fixedSize(horizontal: false, vertical: true)
             }
+        case .keystroke:
+            Section {
+                LabeledContent(L("popbar.editor.keys")) {
+                    HotKeyRecorderField(combo: keystrokeCombo,
+                                        requiresModifier: false) { recorded in
+                        draft.keys = recorded.configString
+                    }
+                }
+                TextField(text: optionalText(\.keys),
+                          prompt: Text(verbatim: "shift+cmd+k")) {
+                    Text(L("popbar.editor.keys.name"))
+                }
+                .font(.system(size: 12, design: .monospaced))
+                .autocorrectionDisabled()
+                if let warning = keystrokeUnrecognizedWarning {
+                    Label(warning, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let warning = keystrokeHotKeyWarning {
+                    Label(warning, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } footer: {
+                Text(L("popbar.editor.keys.hint")).fixedSize(horizontal: false, vertical: true)
+            }
         case .systemTranslate:
             Section {
                 Picker(L("popbar.editor.targetLanguage"), selection: Binding(
@@ -369,6 +398,35 @@ struct ActionEditorView: View {
                 }
             }
         }
+    }
+
+    /// The keys field, read strictly: modifiers plus exactly one key name.
+    /// Nil when the field is empty, mistyped, or names two keys (`cmd+a+c`).
+    private var keystrokeCombo: KeyCombo? {
+        KeyCombo(strictConfigString: draft.keys ?? "")
+    }
+
+    /// Shown when the keys field has text this app cannot read back, because
+    /// the name was typed wrong — `delet` instead of `delete`, or two keys in
+    /// one combo such as `cmd+a+c`. Save stays off for the same reason
+    /// (`isValid`). An empty field is just not filled in yet, so it gets no
+    /// warning.
+    private var keystrokeUnrecognizedWarning: String? {
+        let raw = draft.keys ?? ""
+        guard !raw.isEmpty, keystrokeCombo == nil else { return nil }
+        return L("popbar.editor.keys.unrecognized")
+    }
+
+    /// Shown when the keys are a shortcut this app itself is listening for.
+    /// A registered hotkey swallows the key before the other app sees it, so
+    /// the action would not do what it says. Only while that hotkey is on:
+    /// a recorded-but-disabled one is not catching anything.
+    private var keystrokeHotKeyWarning: String? {
+        guard let combo = keystrokeCombo else { return nil }
+        let clashesWithPopup = PopBarPreferences.popupHotKeyEnabled && PopBarPreferences.popupHotKey == combo
+        let clashesWithOCR = PopBarPreferences.screenOCREnabled && PopBarPreferences.screenOCRHotKey == combo
+        guard clashesWithPopup || clashesWithOCR else { return nil }
+        return String(format: L("popbar.editor.keys.hotkeyClash"), Brand.name, Brand.name)
     }
 
     private func optionalText(_ keyPath: WritableKeyPath<PopBarActionConfig, String?>) -> Binding<String> {

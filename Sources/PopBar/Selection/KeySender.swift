@@ -39,6 +39,14 @@ enum KeySender {
         postKeyCombo(virtualKey: CGKeyCode(kVK_ANSI_V), flags: .maskCommand)
     }
 
+    /// Post one key combination to whatever app is frontmost. The same event
+    /// source, the same `syntheticUserData` tag and the same tap as `copy()`
+    /// and `paste()`, so the popup's own input monitor ignores the key it just
+    /// sent. The caller decides which app that is; this only posts the key.
+    static func press(_ combo: KeyCombo) {
+        postKeyCombo(virtualKey: CGKeyCode(combo.keyCode), flags: combo.cgEventFlags)
+    }
+
     private static func postKeyCombo(virtualKey: CGKeyCode, flags: CGEventFlags) {
         // .combinedSessionState so the synthesized event merges with the user's
         // real modifier state cleanly.

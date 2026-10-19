@@ -90,6 +90,28 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertEqual(try roundTrip(json).arrayValue?.first?[path: "kind"]?.stringValue, "pause")
     }
 
+    func testTheKeystrokeKindIsKnownAndProducesNothing() throws {
+        let json = """
+        [{ "id": "k", "title": "Delete", "iconSymbol": "keyboard", "kind": "keystroke", "keys": "delete" }]
+        """
+        let action = try XCTUnwrap(try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8)).first)
+        XCTAssertEqual(action.kind, .keystroke)
+        XCTAssertFalse(action.isUnsupported)
+        XCTAssertFalse(action.hasOutput)
+        XCTAssertEqual(action.keys, "delete")
+        let out = try roundTrip(json).arrayValue?.first
+        XCTAssertEqual(out?[path: "kind"]?.stringValue, "keystroke")
+        XCTAssertEqual(out?[path: "keys"]?.stringValue, "delete")
+    }
+
+    func testAnUnrecognisedKeysStringIsKeptVerbatim() throws {
+        let out = try roundTrip("""
+        [{ "id": "k", "title": "Odd", "iconSymbol": "keyboard", "kind": "keystroke", "keys": "cmd+hyper" }]
+        """)
+        XCTAssertEqual(out.arrayValue?.first?[path: "kind"]?.stringValue, "keystroke")
+        XCTAssertEqual(out.arrayValue?.first?[path: "keys"]?.stringValue, "cmd+hyper")
+    }
+
     func testTheSystemTranslateKindKeepsItsKindAndOutput() throws {
         let json = """
         [{ "id": "t", "title": "Translate", "iconSymbol": "translate", "kind": "systemTranslate",
@@ -240,6 +262,9 @@ final class ActionRoundTripTests: XCTestCase {
             for action in section.actions where action.kind == .openURL {
                 let url = action.url ?? ""
                 XCTAssertTrue(URLTemplate.isSelectionOnly(url) || URLTemplate.fill(url, with: "x") != nil, action.title)
+            }
+            for action in section.actions where action.kind == .keystroke {
+                XCTAssertNotNil(KeyCombo(strictConfigString: action.keys ?? ""), action.title)
             }
         }
     }

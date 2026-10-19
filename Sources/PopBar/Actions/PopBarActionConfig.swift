@@ -94,6 +94,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case transform      // local: a `TextTransform` named by `op`
         case shortcut       // run the macOS Shortcut named `shortcut` on the selection
         case script         // run the shell command `script` on the selection
+        case keystroke      // press the one key combination in `keys`, in the app the text was selected in
         case systemTranslate // local: macOS's on-device translator (macOS 15+), no model
         case pause          // pause the popup, like the menu bar's Pause (the selection is ignored)
         case inspect        // debug: show the selection's accessibility element and its path
@@ -139,6 +140,10 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// `script`: a shell command, run by the user's login shell with the
     /// selection on standard input.
     var script: String?
+    /// `keystroke`: one key combination, written the same way as `popup.hotKey`
+    /// (`"delete"`, `"shift+cmd+k"`). A string, not a `KeyCombo`: a value this
+    /// build cannot parse is kept and written back unchanged.
+    var keys: String?
     /// `speak`: the id of the reader to use (`SpeechSettingsStore`). nil = the
     /// default reader chosen in settings.
     var reader: String?
@@ -156,7 +161,8 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         return output.flatMap(ActionOutput.init(rawValue:)) ?? .panel
     }
 
-    /// Whether this kind produces text that `output` applies to.
+    /// Whether this kind produces text that `output` applies to. `keystroke`
+    /// presses a key and produces nothing, so it is not in this list.
     var hasOutput: Bool { [.ai, .transform, .shortcut, .script, .systemTranslate].contains(kind) }
 
     var openTarget: OpenURLTarget { openIn.flatMap(OpenURLTarget.init(rawValue:)) ?? .browser }
@@ -241,7 +247,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, id, title, iconSymbol, iconImage, kind, prompt, modelOverride, children
-        case url, openIn, op, shortcut, script, output, reader, targetLanguage
+        case url, openIn, op, shortcut, script, keys, output, reader, targetLanguage
         case marksGroup = "group"
         case urlName
     }
@@ -267,6 +273,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         op = try? c.decodeIfPresent(String.self, forKey: .op)
         shortcut = try? c.decodeIfPresent(String.self, forKey: .shortcut)
         script = try? c.decodeIfPresent(String.self, forKey: .script)
+        keys = try? c.decodeIfPresent(String.self, forKey: .keys)
         output = try? c.decodeIfPresent(String.self, forKey: .output)
         reader = try? c.decodeIfPresent(String.self, forKey: .reader)
         targetLanguage = try? c.decodeIfPresent(String.self, forKey: .targetLanguage)
@@ -326,6 +333,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(op, forKey: key(.op))
         try c.encodeIfPresent(shortcut, forKey: key(.shortcut))
         try c.encodeIfPresent(script, forKey: key(.script))
+        try c.encodeIfPresent(keys, forKey: key(.keys))
         try c.encodeIfPresent(output, forKey: key(.output))
         try c.encodeIfPresent(reader, forKey: key(.reader))
         try c.encodeIfPresent(targetLanguage, forKey: key(.targetLanguage))
@@ -532,6 +540,7 @@ enum ActionTemplates {
                 DefaultActions.speakAction(),
                 shortcutTemplate(),
                 scriptTemplate(),
+                keystrokeTemplate(),
                 DefaultActions.pauseAction(),
                 DefaultActions.inspectAction(),
                 DefaultActions.settingsAction(),
@@ -567,6 +576,14 @@ enum ActionTemplates {
         // A harmless example that shows the contract: the selection arrives on
         // standard input, whatever is printed comes back.
         a.script = "tr '[:lower:]' '[:upper:]'"
+        return a
+    }
+
+    /// Press ⌫ in the app the text was selected in. The user changes the keys
+    /// in the editor; "delete" is the one combination that is useful as it is.
+    private static func keystrokeTemplate() -> PopBarActionConfig {
+        var a = PopBarActionConfig(title: L("template.keystroke"), iconSymbol: "keyboard", kind: .keystroke)
+        a.keys = "delete"
         return a
     }
 

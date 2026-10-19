@@ -212,6 +212,7 @@
 "popbar.editor.kind.transform" = "文本处理";
 "popbar.editor.kind.shortcut" = "运行快捷指令";
 "popbar.editor.kind.script" = "运行 Shell 脚本";
+"popbar.editor.kind.keystroke" = "按下按键";
 "popbar.editor.url" = "网址";
 "popbar.editor.url.hint" = "{text} 会被替换成选中的文字。网页可以在浏览器或弹窗的预览窗口里打开；其他地址（dict://、obsidian://）交给对应的 app 打开。\n\n只填 {text} 时，选中的文字本身就是要打开的网址（比如 example.com 或 https://example.com/page），选中的不是网址时会提示。想搜索选中的文字，请填搜索引擎的网址，比如 https://www.google.com/search?q={text}。";
 "popbar.editor.openIn" = "打开方式";
@@ -230,6 +231,12 @@
 "popbar.editor.shortcut.hint" = "「快捷指令」app 里某个快捷指令的名字。选中的文字作为它的输入，它输出的内容就是结果。";
 "popbar.editor.script" = "Shell 脚本";
 "popbar.editor.script.hint" = "在你的登录 shell 里运行。选中的文字从标准输入传入（也在 $QDUO_TEXT 里）；脚本打印出来的就是结果。脚本第一次运行、以及每次改动之后，都会先请你确认。";
+"popbar.editor.keys" = "按键";
+"popbar.editor.keys.name" = "按键名称";
+"popbar.editor.keys.hint" = "按键会发到你选中这段文字时所在的那个 app。如果那个 app 已经不在最前面，这个动作不会按任何键，并且会提示错误。给这个动作打开「允许其他 app 通过 URL 运行此动作」没有用：从 URL 运行时没有来源 app，这个动作会拒绝按键。";
+"popbar.editor.keys.hotkeyClash" = "这个组合和 %@ 自己的快捷键一样。%@ 会先接到这个键，前面的 app 收不到。";
+"popbar.editor.keys.recording" = "按下按键…（再点一下取消）";
+"popbar.editor.keys.unrecognized" = "这个键不能用，请换一个键。保存按钮现在是灰的，就是因为这个原因。";
 "popbar.replace.result" = "用这段结果替换选中的文字";
 "popbar.replace.lost" = "选区已经变了或失去了焦点，所以没有替换。结果已复制到剪贴板。";
 "popbar.replace.unavailable" = "这段文字没法替换（它不在本 app 能写入的输入框里）。结果已复制到剪贴板。";
@@ -240,6 +247,11 @@
 "popbar.compare.unchanged" = "没有需要修改的地方：结果和原文一样。";
 "popbar.error.noshortcut" = "这个动作没有填快捷指令名称。请到「设置 → 动作」里编辑。";
 "popbar.error.noscript" = "这个动作没有填脚本。请到「设置 → 动作」里编辑。";
+"popbar.error.nokeys" = "这个动作没有填按键。请到「设置 → 动作」里编辑。";
+"popbar.error.badkeys" = "这个动作填的按键组合，这个 app 不认识。请到「设置 → 动作」里编辑。";
+"popbar.error.keystroke.noPermission" = "需要「辅助功能」权限，才能在别的 app 里按键。请到「系统设置 → 隐私与安全性 → 辅助功能」里打开。";
+"popbar.error.keystroke.noSourceApp" = "没有可以按键的 app。这个动作只对在某个 app 里选中的文字起作用；截图取词、示例文字和从 URL 运行都不行。";
+"popbar.error.keystroke.appNotFront" = "选中这段文字的 app 已经不在最前面，所以没有按键。";
 "popbar.error.badurl" = "这个动作的网址没填或者格式不对。请到「设置 → 动作」里编辑。";
 "popbar.error.notaurl" = "选中的文字不是一个网址，所以没有打开任何网页。";
 "popbar.error.unknownop" = "这个版本的 app 不认识这个动作的文本操作。";
@@ -272,6 +284,7 @@
 "template.obsidian" = "新建 Obsidian 笔记";
 "template.shortcut" = "运行快捷指令";
 "template.script" = "运行脚本";
+"template.keystroke" = "按删除键";
 "transform.uppercase" = "全部大写";
 "transform.lowercase" = "全部小写";
 "transform.titleCase" = "标题大小写";

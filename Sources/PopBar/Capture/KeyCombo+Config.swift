@@ -25,8 +25,25 @@ extension KeyCombo {
     /// person typed, so spaces, dashes, case and the common aliases all work.
     /// Returns nil only when the KEY itself is unrecognizable, which is the one
     /// case where guessing would silently bind the wrong shortcut.
+    ///
+    /// More than one key name does not fail: the last one wins, so `"cmd+a+c"`
+    /// is ⌘C. Hotkeys already stored that way keep working. A keystroke is one
+    /// combination and uses `init(strictConfigString:)`.
     init?(configString: String) {
-        let tokens = configString
+        guard let parsed = Self.parse(configString, strict: false) else { return nil }
+        self.init(keyCode: parsed.key, carbonModifiers: parsed.modifiers)
+    }
+
+    /// Same reading as `init(configString:)`, except there is exactly one key
+    /// name besides the modifiers. `"cmd+a+c"` is nil here and ⌘C there.
+    init?(strictConfigString: String) {
+        guard let parsed = Self.parse(strictConfigString, strict: true) else { return nil }
+        self.init(keyCode: parsed.key, carbonModifiers: parsed.modifiers)
+    }
+
+    /// `strict` rejects a second key name. Otherwise the last one wins.
+    private static func parse(_ raw: String, strict: Bool) -> (key: UInt32, modifiers: UInt32)? {
+        let tokens = raw
             .lowercased()
             .replacingOccurrences(of: " ", with: "")
             .split(whereSeparator: { $0 == "+" || $0 == "-" })
@@ -44,11 +61,15 @@ extension KeyCombo {
             default:
                 // The last non-modifier token wins, so "cmd+shift+s" and a stray
                 // duplicate both land on one key rather than failing outright.
-                if let code = Self.codes[token] { key = code } else { return nil }
+                // `strict` is the exception: a keystroke is one key, so a second
+                // name (`cmd+a+c`) is rejected instead of dropping the first.
+                guard let code = Self.codes[token] else { return nil }
+                if strict, key != nil { return nil }
+                key = code
             }
         }
         guard let key else { return nil }
-        self.init(keyCode: key, carbonModifiers: modifiers)
+        return (key, modifiers)
     }
 
     // MARK: - Names
@@ -72,7 +93,9 @@ extension KeyCombo {
         for (i, code) in digitCodes.enumerated() { map[UInt32(code)] = String(i) }
 
         let fCodes = [kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F5, kVK_F6,
-                      kVK_F7, kVK_F8, kVK_F9, kVK_F10, kVK_F11, kVK_F12]
+                      kVK_F7, kVK_F8, kVK_F9, kVK_F10, kVK_F11, kVK_F12,
+                      kVK_F13, kVK_F14, kVK_F15, kVK_F16, kVK_F17, kVK_F18,
+                      kVK_F19, kVK_F20]
         for (i, code) in fCodes.enumerated() { map[UInt32(code)] = "f\(i + 1)" }
 
         map[UInt32(kVK_Space)]      = "space"
@@ -80,10 +103,44 @@ extension KeyCombo {
         map[UInt32(kVK_Tab)]        = "tab"
         map[UInt32(kVK_Escape)]     = "escape"
         map[UInt32(kVK_Delete)]     = "delete"
+        // One word each: "+" and "-" are separators, so "page up" is "pageup".
+        map[UInt32(kVK_ForwardDelete)] = "forwarddelete"
+        map[UInt32(kVK_Home)]       = "home"
+        map[UInt32(kVK_End)]        = "end"
+        map[UInt32(kVK_PageUp)]     = "pageup"
+        map[UInt32(kVK_PageDown)]   = "pagedown"
         map[UInt32(kVK_LeftArrow)]  = "left"
         map[UInt32(kVK_RightArrow)] = "right"
         map[UInt32(kVK_UpArrow)]    = "up"
         map[UInt32(kVK_DownArrow)]  = "down"
+        // Punctuation. One word each: "+" and "-" split the config string, so
+        // the minus key is "minus", not "-".
+        map[UInt32(kVK_ANSI_Minus)]        = "minus"
+        map[UInt32(kVK_ANSI_Equal)]        = "equal"
+        map[UInt32(kVK_ANSI_LeftBracket)]  = "leftbracket"
+        map[UInt32(kVK_ANSI_RightBracket)] = "rightbracket"
+        map[UInt32(kVK_ANSI_Backslash)]    = "backslash"
+        map[UInt32(kVK_ANSI_Semicolon)]    = "semicolon"
+        map[UInt32(kVK_ANSI_Quote)]        = "quote"
+        map[UInt32(kVK_ANSI_Comma)]        = "comma"
+        map[UInt32(kVK_ANSI_Period)]       = "period"
+        map[UInt32(kVK_ANSI_Slash)]        = "slash"
+        map[UInt32(kVK_ANSI_Grave)]        = "grave"
+        map[UInt32(kVK_ANSI_KeypadEnter)]  = "keypadenter"
+        // One word each, same reason as "minus": "+" and "-" split the config string.
+        let keypadDigits = [kVK_ANSI_Keypad0, kVK_ANSI_Keypad1, kVK_ANSI_Keypad2,
+                            kVK_ANSI_Keypad3, kVK_ANSI_Keypad4, kVK_ANSI_Keypad5,
+                            kVK_ANSI_Keypad6, kVK_ANSI_Keypad7, kVK_ANSI_Keypad8,
+                            kVK_ANSI_Keypad9]
+        for (i, code) in keypadDigits.enumerated() { map[UInt32(code)] = "keypad\(i)" }
+        map[UInt32(kVK_ANSI_KeypadDecimal)]  = "keypaddecimal"
+        map[UInt32(kVK_ANSI_KeypadPlus)]     = "keypadplus"
+        map[UInt32(kVK_ANSI_KeypadMinus)]    = "keypadminus"
+        map[UInt32(kVK_ANSI_KeypadMultiply)] = "keypadmultiply"
+        map[UInt32(kVK_ANSI_KeypadDivide)]   = "keypaddivide"
+        map[UInt32(kVK_ANSI_KeypadEquals)]   = "keypadequals"
+        map[UInt32(kVK_ANSI_KeypadClear)]    = "keypadclear"
+        map[UInt32(kVK_Help)]                = "help"
         return map
     }()
 
@@ -94,6 +151,7 @@ extension KeyCombo {
         map["enter"] = UInt32(kVK_Return)
         map["del"]   = UInt32(kVK_Delete)
         map["backspace"] = UInt32(kVK_Delete)
+        map["fwddelete"] = UInt32(kVK_ForwardDelete)
         map["arrowleft"]  = UInt32(kVK_LeftArrow)
         map["arrowright"] = UInt32(kVK_RightArrow)
         map["arrowup"]    = UInt32(kVK_UpArrow)
