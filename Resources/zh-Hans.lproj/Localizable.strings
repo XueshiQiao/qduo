@@ -155,7 +155,7 @@
 "popbar.editor.icon.search.count" = "找到 %d 个，名字以它开头的排在前面";
 "popbar.editor.icon.image.choose" = "选择文件…";
 "popbar.editor.icon.image.remove" = "移除图片";
-"popbar.editor.icon.image.hint" = "要求：PNG，128×128 像素，建议透明背景。其他尺寸会缩放成 128×128；图片按原样显示，不跟随主题变色。";
+"popbar.editor.icon.image.hint" = "要求：PNG，128×128 像素，建议透明背景。其他尺寸会缩放成 128×128；图片只保留外形，和内置图标一样跟随主题变色，所以只靠颜色区分的细节会看不出来。如果图片有不透明的背景（比如 App 图标那样的方块、白底的图），会先把背景去掉：和背景颜色接近的部分都会被去掉。渐变很明显的背景、半透明的背景，可能去不干净；上面的预览就是实际会画出来的样子。";
 "popbar.editor.icon.image.error.notPNG" = "这个文件不是 PNG。";
 "popbar.editor.icon.image.error.unreadable" = "这个文件读不出图片。";
 "popbar.editor.icon.image.error.cannotWrite" = "图片存不进图标文件夹。";
