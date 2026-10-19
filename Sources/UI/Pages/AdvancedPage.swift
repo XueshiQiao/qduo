@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 /// The Advanced page: the settings most people never touch — the popup hotkey
 /// (off by default), how the selection is read and where it is not (excluded
@@ -18,6 +19,9 @@ struct AdvancedPage: View {
     /// Set when the recorded popup hotkey could not be registered (another app,
     /// or the screenshot-OCR hotkey, has it), so the field can say so.
     @State private var popupHotKeyError = false
+    @State private var showExport = false
+    /// The backup chosen in the open panel; the import sheet is up while set.
+    @State private var importing: BackupFile?
 
     init(store: PopBarStore) {
         _store = ObservedObject(wrappedValue: store)
@@ -30,10 +34,52 @@ struct AdvancedPage: View {
             copyFirstAppsSection
             excludedAppsSection
             terminalAppsSection
+            backupSection
             diagnosticsSection
         }
         .formStyle(.grouped)
         .navigationTitle(L("page.advanced"))
+        .sheet(isPresented: $showExport) {
+            BackupExportSheet { showExport = false }
+        }
+        .sheet(item: $importing) { file in
+            BackupImportSheet(zip: file.url) { importing = nil }
+        }
+    }
+
+    // MARK: - Backup (issue #22)
+
+    /// The config file alone is not the user's setup: the icon pictures sit in a
+    /// folder beside it, the API keys in the Keychain and the history in its own
+    /// database. A backup carries all four.
+    private var backupSection: some View {
+        Section {
+            LabeledContent {
+                Button(L("backup.export.button")) { showExport = true }
+            } label: {
+                iconLabel("square.and.arrow.up", .blue, L("backup.export.title"))
+            }
+            LabeledContent {
+                Button(L("backup.import.button")) { chooseBackup() }
+            } label: {
+                iconLabel("square.and.arrow.down", .green, L("backup.import.title"))
+            }
+        } header: {
+            Text(L("backup.header"))
+        } footer: {
+            Text(String(format: L("backup.footer"), Brand.name))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func chooseBackup() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.zip]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        importing = BackupFile(url: url)
     }
 
     // MARK: - Popup hotkey (issue #4)
@@ -217,4 +263,10 @@ struct AdvancedPage: View {
             Text(L("Diagnostics"))
         }
     }
+}
+
+/// A chosen backup file, as the import sheet's item.
+private struct BackupFile: Identifiable {
+    let url: URL
+    var id: String { url.path }
 }

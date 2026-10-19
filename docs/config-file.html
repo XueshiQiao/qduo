@@ -331,7 +331,19 @@
 
 <p>加上你明确说了要一个文件，所以保持一个。</p>
 
-<h2>7 · 拿掉任何一块会怎么样</h2>
+<h2>7 · 备份和恢复（issue #22）</h2>
+
+<p>只复制 <code>config.json</code> 到另一台 Mac 是不够的：图标图片在旁边的 <code>icons/</code> 文件夹里，API Key 在钥匙串里（设成了只留在本机），历史记录在 <code>~/Library/Application Support/me.xueshi.qduo/history.sqlite</code>。所以「高级」页有「导出…」和「导入…」，把这四样打进一个 zip。</p>
+
+<ul>
+  <li><b>API Key 一定加密。</b>勾选导出 Key 时必须设一个密码，Key 这一部分用这个密码加密（PBKDF2-HMAC-SHA256 把密码变成密钥，再用 AES-256-GCM 加密）。其他部分是普通文件，谁拿到这个 zip 都能看。</li>
+  <li><b>脚本的审批记录不导出。</b>它存在 UserDefaults 里，本来就故意不放进 config。导入别人给的备份后，里面的 Shell 脚本第一次运行时照样会问你。</li>
+  <li><b>导入 config 前，现在的 config 先另存为 <code>config.json.bak-&lt;时间&gt;</code></b>，写入的是软链解析之后的真实文件，所以软链进 dotfiles 的 config 仍然是软链。</li>
+  <li><b>导入后要重启。</b>App 只在启动时读一次 config（见第 2 节）。导入前会先停掉写盘，否则退出时 <code>flush()</code> 会把内存里的旧设置写回去，盖掉刚导入的文件。另一份构建（Debug 或正式版）还开着时，导入会被拒绝，原因相同：它保存时也会把自己的旧设置写回去。</li>
+  <li><b>历史记录是合并，不是替换。</b>两份构建同时开着同一个数据库文件，替换文件会让另一个进程之后写的记录丢掉。合并只加进这台 Mac 上没有的记录，不删除任何记录，所以只导入历史记录时不用重启。</li>
+</ul>
+
+<h2>8 · 拿掉任何一块会怎么样</h2>
 
 <table>
   <thead>

@@ -243,6 +243,129 @@ final class HistoryStore {
         }
     }
 
+    /// How many records there are.
+    func recordCount() async -> Int {
+        await onQueue { [self] in
+            guard open() else { return 0 }
+            return countRows(in: "main")
+        }
+    }
+
+    // MARK: - Backup
+
+    enum BackupError: Error {
+        case unavailable
+        case targetExists
+        case failed(String)
+        case notHistory
+    }
+
+    /// Write the whole history to `target` as one self-contained file, and
+    /// return how many records it holds.
+    ///
+    /// `VACUUM INTO` reads through this connection, so rows still sitting in the
+    /// write-ahead log are included, and the copy it writes is an ordinary
+    /// rollback-journal file with no `-wal` or `-shm` beside it. It cannot run
+    /// inside a transaction, and it refuses a target that already exists.
+    func snapshot(to target: URL) async throws -> Int {
+        let result: Result<Int, BackupError> = await onQueue { [self] in
+            guard open() else { return .failure(.unavailable) }
+            guard !FileManager.default.fileExists(atPath: target.path) else { return .failure(.targetExists) }
+            guard let stmt = prepare("VACUUM INTO ?") else { return .failure(.failed("prepare")) }
+            defer { sqlite3_finalize(stmt) }
+            bind([.text(target.path)], to: stmt)
+            guard sqlite3_step(stmt) == SQLITE_DONE else {
+                logError("snapshot")
+                return .failure(.failed("vacuum into"))
+            }
+            return .success(countRows(in: "main"))
+        }
+        return try result.get()
+    }
+
+    /// Add the records of another history file — a backup's snapshot — to this
+    /// one, and return how many were added.
+    ///
+    /// Nothing here is deleted or replaced, and the file stays the one Debug and
+    /// Release both have open; the rows go in through the same write lock as any
+    /// other insert. A record already present (same time, same text, same kind
+    /// of action) is skipped, so restoring the same backup twice adds nothing.
+    /// Only the columns both files have are copied, which lets a backup from an
+    /// older or newer build come in. The full-text index follows through the
+    /// insert trigger.
+    func merge(from source: URL) async -> Result<Int, BackupError> {
+        let result: Result<Int, BackupError> = await onQueue { [self] in
+            guard open() else { return .failure(.unavailable) }
+            // ATTACH and DETACH cannot run inside a transaction.
+            guard let attach = prepare("ATTACH DATABASE ? AS imported") else { return .failure(.failed("prepare")) }
+            bind([.text(source.path)], to: attach)
+            let attached = sqlite3_step(attach) == SQLITE_DONE
+            sqlite3_finalize(attach)
+            guard attached else {
+                logError("attach")
+                return .failure(.notHistory)
+            }
+            defer { exec("DETACH DATABASE imported") }
+
+            guard quickCheck("imported"), tableExists("history", in: "imported") else { return .failure(.notHistory) }
+            let ours = columns(of: "main")
+            let theirs = Set(columns(of: "imported"))
+            let shared = ours.filter { $0 != "id" && theirs.contains($0) }
+            for needed in ["created_at", "input_hash", "action_kind"] where !shared.contains(needed) {
+                return .failure(.notHistory)
+            }
+            let list = shared.map { "\"\($0)\"" }.joined(separator: ", ")
+            let picked = shared.map { "i.\"\($0)\"" }.joined(separator: ", ")
+            let sql = """
+            INSERT INTO main.history (\(list))
+            SELECT \(picked) FROM imported.history AS i
+            WHERE NOT EXISTS (SELECT 1 FROM main.history AS h
+                              WHERE h.created_at = i.created_at
+                                AND h.input_hash IS i.input_hash
+                                AND h.action_kind = i.action_kind)
+            """
+            let added = writing { () -> Int? in
+                guard exec(sql) else { return nil }
+                return Int(sqlite3_changes(db))
+            }
+            guard let added else { return .failure(.failed("insert")) }
+            Self.log.info("merged \(added) record(s) from a backup")
+            if added > 0 { notifyChanged() }
+            return .success(added)
+        }
+        return result
+    }
+
+    private func countRows(in schema: String) -> Int {
+        guard let stmt = prepare("SELECT COUNT(*) FROM \(schema).history") else { return 0 }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+        return Int(sqlite3_column_int64(stmt, 0))
+    }
+
+    private func columns(of schema: String) -> [String] {
+        guard let stmt = prepare("PRAGMA \(schema).table_info(history)") else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        var names: [String] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let name = Self.text(stmt, 1) { names.append(name) }
+        }
+        return names
+    }
+
+    private func quickCheck(_ schema: String) -> Bool {
+        guard let stmt = prepare("PRAGMA \(schema).quick_check") else { return false }
+        defer { sqlite3_finalize(stmt) }
+        return sqlite3_step(stmt) == SQLITE_ROW && Self.text(stmt, 0) == "ok"
+    }
+
+    private func tableExists(_ name: String, in schema: String) -> Bool {
+        guard let stmt = prepare("SELECT 1 FROM \(schema).sqlite_master WHERE type = 'table' AND name = ?") else { return false }
+        defer { sqlite3_finalize(stmt) }
+        bind([.text(name)], to: stmt)
+        return sqlite3_step(stmt) == SQLITE_ROW
+    }
+
     /// Waits for every queued write. Called at quit, so a record made in the
     /// last moment is not lost.
     func flush() {
