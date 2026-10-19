@@ -8,7 +8,11 @@ import ImageIO
 ///
 /// The picture is drawn as it is — its own colours, scaled to fit the slot. It
 /// does not take the skin's ink or the hover gradient the way a symbol does; how
-/// it looks on the ring is up to whoever made it.
+/// it looks on the ring is up to whoever made it. A hovered picture is marked
+/// by a thin rounded-square stroke in the brand gradient, drawn just outside
+/// the picture, so the picture's own pixels never change. Only a picture gets
+/// that stroke. A symbol is left alone: its hover is already the gradient on
+/// the glyph, and the same paint on a picture would recolour it.
 struct ActionIconView: View {
     let symbol: String
     let image: String?
@@ -16,25 +20,53 @@ struct ActionIconView: View {
     /// which is about the box a symbol of that size fills.
     let size: CGFloat
     var weight: Font.Weight = .medium
+    /// Hovered. Read only when a picture is drawn; the symbol branch ignores it.
+    var hot = false
+    /// How solid the picture's ring is. Callers pass the same softening they
+    /// apply to a symbol (the main ring uses 0.55 while the pointer is out on
+    /// that slice's second ring).
+    var hotOpacity: Double = 1
 
-    init(symbol: String, image: String? = nil, size: CGFloat, weight: Font.Weight = .medium) {
+    init(symbol: String, image: String? = nil, size: CGFloat, weight: Font.Weight = .medium,
+         hot: Bool = false, hotOpacity: Double = 1) {
         self.symbol = symbol
         self.image = image
         self.size = size
         self.weight = weight
+        self.hot = hot
+        self.hotOpacity = hotOpacity
     }
 
-    init(_ action: PopBarActionConfig, size: CGFloat, weight: Font.Weight = .medium) {
-        self.init(symbol: action.iconSymbol, image: action.iconImage, size: size, weight: weight)
+    init(_ action: PopBarActionConfig, size: CGFloat, weight: Font.Weight = .medium,
+         hot: Bool = false, hotOpacity: Double = 1) {
+        self.init(symbol: action.iconSymbol, image: action.iconImage, size: size, weight: weight,
+                  hot: hot, hotOpacity: hotOpacity)
     }
 
     var body: some View {
         if let picture = ActionIconStore.picture(named: image) {
+            let side = size * 1.2
             Image(nsImage: picture)
                 .resizable()
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
-                .frame(width: size * 1.2, height: size * 1.2)
+                .frame(width: side, height: side)
+                // The stroke has its own frame, the little box around this icon.
+                // A gradient framed to the wheel would resolve across the whole
+                // canvas and give each icon a different colour by where it sits
+                // (see `submenuTicks`). The overlay does not change the slot.
+                // `brandGradient()` with no flag matches the symbol hover: every
+                // place that turns this ring on resolves dark mode the way
+                // `LiquidInk.isDark` does.
+                .overlay {
+                    if hot {
+                        RoundedRectangle(cornerRadius: (side + 3.5) * 0.28, style: .continuous)
+                            .strokeBorder(LiquidInk.brandGradient(), lineWidth: 1.25)
+                            .frame(width: side + 3.5, height: side + 3.5)
+                            .opacity(hotOpacity)
+                            .allowsHitTesting(false)
+                    }
+                }
         } else {
             Image(systemName: symbol)
                 .font(.system(size: size, weight: weight))
