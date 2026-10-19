@@ -329,12 +329,13 @@ enum PopBarPreferences {
         set { config.set(P.hotKeyEnabled, newValue) }
     }
 
-    /// The popup hotkey, written the way it is spoken (`"opt+x"`). Nil until the
-    /// user records one: there is no built-in default, because any combo picked
-    /// for everyone is some other app's shortcut for someone, and a hotkey that
-    /// silently does nothing is worse than one that asks to be set.
-    static var popupHotKey: KeyCombo? {
-        get { KeyCombo(configString: config.string(P.hotKey, default: "")) }
+    /// The popup hotkey, written the way it is spoken (`"opt+x"`), or one modifier
+    /// pressed twice (`"cmd+cmd"`). Nil until the user records one: there is no
+    /// built-in default, because any shortcut picked for everyone is some other
+    /// app's shortcut for someone, and a hotkey that silently does nothing is
+    /// worse than one that asks to be set.
+    static var popupHotKey: HotKeyTrigger? {
+        get { HotKeyTrigger(configString: config.string(P.hotKey, default: "")) }
         set { config.set(P.hotKey, newValue?.configString ?? "") }
     }
 
@@ -438,10 +439,11 @@ enum PopBarPreferences {
     }
 
     /// The hotkey that starts a screenshot-OCR capture, written the way it is
-    /// spoken: `"shift+cmd+s"`. Anything unparseable falls back to ⌘⇧S rather than
-    /// leaving the feature silently unbound.
-    static var screenOCRHotKey: KeyCombo {
-        get { KeyCombo(configString: config.string(P.ocrHotKey, default: "")) ?? .defaultScreenOCR }
+    /// spoken: `"shift+cmd+s"`, or one modifier pressed twice (`"ctrl+ctrl"`).
+    /// Anything unparseable falls back to ⌘⇧S rather than leaving the feature
+    /// silently unbound.
+    static var screenOCRHotKey: HotKeyTrigger {
+        get { HotKeyTrigger(configString: config.string(P.ocrHotKey, default: "")) ?? .combo(.defaultScreenOCR) }
         set { config.set(P.ocrHotKey, newValue.configString) }
     }
 }

@@ -34,8 +34,8 @@ final class PopBarStore: ObservableObject {
 
     // Popup hotkey (issue #4)
     @Published private(set) var popupHotKeyEnabled: Bool
-    /// Nil until one is recorded — there is no default combo.
-    @Published private(set) var popupHotKey: KeyCombo?
+    /// Nil until one is recorded — there is no default shortcut.
+    @Published private(set) var popupHotKey: HotKeyTrigger?
     /// Whether the popup hotkey is actually registered right now (false while
     /// off, while none is recorded, or when the combo is taken).
     @Published private(set) var popupHotKeyRegistered: Bool
@@ -43,7 +43,7 @@ final class PopBarStore: ObservableObject {
     // Screenshot OCR
     @Published var screenOCREnabled: Bool
     @Published var screenOCRAutoCopy: Bool
-    @Published var screenOCRHotKey: KeyCombo
+    @Published var screenOCRHotKey: HotKeyTrigger
     @Published private(set) var isScreenRecordingAuthorized: Bool
     /// Whether the OCR hotkey is actually registered right now — can be false even when
     /// `screenOCREnabled` is true (e.g. the stored combo was taken at launch).
@@ -125,12 +125,21 @@ final class PopBarStore: ObservableObject {
     /// Settings while we run); start monitoring if it just became available.
     func refreshTrust() {
         let trusted = AccessibilityAuthorizer.isTrusted
+        let wasTrusted = isTrusted
         if trusted != isTrusted { isTrusted = trusted }
         // Granted while we were running: start straight away, so the app works
         // the moment the switch is flipped in System Settings rather than after a
         // relaunch. `start()` itself declines while paused.
         if trusted && !controller.isRunning {
             controller.start()
+        }
+        // Without authorization, key events sent to other apps are not delivered.
+        // After authorization an already installed monitor is not guaranteed to
+        // start receiving events, so re-install. Only when trust goes from
+        // false to true: doing it on every poll would drop a press that landed
+        // between the remove and the add.
+        if trusted && !wasTrusted {
+            ModifierDoubleTapMonitor.shared.reinstallGlobalMonitor()
         }
         // The Screen Recording grant can also change in System Settings while we run;
         // reflect it so the OCR permission row auto-hides once it's granted.
@@ -290,13 +299,13 @@ final class PopBarStore: ObservableObject {
     }
 
     /// Record a new popup hotkey. Refused when it is the screenshot-OCR one (one
-    /// combo cannot do two things) or when another app holds it.
+    /// shortcut cannot do two things) or when another app holds it.
     @discardableResult
-    func setPopupHotKey(_ combo: KeyCombo) -> Bool {
-        guard combo != screenOCRHotKey else { return false }
+    func setPopupHotKey(_ trigger: HotKeyTrigger) -> Bool {
+        guard trigger != screenOCRHotKey else { return false }
         let wasUsable = popupHotKeyRegistered
-        let ok = controller.setPopupHotKey(combo)
-        if ok { popupHotKey = combo }
+        let ok = controller.setPopupHotKey(trigger)
+        if ok { popupHotKey = trigger }
         popupHotKeyRegistered = controller.popupHotKeyIsRegistered
         pauseIfHotKeyJustBecameUsable(wasUsable: wasUsable)
         return ok
@@ -390,12 +399,12 @@ final class PopBarStore: ObservableObject {
     }
 
     /// Record a new OCR hotkey. Returns false if it couldn't be registered (taken); on
-    /// success the published combo is updated so the recorder field reflects it.
+    /// success the published hotkey is updated so the recorder field reflects it.
     @discardableResult
-    func setScreenOCRHotKey(_ combo: KeyCombo) -> Bool {
-        guard combo != popupHotKey else { return false }   // the popup hotkey has it
-        let ok = controller.setScreenOCRHotKey(combo)
-        if ok { screenOCRHotKey = combo }
+    func setScreenOCRHotKey(_ trigger: HotKeyTrigger) -> Bool {
+        guard trigger != popupHotKey else { return false }   // the popup hotkey has it
+        let ok = controller.setScreenOCRHotKey(trigger)
+        if ok { screenOCRHotKey = trigger }
         screenOCRRegistered = controller.screenOCRIsRegistered
         return ok
     }

@@ -5,16 +5,19 @@ import AppKit
 /// to the clipboard and shown in the SAME PopBar capsule via `PopBarWindowManager` —
 /// so every existing action runs on the OCR'd text exactly like a normal selection.
 ///
-/// Deliberately INDEPENDENT of PopBar's text-selection monitor: it needs only Screen
-/// Recording (checked at capture time), not Accessibility, so it works even when the
-/// selection popup is off. Main-thread only by convention (hotkey callback + all UI).
+/// Deliberately INDEPENDENT of PopBar's text-selection monitor. A key combination
+/// needs only Screen Recording (checked at capture time), not Accessibility, so it
+/// works even when the selection popup is off. A double tap of one modifier is the
+/// exception: hearing it in other apps needs Accessibility, because that path is an
+/// `NSEvent` monitor rather than a Carbon hotkey. Main-thread only by convention
+/// (hotkey callback + all UI).
 final class ScreenOCRController {
 
     private static let log = FileLog("PopBar.OCR")
 
     private let windows: PopBarWindowManager
     private let actionStore: ActionStore
-    private var hotKey: GlobalHotKey?
+    private var hotKey: HotKeyRegistration?
     /// Guards against putting up a second overlay while one is already on screen.
     private var capturing = false
     /// Held for the duration of one capture so the overlay controller (which owns the
@@ -44,17 +47,18 @@ final class ScreenOCRController {
     }
 
     /// Register the global hotkey from prefs. Returns false if registration failed
-    /// (the combo is already taken system-wide) so the caller can surface it.
+    /// (a combo is already taken system-wide, or that double-tap modifier is
+    /// already in use here) so the caller can surface it.
     @discardableResult
     func start() -> Bool {
         if hotKey != nil { return true }
-        let combo = PopBarPreferences.screenOCRHotKey
-        hotKey = GlobalHotKey(combo: combo) { [weak self] in self?.triggerCapture() }
+        let trigger = PopBarPreferences.screenOCRHotKey
+        hotKey = HotKeyRegistrar.register(trigger) { [weak self] in self?.triggerCapture() }
         guard hotKey != nil else {
-            Self.log.warn("failed to register OCR hotkey \(combo.display) — likely taken")
+            Self.log.warn("failed to register OCR hotkey \(trigger.display) — likely taken")
             return false
         }
-        Self.log.info("OCR hotkey registered: \(combo.display)")
+        Self.log.info("OCR hotkey registered: \(trigger.display)")
         return true
     }
 
@@ -66,25 +70,25 @@ final class ScreenOCRController {
     }
 
     /// Persist + (re)register a new hotkey. On a registration failure the PREVIOUS
-    /// combo is kept registered (never leaves the user with no working hotkey) and the
-    /// new combo is NOT persisted. Returns false in that case.
+    /// hotkey is kept registered (never leaves the user with no working hotkey) and
+    /// the new one is NOT persisted. Returns false in that case.
     @discardableResult
-    func setHotKey(_ combo: KeyCombo) -> Bool {
+    func setHotKey(_ trigger: HotKeyTrigger) -> Bool {
         guard PopBarPreferences.screenOCREnabled else {
             // Nothing registered yet — just store it; `start()` will use it when enabled.
-            PopBarPreferences.screenOCRHotKey = combo
+            PopBarPreferences.screenOCRHotKey = trigger
             return true
         }
         hotKey?.invalidate()
-        hotKey = GlobalHotKey(combo: combo) { [weak self] in self?.triggerCapture() }
+        hotKey = HotKeyRegistrar.register(trigger) { [weak self] in self?.triggerCapture() }
         if hotKey == nil {
-            Self.log.warn("failed to register new OCR hotkey \(combo.display) — reverting to previous")
+            Self.log.warn("failed to register new OCR hotkey \(trigger.display) — reverting to previous")
             let previous = PopBarPreferences.screenOCRHotKey
-            hotKey = GlobalHotKey(combo: previous) { [weak self] in self?.triggerCapture() }
+            hotKey = HotKeyRegistrar.register(previous) { [weak self] in self?.triggerCapture() }
             return false
         }
-        PopBarPreferences.screenOCRHotKey = combo
-        Self.log.info("OCR hotkey re-registered: \(combo.display)")
+        PopBarPreferences.screenOCRHotKey = trigger
+        Self.log.info("OCR hotkey re-registered: \(trigger.display)")
         return true
     }
 

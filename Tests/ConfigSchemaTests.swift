@@ -35,6 +35,13 @@ final class ConfigSchemaTests: XCTestCase {
         XCTAssertTrue(matches(popup, "opt+x"))
         XCTAssertTrue(matches(popup, ""))          // none recorded yet
         XCTAssertFalse(matches(popup, "opt+"))
+
+        // A modifier name written twice is "press that key twice". The pattern
+        // already accepts it; this locks that it keeps doing so.
+        for name in ["cmd+cmd", "ctrl+ctrl", "opt+opt", "shift+shift"] {
+            XCTAssertTrue(matches(ocr, name), name)
+            XCTAssertTrue(matches(popup, name), name)
+        }
     }
 
     func testKeystrokeKindAndKeysPattern() throws {

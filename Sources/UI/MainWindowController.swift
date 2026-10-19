@@ -164,8 +164,8 @@ private struct StatusFooter: View {
     /// how, or a paused app that pops up would look broken.
     private var statusText: String {
         if store.popupEnabled { return L("popbar.status.running") }
-        if store.popupHotKeyRegistered, let combo = store.popupHotKey {
-            return String(format: L("popbar.status.pausedHotKey.format"), combo.display)
+        if store.popupHotKeyRegistered, let hotKey = store.popupHotKey {
+            return String(format: L("popbar.status.pausedHotKey.format"), hotKey.display)
         }
         return L("popbar.status.paused")
     }
