@@ -303,8 +303,7 @@ struct ActionEditorView: View {
         case .keystroke:
             Section {
                 LabeledContent(L("popbar.editor.keys")) {
-                    HotKeyRecorderField(combo: keystrokeCombo,
-                                        requiresModifier: false) { recorded in
+                    HotKeyRecorderField(combo: keystrokeCombo) { recorded in
                         draft.keys = recorded.configString
                     }
                 }
@@ -423,8 +422,8 @@ struct ActionEditorView: View {
     /// a recorded-but-disabled one is not catching anything.
     private var keystrokeHotKeyWarning: String? {
         guard let combo = keystrokeCombo else { return nil }
-        let clashesWithPopup = PopBarPreferences.popupHotKeyEnabled && PopBarPreferences.popupHotKey == combo
-        let clashesWithOCR = PopBarPreferences.screenOCREnabled && PopBarPreferences.screenOCRHotKey == combo
+        let clashesWithPopup = PopBarPreferences.popupHotKeyEnabled && PopBarPreferences.popupHotKey == .combo(combo)
+        let clashesWithOCR = PopBarPreferences.screenOCREnabled && PopBarPreferences.screenOCRHotKey == .combo(combo)
         guard clashesWithPopup || clashesWithOCR else { return nil }
         return String(format: L("popbar.editor.keys.hotkeyClash"), Brand.name, Brand.name)
     }

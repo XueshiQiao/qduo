@@ -32,15 +32,37 @@ struct OCRPage: View {
 
                 if store.screenOCREnabled {
                     LabeledContent {
-                        HotKeyRecorderField(combo: store.screenOCRHotKey) { combo in
-                            hotKeyError = !store.setScreenOCRHotKey(combo)
+                        HotKeyRecorderField(hotKey: store.screenOCRHotKey) { trigger in
+                            hotKeyError = !store.setScreenOCRHotKey(trigger)
                         }
                     } label: {
                         iconLabel("command", .teal, L("popbar.ocr.hotkey.label"))
                     }
+                    Text(L("popbar.hotkey.doubleTap.caption"))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     if hotKeyError || !store.screenOCRRegistered {
                         Text(L("popbar.ocr.hotkey.occupied"))
                             .font(.caption).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    // A key combination is a Carbon hotkey and needs no Accessibility.
+                    // A double tap is an NSEvent monitor: other apps' key presses are
+                    // not delivered until this app is trusted.
+                    if case .doubleTap = store.screenOCRHotKey, !store.isTrusted {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(L("popbar.ocr.hotkey.doubleTap.needsAccessibility"))
+                                .font(.caption).foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button(L("popbar.ocr.hotkey.doubleTap.openAccessibility")) {
+                                store.openAccessibilitySettings()
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                    if case .doubleTap = store.screenOCRHotKey {
+                        Text(L("popbar.hotkey.doubleTap.note"))
+                            .font(.caption).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 

@@ -50,13 +50,16 @@ struct AdvancedPage: View {
             }
             if store.popupHotKeyEnabled {
                 LabeledContent {
-                    HotKeyRecorderField(combo: store.popupHotKey) { combo in
-                        popupHotKeyError = !store.setPopupHotKey(combo)
+                    HotKeyRecorderField(hotKey: store.popupHotKey) { trigger in
+                        popupHotKeyError = !store.setPopupHotKey(trigger)
                     }
                 } label: {
                     iconLabel("command", .purple, L("popbar.ocr.hotkey.label"))
                 }
-                // A rejected combo is reported first: with none recorded yet, the
+                Text(L("popbar.hotkey.doubleTap.caption"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                // A rejected shortcut is reported first: with none recorded yet, the
                 // "record one" hint would otherwise hide that the try failed.
                 if store.popupHotKey == nil && !popupHotKeyError {
                     Text(L("popbar.hotkey.notSet"))
@@ -65,6 +68,11 @@ struct AdvancedPage: View {
                 } else if popupHotKeyError || !store.popupHotKeyRegistered {
                     Text(L("popbar.ocr.hotkey.occupied"))
                         .font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if case .doubleTap = store.popupHotKey {
+                    Text(L("popbar.hotkey.doubleTap.note"))
+                        .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

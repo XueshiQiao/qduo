@@ -115,7 +115,7 @@
   <span class="tok-string">"actions"</span>: [ <span class="tok-comment">/* 你那 7 个动作 */</span> ]
 }</code></pre>
 
-<p>快捷键写成 <code>"shift+cmd+s"</code> 而不是 <code>{"keyCode":1,"carbonModifiers":768}</code> —— 后者是系统接口要的形状，对着它没法改。</p>
+<p>快捷键写成 <code>"shift+cmd+s"</code> 而不是 <code>{"keyCode":1,"carbonModifiers":768}</code> —— 后者是系统接口要的形状，对着它没法改。把同一个修饰键的名字写两遍（<code>"cmd+cmd"</code>、<code>"ctrl+ctrl"</code>、<code>"opt+opt"</code>、<code>"shift+shift"</code>）表示连按这个修饰键两下。这个写法只在 <code>popup.hotKey</code> 和 <code>ocr.hotKey</code> 里有效，动作的 <code>keys</code> 不能这么写。旧版本读到这种写法时，<code>popup.hotKey</code> 会变成没设置，<code>ocr.hotKey</code> 会回到 ⌘⇧S。</p>
 
 <div class="callout">
 <span class="label">关于注释</span>

@@ -41,7 +41,8 @@ final class PopBarController {
     /// nothing.
     private static let dragThreshold = 3
     /// The popup hotkey (issue #4), registered while `popupHotKeyEnabled` is on.
-    private var popupHotKey: GlobalHotKey?
+    /// A key combination or a double tap of one modifier.
+    private var popupHotKey: HotKeyRegistration?
     private var resolveTask: Task<Void, Never>?
     /// Bumped per trigger so a slow/canceled resolve can't act on the panel after
     /// a newer trigger has taken over — and per mouse-down, so a read still running
@@ -153,11 +154,12 @@ final class PopBarController {
     // MARK: - Screenshot OCR (independent front-step)
 
     /// Register the screenshot-OCR hotkey if the user opted in. Independent of the
-    /// selection monitor — it needs Screen Recording (not Accessibility), so it starts
-    /// even when the selection popup is off.
+    /// selection monitor — a key combination needs Screen Recording, not
+    /// Accessibility, so it starts even when the selection popup is off. A double
+    /// tap also needs Accessibility to be heard in other apps.
     func startOCRIfEnabled() { ocr.startIfEnabled() }
 
-    /// Register the OCR hotkey now. Returns false if the combo is already taken.
+    /// Register the OCR hotkey now. Returns false if it is already taken.
     @discardableResult
     func startScreenOCR() -> Bool { ocr.start() }
 
@@ -169,10 +171,10 @@ final class PopBarController {
     /// — a combo can be taken by another app, and then the feature is unreachable.
     func triggerScreenOCR() { ocr.triggerCapture() }
 
-    /// Persist + re-register the OCR hotkey. Returns false if the new combo is taken
+    /// Persist + re-register the OCR hotkey. Returns false if the new one is taken
     /// (the previous one is kept registered so the user is never left without one).
     @discardableResult
-    func setScreenOCRHotKey(_ combo: KeyCombo) -> Bool { ocr.setHotKey(combo) }
+    func setScreenOCRHotKey(_ trigger: HotKeyTrigger) -> Bool { ocr.setHotKey(trigger) }
 
     /// Whether the OCR global hotkey is currently registered (may be false even when
     /// `screenOCREnabled` is true, if the combo was taken at launch).
@@ -222,39 +224,39 @@ final class PopBarController {
     }
 
     /// Persist + re-register a new popup hotkey. Returns false (keeping the
-    /// previous combo, registered and persisted) when the new one is taken.
+    /// previous one, registered and persisted) when the new one is taken.
     @discardableResult
-    func setPopupHotKey(_ combo: KeyCombo) -> Bool {
+    func setPopupHotKey(_ trigger: HotKeyTrigger) -> Bool {
         guard PopBarPreferences.popupHotKeyEnabled else {
-            PopBarPreferences.popupHotKey = combo
+            PopBarPreferences.popupHotKey = trigger
             return true
         }
         let previous = popupHotKey
         previous?.invalidate()
-        guard let registered = GlobalHotKey(combo: combo, onPressed: { [weak self] in self?.handlePopupHotKey() }) else {
-            Self.log.warn("popup hotkey \(combo.display) is taken — keeping the previous one")
+        guard let registered = HotKeyRegistrar.register(trigger, onFired: { [weak self] in self?.handlePopupHotKey() }) else {
+            Self.log.warn("popup hotkey \(trigger.display) is taken — keeping the previous one")
             popupHotKey = nil
             _ = registerPopupHotKey()
             return false
         }
         popupHotKey = registered
-        PopBarPreferences.popupHotKey = combo
-        Self.log.info("popup hotkey set: \(combo.display)")
+        PopBarPreferences.popupHotKey = trigger
+        Self.log.info("popup hotkey set: \(trigger.display)")
         return true
     }
 
     private func registerPopupHotKey() -> Bool {
         if popupHotKey != nil { return true }
-        guard let combo = PopBarPreferences.popupHotKey else {
+        guard let trigger = PopBarPreferences.popupHotKey else {
             Self.log.info("popup hotkey on, but none recorded yet")
             return false
         }
-        popupHotKey = GlobalHotKey(combo: combo) { [weak self] in self?.handlePopupHotKey() }
+        popupHotKey = HotKeyRegistrar.register(trigger) { [weak self] in self?.handlePopupHotKey() }
         guard popupHotKey != nil else {
-            Self.log.warn("failed to register popup hotkey \(combo.display) — likely taken")
+            Self.log.warn("failed to register popup hotkey \(trigger.display) — likely taken")
             return false
         }
-        Self.log.info("popup hotkey registered: \(combo.display)")
+        Self.log.info("popup hotkey registered: \(trigger.display)")
         return true
     }
 

@@ -188,6 +188,8 @@
 "popbar.ocr.enable.subtitle" = "通过 OCR 从任意屏幕区域取字";
 "popbar.ocr.hotkey.label" = "快捷键";
 "popbar.ocr.hotkey.recording" = "按下按键…（Esc 取消）";
+"popbar.ocr.hotkey.doubleTap.needsAccessibility" = "连按两次的快捷键需要「辅助功能」权限。没有这个权限时，在别的 app 里按的键，这里收不到。";
+"popbar.ocr.hotkey.doubleTap.openAccessibility" = "打开「辅助功能」设置";
 "popbar.ocr.hotkey.occupied" = "该快捷键已被占用，请换一个。";
 "popbar.ocr.autocopy.label" = "同时把识别文本复制到剪贴板";
 "popbar.ocr.perm.title" = "需要「屏幕录制」权限";
@@ -459,6 +461,8 @@
 "popbar.hotkey.record" = "点击录制";
 "popbar.hotkey.notSet" = "还没有设置快捷键：点上面的按钮，再按下想用的组合键。";
 "popbar.hotkey.footer" = "打开后会自动暂停 %@，也就是只有按快捷键才弹出。想让选中文字时也自动弹出：在侧边栏底部或菜单栏点「恢复」。暂停时、在排除的 App 里、在浏览器地址栏里，按快捷键都会弹出。";
+"popbar.hotkey.doubleTap.caption" = "也可以把 ⌘、⌥、⌃、⇧ 中的一个键连按两下。";
+"popbar.hotkey.doubleTap.note" = "连按两次时，当前在前台的 app 也会收到这两下。比如系统听写设成了连按 Control 键，会一起触发；别的 app 的连按快捷键也一样，比如 JetBrains 里连按两次 Shift。";
 "speech.reader.system" = "系统语音";
 "speech.key.hint.qwen" = "阿里云百炼的 API Key，以 sk- 开头。存在钥匙串里；所有 Qwen-Audio 朗读员共用这一个 key。";
 "speech.key.hint.minimax" = "MiniMax 开放平台的 API Key（国内站 platform.minimax.cn → 账户管理 → 接口密钥）。存在钥匙串里；所有 MiniMax 朗读员共用这一个 key。按字符计费：turbo ¥2.0 / 万字符，hd ¥3.5 / 万字符，1 个汉字算 2 个字符。";

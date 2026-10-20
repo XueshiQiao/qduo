@@ -108,13 +108,14 @@ enum ConfigSeed {
     }
 
     /// The OCR hotkey was stored as the encoded `KeyCombo` struct. Read it in that
-    /// shape once, then write it out the way a person would type it.
-    private static func seededHotKey(_ d: UserDefaults) -> KeyCombo {
+    /// shape once, then write it out the way a person would type it. Old installs
+    /// only ever stored a key combination, so this is always `.combo`.
+    private static func seededHotKey(_ d: UserDefaults) -> HotKeyTrigger {
         guard let raw = d.string(forKey: "popbar.ocr.hotKey"),
               let data = raw.data(using: .utf8),
               let combo = try? JSONDecoder().decode(KeyCombo.self, from: data)
-        else { return .defaultScreenOCR }
-        return combo
+        else { return .combo(.defaultScreenOCR) }
+        return .combo(combo)
     }
 
     /// The actions lived in their own file under Application Support. Fold them in

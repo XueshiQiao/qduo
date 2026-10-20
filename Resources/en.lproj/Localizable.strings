@@ -189,6 +189,8 @@
 "popbar.ocr.enable.subtitle" = "Grab text from any screen region via OCR";
 "popbar.ocr.hotkey.label" = "Shortcut";
 "popbar.ocr.hotkey.recording" = "Press keys… (Esc to cancel)";
+"popbar.ocr.hotkey.doubleTap.needsAccessibility" = "A double-tap shortcut needs Accessibility permission. Without it, key presses in other apps are not delivered here.";
+"popbar.ocr.hotkey.doubleTap.openAccessibility" = "Open Accessibility Settings";
 "popbar.ocr.hotkey.occupied" = "That shortcut is already in use — try another.";
 "popbar.ocr.autocopy.label" = "Also copy recognized text to clipboard";
 "popbar.ocr.perm.title" = "Screen Recording permission needed";
@@ -460,6 +462,8 @@
 "popbar.hotkey.record" = "Click to record";
 "popbar.hotkey.notSet" = "No shortcut yet — click the button above and press one.";
 "popbar.hotkey.footer" = "Turning this on pauses %@, so the popup opens only when you press the shortcut. To have it open on a selection as well, resume from the bottom of the sidebar or the menu bar. The shortcut works while paused, in excluded apps and in address bars.";
+"popbar.hotkey.doubleTap.caption" = "You can also press one of ⌘, ⌥, ⌃ or ⇧ twice.";
+"popbar.hotkey.doubleTap.note" = "A double tap also reaches the app currently in the foreground. If system Dictation is set to press the Control key twice, it fires at the same time, and so do other apps' double-tap shortcuts, such as pressing Shift twice in JetBrains IDEs.";
 "speech.reader.system" = "System voice";
 "speech.key.hint.qwen" = "An Alibaba Cloud Model Studio (百炼) API key, starting with sk-. Kept in the Keychain; the same key serves every Qwen-Audio reader.";
 "speech.key.hint.minimax" = "A MiniMax API key (mainland site platform.minimax.cn → Account → API Keys). Kept in the Keychain; the same key serves every MiniMax reader. Billed per character: turbo ¥2.0 and hd ¥3.5 per 10,000 characters; a Chinese character counts as 2.";

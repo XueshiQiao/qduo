@@ -9,7 +9,7 @@ import Carbon.HIToolbox
 /// process-wide Carbon event handler is installed once and routes every hotkey
 /// press through an id → closure table, because the C callback cannot capture
 /// `self`.
-final class GlobalHotKey {
+final class GlobalHotKey: HotKeyRegistration {
 
     private static let log = FileLog("PopBar.HotKey")
 
