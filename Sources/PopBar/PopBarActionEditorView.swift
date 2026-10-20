@@ -330,7 +330,19 @@ struct ActionEditorView: View {
             Section {
                 Picker(L("popbar.editor.targetLanguage"), selection: Binding(
                     get: { draft.targetLanguage ?? "" },
-                    set: { draft.targetLanguage = $0.isEmpty ? nil : $0 })) {
+                    set: { newValue in
+                        let target = newValue.isEmpty ? nil : newValue
+                        draft.targetLanguage = target
+                        // en and en-GB are one language here, and so are zh and
+                        // zh-TW. A second language that names the target again
+                        // is cleared, and the picker goes back to following the
+                        // system. "none" is not a language, so it does not take
+                        // part in the comparison.
+                        if let target, let second = draft.secondLanguage, second != "none",
+                           TranslateDecision.sameLanguageCode(second, target) {
+                            draft.secondLanguage = nil
+                        }
+                    })) {
                     Text(L("popbar.editor.targetLanguage.choose")).tag("")
                     Divider()
                     ForEach(translateTargets) { Text($0.name).tag($0.id) }
@@ -344,6 +356,22 @@ struct ActionEditorView: View {
                     }
                 }
                 .task { if translateTargets.isEmpty { translateTargets = await SystemTranslator.supportedTargets() } }
+                Picker(L("popbar.editor.secondLanguage"), selection: Binding(
+                    get: { draft.secondLanguage ?? "" },
+                    set: { draft.secondLanguage = $0.isEmpty ? nil : $0 })) {
+                    Text(followSystemSecondTitle).tag("")
+                    Text(L("popbar.editor.secondLanguage.none")).tag("none")
+                    Divider()
+                    ForEach(secondLanguageChoices) { Text($0.name).tag($0.id) }
+                    // Named by this action but not in the list above: still
+                    // loading, not offered by this Mac, or the same language
+                    // as the target. Without this row the picker would flash
+                    // "Same as system" for an action that has one.
+                    if let id = draft.secondLanguage, id != "none",
+                       !secondLanguageChoices.contains(where: { $0.id == id }) {
+                        Text(SystemTranslator.displayName(of: id)).tag(id)
+                    }
+                }
                 outputPicker
             } footer: {
                 Text(L(SystemTranslator.isAvailable ? "popbar.editor.systemTranslate.hint"
@@ -383,6 +411,26 @@ struct ActionEditorView: View {
         default:
             EmptyView()
         }
+    }
+
+    /// "跟随系统（英语）" / "Same as system (English)". The name is the language
+    /// the text will actually go to when it is already the target: the system's
+    /// second language, or English / Simplified Chinese when that second
+    /// language is the target itself.
+    private var followSystemSecondTitle: String {
+        let first = TranslateDecision.language(ofTargetID: draft.targetLanguage ?? "")
+        let systemSecond = TranslateDecision.systemSecondLanguage(locales: Locale.preferredLanguages)
+        let used = systemSecond == first ? TranslateDecision.autoTarget(first) : systemSecond
+        let name = SystemTranslator.displayName(of: used)
+        return String(format: L("popbar.editor.secondLanguage.system"), name)
+    }
+
+    /// Languages the second-language picker offers: every target except those
+    /// that are the same language as the one already chosen. The list is the
+    /// one the target picker loaded.
+    private var secondLanguageChoices: [SystemTranslator.Target] {
+        guard let target = draft.targetLanguage, !target.isEmpty else { return translateTargets }
+        return translateTargets.filter { !TranslateDecision.sameLanguageCode($0.id, target) }
     }
 
     /// Where the produced text goes. Hidden for `count`, which is always a report.

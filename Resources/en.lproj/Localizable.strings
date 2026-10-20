@@ -539,7 +539,7 @@
 "popbar.editor.settings.hint.format" = "Opens the %@ settings window. The selected text is not used.";
 
 "popbar.editor.kind.systemTranslate" = "System Translate";
-"popbar.editor.systemTranslate.hint" = "Translates with macOS's own on-device translator: no model, no API key, works offline (except through the Shortcut below). The language of the text is detected; the list shows every language macOS can translate into. The first time a language pair is used, macOS may ask to download it.";
+"popbar.editor.systemTranslate.hint" = "Translates with macOS's own on-device translator: no model, no API key, works offline (except through the Shortcut below). The language of the text is detected; the list shows every language macOS can translate into. The first time a language pair is used, macOS may ask to download it. If the text is already in the chosen language, it is translated into the second language. By default that follows the system's second language. Simplified and Traditional Chinese are not sent to the translator: each character is converted on this Mac, so 軟體 becomes 软体, not 软件.";
 "popbar.editor.systemTranslate.shortcut" = "Translate without downloading";
 "popbar.editor.systemTranslate.shortcut.add" = "Add Shortcut…";
 "popbar.editor.systemTranslate.shortcut.added" = "Shortcut added";
@@ -554,6 +554,9 @@
 "systemTranslate.error.prefix" = "System translation failed.";
 "popbar.editor.targetLanguage" = "Translate into";
 "popbar.editor.targetLanguage.choose" = "Choose a language";
+"popbar.editor.secondLanguage" = "If already in that language, translate into";
+"popbar.editor.secondLanguage.system" = "Same as system (%@)";
+"popbar.editor.secondLanguage.none" = "Don't translate, just say so";
 "systemTranslate.error.noTarget" = "This action has no target language. Choose one in Settings → Actions.";
 "systemTranslate.error.alreadyInTarget" = "The text is already in %@.";
 "systemTranslate.error.notDownloaded" = "The language isn't downloaded yet, so macOS couldn't translate this. If a download is running, try again when it finishes; downloads are listed in System Settings → General → Language & Region → Translation Languages.";

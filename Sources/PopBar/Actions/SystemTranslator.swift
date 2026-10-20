@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import NaturalLanguage
 import Translation
 
 /// The `systemTranslate` kind: translate with macOS's own translator (the
@@ -8,8 +7,14 @@ import Translation
 /// exception: the Shortcut route below.
 ///
 /// The target language is the action's own `targetLanguage`, chosen by the user
-/// from the list the system supports — never guessed. Only the SOURCE is
-/// detected, from the text itself.
+/// from the list the system supports — never guessed. The source is detected
+/// from the text (`LanguageDetection`). `secondLanguage` says what happens when
+/// the text is already in the target language: absent follows the system's
+/// second language, "none" shows the "already in this language" message, and
+/// any other id is that language. Simplified and Traditional Chinese are
+/// converted on this Mac, one character at a time, and never take a route below.
+/// Which source and which target that is is decided in `TranslateDecision`
+/// before any of those routes.
 ///
 /// The framework offers two ways in, and which one works depends on the system
 /// and on whether the language pair is downloaded:
@@ -58,20 +63,16 @@ enum SystemTranslator {
     }
 
     /// `targetID` is the action's `targetLanguage`: an identifier from
-    /// `supportedTargets()`, e.g. "zh", "zh-TW", "en-GB".
-    static func translate(_ text: String, to targetID: String?) async -> Result<String, Failure> {
+    /// `supportedTargets()`, e.g. "zh", "zh-TW", "en-GB". `secondID` is the
+    /// action's `secondLanguage`: nil follows the system's second language,
+    /// "none" keeps the "already in this language" message, and any other id
+    /// is that language.
+    static func translate(_ text: String, to targetID: String?, second secondID: String? = nil) async -> Result<String, Failure> {
         guard #available(macOS 15.0, *) else { return .failure(.needsNewerSystem) }
         guard let targetID = targetID?.trimmingCharacters(in: .whitespaces), !targetID.isEmpty else {
             return .failure(.noTarget)
         }
-        return await translate15(text, to: targetID)
-    }
-
-    /// The text's language as NaturalLanguage sees it. nil = let the system detect.
-    static func detectSource(of text: String) -> String? {
-        let recognizer = NLLanguageRecognizer()
-        recognizer.processString(text)
-        return recognizer.dominantLanguage?.rawValue
+        return await translate15(text, to: targetID, second: secondID)
     }
 
     /// A language to offer in the editor's picker.
@@ -118,8 +119,9 @@ enum SystemTranslator {
         return locale.localizedString(forIdentifier: nameID) ?? id
     }
 
-    /// Same language, as far as translating goes: same language code and, where
-    /// both say, the same script (Simplified and Traditional Chinese differ).
+    /// Same language and, where both names say so, the same script. The
+    /// Shortcut's language list needs this: Simplified and Traditional are not
+    /// interchangeable there, while English and British English are.
     static func isSameLanguage(_ a: String, _ b: String) -> Bool {
         let x = Locale.Language(identifier: Locale.Language(identifier: a).maximalIdentifier)
         let y = Locale.Language(identifier: Locale.Language(identifier: b).maximalIdentifier)
@@ -129,14 +131,35 @@ enum SystemTranslator {
     }
 
     @available(macOS 15.0, *)
-    private static func translate15(_ text: String, to targetID: String) async -> Result<String, Failure> {
-        let sourceID = detectSource(of: text)
-        if let sourceID, isSameLanguage(sourceID, targetID) {
-            log.info("\(text.count) char(s) already in \(targetID) — not translated")
-            return .failure(.alreadyInTarget(targetID))
+    private static func translate15(_ text: String, to targetID: String, second secondID: String?) async -> Result<String, Failure> {
+        let locales = Locale.preferredLanguages
+        let preferred = TranslateDecision.preferredLanguages(targetID: targetID, secondSetting: secondID, locales: locales)
+        // The action's target itself. The preferred list can start with another
+        // language when the target is not one the recognizer answers with.
+        let firstIsChinese = TranslateDecision.isChinese(TranslateDecision.language(ofTargetID: targetID))
+        let detected = LanguageDetection.resolve(text: text, preferred: preferred, firstIsChinese: firstIsChinese) { chunk in
+            LanguageDetection.rawHypotheses(chunk, preferred: preferred)
+        }
+        let decision = TranslateDecision.decide(source: detected, targetID: targetID, secondSetting: secondID, locales: locales)
+        let sourceID: String?
+        let resolvedID: String
+        switch decision {
+        case .alreadyInTarget(let language):
+            log.info("\(text.count) char(s) already in \(language) — not translated")
+            return .failure(.alreadyInTarget(language))
+        case .convertChinese(let to):
+            let converted = to == "zh-Hant" ? LanguageDetection.toTraditional(text) : LanguageDetection.toSimplified(text)
+            log.info("\(text.count) char(s), \(detected ?? "auto") \(chineseBranch(source: detected, targetID: targetID, secondID: secondID)) → \(to)")
+            return .success(converted)
+        case .translate(let source, let to):
+            if let note = translationBranch(source: source, targetID: targetID, resolvedID: to, secondID: secondID, locales: locales) {
+                log.info("\(text.count) char(s), \(source ?? "auto") \(note)")
+            }
+            sourceID = source
+            resolvedID = to
         }
         let source = sourceID.map { Locale.Language(identifier: $0) }
-        let target = Locale.Language(identifier: targetID)
+        let target = Locale.Language(identifier: resolvedID)
         let started = Date()
 
         let status: LanguageAvailability.Status
@@ -147,11 +170,11 @@ enum SystemTranslator {
             catch { return .failure(.failed(error.localizedDescription)) }
         }
         // Privacy: never log the text, only its size and languages.
-        log.info("\(text.count) char(s), \(sourceID ?? "auto") → \(targetID): \(status)")
+        log.info("\(text.count) char(s), \(sourceID ?? "auto") → \(resolvedID): \(status)")
 
         switch status {
         case .unsupported:
-            return .failure(.unsupportedPair(source: sourceID ?? "?", target: targetID))
+            return .failure(.unsupportedPair(source: sourceID ?? "?", target: resolvedID))
         case .installed:
             if #available(macOS 26.0, *), let source, !forceViewPath {
                 do {
@@ -178,11 +201,33 @@ enum SystemTranslator {
         }
         // The pair still needs downloading. A Shortcut can translate it without
         // the download, if the user has the one this looks for.
-        if let out = await viaShortcut(text, sourceID: sourceID, targetID: targetID, started: started) {
+        if let out = await viaShortcut(text, sourceID: sourceID, targetID: resolvedID, started: started) {
             return .success(out)
         }
         if Task.isCancelled { return .failure(.cancelled) }
         return await viaView(text, source: source, target: target, needsDownload: true, started: started)
+    }
+
+    /// "second language" when the text was already the target and went to the
+    /// action's second language. "fallback" when that second language was the
+    /// source as well, so English or Simplified Chinese was used instead.
+    private static func translationBranch(source: String?, targetID: String, resolvedID: String,
+                                          secondID: String?, locales: [String]) -> String? {
+        guard secondID != "none", let source else { return nil }
+        let first = TranslateDecision.language(ofTargetID: targetID)
+        guard source == first, resolvedID != targetID else { return nil }
+        let second = TranslateDecision.secondLanguage(setting: secondID, locales: locales)
+        if second == source { return "fallback → \(resolvedID)" }
+        return "second language → \(resolvedID)"
+    }
+
+    /// Local Simplified ↔ Traditional. When the text was already the target and
+    /// the second language is the other script, say so. The fallback never
+    /// lands here: a Chinese source falls back to English, which is translated.
+    private static func chineseBranch(source: String?, targetID: String, secondID: String?) -> String {
+        let first = TranslateDecision.language(ofTargetID: targetID)
+        if secondID != "none", source == first { return "second language, ICU conversion" }
+        return "ICU conversion"
     }
 
     // MARK: - Shortcut (pair not downloaded)
