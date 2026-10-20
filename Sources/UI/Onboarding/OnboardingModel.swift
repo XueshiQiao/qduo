@@ -172,9 +172,6 @@ final class OnboardingModel: ObservableObject {
     /// Quit and start again, landing back on this page. The Screen Recording
     /// grant is often invisible to the process that asked for it until it
     /// restarts — that is macOS, not us.
-    ///
-    /// A small shell waits for this process to be gone before `open` runs; with
-    /// the old one still alive, `open` would only bring it forward.
     func relaunch() {
         var p = progress
         p.step = .screenRecording
@@ -182,20 +179,8 @@ final class OnboardingModel: ObservableObject {
         progress = p
         progressStore.defaults.synchronize()
 
-        let pid = ProcessInfo.processInfo.processIdentifier
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/sh")
-        task.arguments = ["-c",
-                          "while kill -0 \"$1\" 2>/dev/null; do sleep 0.1; done; /usr/bin/open -n \"$2\" --args \"$3\"",
-                          "sh", "\(pid)", Bundle.main.bundlePath, OnboardingProgressStore.relaunchArgument]
-        do {
-            try task.run()
-        } catch {
-            Self.log.error("relaunch helper failed to start: \(error)")
-            return
-        }
         Self.log.info("relaunching for Screen Recording")
-        NSApp.terminate(nil)
+        AppRelaunch.relaunch(arguments: [OnboardingProgressStore.relaunchArgument])
     }
 
     // MARK: - AI

@@ -163,4 +163,89 @@ final class HistoryStoreTests: XCTestCase {
         let counts = await a.counts(matching: .init())
         XCTAssertEqual(counts[nil], 400)
     }
+
+    // MARK: - Backup (issue #22)
+
+    private func scalar(_ path: String, _ sql: String) -> String? {
+        var db: OpaquePointer?
+        guard sqlite3_open(path, &db) == SQLITE_OK else { return nil }
+        defer { sqlite3_close(db) }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW, let c = sqlite3_column_text(stmt, 0) else { return nil }
+        return String(cString: c)
+    }
+
+    /// The snapshot is one ordinary file with every record, write-ahead log included.
+    func testSnapshotIsOneFileWithEveryRecord() async throws {
+        let store = HistoryStore(url: url)
+        store.insert(record("one", at: Date(timeIntervalSince1970: 1000)))
+        store.insert(record("two", at: Date(timeIntervalSince1970: 2000)))
+        let snap = dir.appendingPathComponent("snap.sqlite")
+        let count = try await store.snapshot(to: snap)
+        XCTAssertEqual(count, 2)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: snap.path + "-wal"))
+        XCTAssertEqual(scalar(snap.path, "PRAGMA journal_mode"), "delete")
+        XCTAssertEqual(scalar(snap.path, "SELECT COUNT(*) FROM history"), "2")
+        // A target that already exists is refused rather than overwritten.
+        do {
+            _ = try await store.snapshot(to: snap)
+            XCTFail("a second snapshot to the same path should fail")
+        } catch {}
+    }
+
+    /// Merging adds what is missing, keeps what is here, and adds nothing the second time.
+    func testMergeAddsOnlyWhatIsMissing() async throws {
+        let source = HistoryStore(url: dir.appendingPathComponent("source.sqlite"))
+        source.insert(record("shared", at: Date(timeIntervalSince1970: 1000)))
+        source.insert(record("from the backup", at: Date(timeIntervalSince1970: 2000)))
+        let snap = dir.appendingPathComponent("snap.sqlite")
+        _ = try await source.snapshot(to: snap)
+
+        let store = HistoryStore(url: url)
+        store.insert(record("shared", at: Date(timeIntervalSince1970: 1000)))
+        store.insert(record("only here", at: Date(timeIntervalSince1970: 3000)))
+
+        let first = try await store.merge(from: snap).get()
+        let second = try await store.merge(from: snap).get()
+        XCTAssertEqual(first, 1)
+        XCTAssertEqual(second, 0)
+        let rows = await store.records(matching: .init(), limit: 10)
+        XCTAssertEqual(rows.map(\.input), ["only here", "from the backup", "shared"])
+        // The merged rows are searchable: the insert trigger fed the full-text index.
+        let found = await store.records(matching: .init(text: "backup"), limit: 10)
+        XCTAssertEqual(found.map(\.input), ["from the backup"])
+    }
+
+    /// A backup from a build with an extra column still merges, through the shared columns.
+    func testMergeFromAFileWithAnExtraColumn() async throws {
+        let source = HistoryStore(url: dir.appendingPathComponent("source.sqlite"))
+        source.insert(record("newer build", at: Date(timeIntervalSince1970: 1000)))
+        let snap = dir.appendingPathComponent("snap.sqlite")
+        _ = try await source.snapshot(to: snap)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(snap.path, &db), SQLITE_OK)
+        XCTAssertEqual(sqlite3_exec(db, "ALTER TABLE history ADD COLUMN future TEXT DEFAULT 'x'", nil, nil, nil), SQLITE_OK)
+        sqlite3_close(db)
+
+        let store = HistoryStore(url: url)
+        let added = try await store.merge(from: snap).get()
+        XCTAssertEqual(added, 1)
+        let rows = await store.records(matching: .init(), limit: 10)
+        XCTAssertEqual(rows.map(\.input), ["newer build"])
+    }
+
+    func testMergeRefusesAFileThatIsNotHistory() async throws {
+        let junk = dir.appendingPathComponent("junk.sqlite")
+        try Data("not a database".utf8).write(to: junk)
+        let store = HistoryStore(url: url)
+        store.insert(record("kept"))
+        switch await store.merge(from: junk) {
+        case .success: XCTFail("junk should not merge")
+        case .failure: break
+        }
+        let count = await store.recordCount()
+        XCTAssertEqual(count, 1)
+    }
 }
