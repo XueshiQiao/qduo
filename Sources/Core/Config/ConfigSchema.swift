@@ -73,7 +73,7 @@ enum ConfigSchema {
             "hotKey": {
               "type": "string",
               "pattern": "^(([a-zA-Z0-9]+\\\\+)*[a-zA-Z0-9]+)?$",
-              "description": "The popup hotkey, written the way it is spoken, e.g. \\"opt+x\\". Empty = none recorded yet (there is no default). Same key names as ocr.hotKey, and it cannot be the same combo."
+              "description": "The popup hotkey, written the way it is spoken, e.g. \\"opt+x\\". Empty = none recorded yet (there is no default). Same key names as ocr.hotKey: a-z, 0-9, f1-f20, space, return, tab, escape, delete, forwarddelete, home, end, pageup, pagedown, left, right, up, down, minus, equal, leftbracket, rightbracket, backslash, semicolon, quote, comma, period, slash, grave, keypadenter, keypad0, keypad1, keypad2, keypad3, keypad4, keypad5, keypad6, keypad7, keypad8, keypad9, keypaddecimal, keypadplus, keypadminus, keypadmultiply, keypaddivide, keypadequals, keypadclear, help. It cannot be the same combo."
             },
             "simulateCopy": {
               "type": "boolean",
@@ -165,7 +165,7 @@ enum ConfigSchema {
             "hotKey": {
               "type": "string",
               "pattern": "^([a-zA-Z0-9]+\\\\+)*[a-zA-Z0-9]+$",
-              "description": "Written the way it is spoken, e.g. \\"shift+cmd+s\\". Modifiers: ctrl, opt, shift, cmd. Keys: a-z, 0-9, f1-f12, space, return, tab, escape, delete, left, right, up, down."
+              "description": "Written the way it is spoken, e.g. \\"shift+cmd+s\\". Modifiers: ctrl, opt, shift, cmd. Keys: a-z, 0-9, f1-f20, space, return, tab, escape, delete, forwarddelete, home, end, pageup, pagedown, left, right, up, down, minus, equal, leftbracket, rightbracket, backslash, semicolon, quote, comma, period, slash, grave, keypadenter, keypad0, keypad1, keypad2, keypad3, keypad4, keypad5, keypad6, keypad7, keypad8, keypad9, keypaddecimal, keypadplus, keypadminus, keypadmultiply, keypaddivide, keypadequals, keypadclear, help."
             }
           },
           "additionalProperties": true
@@ -261,8 +261,8 @@ enum ConfigSchema {
             "kind": {
               "type": "string",
               "enum": ["ai", "copy", "webPreview", "quickLook", "revealInFinder", "openURL", "speak",
-                       "transform", "shortcut", "script", "systemTranslate", "pause", "inspect", "settings", "group"],
-              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. systemTranslate = translate with macOS's own on-device translator into targetLanguage (macOS 15+). pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). settings = open the app's settings window. group = hold children. The rest act on links and paths."
+                       "transform", "shortcut", "script", "keystroke", "systemTranslate", "pause", "inspect", "settings", "group"],
+              "description": "What the action does. ai = send the selection to a model. openURL = open url with {text} filled in. speak = read it aloud. transform = a local text operation (op). shortcut = run a Shortcut. script = run a shell command. keystroke = press one key combination (keys) in the app the text was selected in. systemTranslate = translate with macOS's own on-device translator into targetLanguage (macOS 15+). pause = pause the popup, like the menu bar's Pause (resume from the menu bar or settings). inspect = show the selection's accessibility element and its path (a debugging aid). settings = open the app's settings window. group = hold children. The rest act on links and paths."
             },
             "prompt": { "type": "string",
               "description": "For \\"ai\\": the instruction sent with the selection." },
@@ -279,6 +279,9 @@ enum ConfigSchema {
               "description": "For \\"shortcut\\": the name of a Shortcut. The selection is its input; its output is the result." },
             "script": { "type": "string",
               "description": "For \\"script\\": a shell command, run by your login shell. The selection is on standard input and in $QDUO_TEXT; what it prints is the result. Times out after 10 seconds." },
+            "keys": { "type": "string",
+              "pattern": "^([a-zA-Z0-9]+\\\\+)*[a-zA-Z0-9]+$",
+              "description": "For \\"keystroke\\": one key combination, written the way it is spoken, e.g. \\"delete\\" or \\"shift+cmd+k\\". Modifiers: ctrl, opt, shift, cmd. Keys: a-z, 0-9, f1-f20, space, return, tab, escape, delete, forwarddelete, home, end, pageup, pagedown, left, right, up, down, minus, equal, leftbracket, rightbracket, backslash, semicolon, quote, comma, period, slash, grave, keypadenter, keypad0, keypad1, keypad2, keypad3, keypad4, keypad5, keypad6, keypad7, keypad8, keypad9, keypaddecimal, keypadplus, keypadminus, keypadmultiply, keypaddivide, keypadequals, keypadclear, help. Pressed in the app the text was selected in. If that app is no longer frontmost, nothing is pressed." },
             "output": { "type": "string", "enum": ["panel", "compare", "replace", "append", "copy"],
               "description": "For ai, transform, shortcut, script and systemTranslate: where the result goes. panel (default) shows it in the popup, which offers a Replace button; compare shows the selection above the result with the changes marked, then Replace; replace puts it in place of the selection; append puts it after the selection; copy puts it on the clipboard." },
             "targetLanguage": { "type": "string",

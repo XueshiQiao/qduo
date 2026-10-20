@@ -163,6 +163,9 @@ final class PopBarSession {
     func runAction(_ action: PopBarActionConfig) {
         let text = self.text
         let url = self.url
+        // The app the text was selected in. Nil for OCR, a URL run, a sample
+        // and the preview — a keystroke action refuses those rather than guessing.
+        let sourcePID = self.source?.pid
         let generation = panelGeneration
         actionTask?.cancel()   // a tap replaces any prior in-flight action in THIS window
         actionGeneration &+= 1
@@ -189,7 +192,8 @@ final class PopBarSession {
                 panel.applyPhase(.result(""))
             }
             actionTask = Task { [weak self] in
-                let outcome = await ActionRegistry.run(action, on: text, url: url, service: nil, config: nil)
+                let outcome = await ActionRegistry.run(action, on: text, url: url, service: nil, config: nil,
+                                                        sourcePID: sourcePID)
                 let cancelled = Task.isCancelled
                 await MainActor.run {
                     // Recorded before the staleness check: a run that finished
@@ -212,7 +216,8 @@ final class PopBarSession {
         panel.applyPhase(.result(""))
         let streamed = StreamedText()
         actionTask = Task { [weak self] in
-            let outcome = await ActionRegistry.runStreaming(action, on: text, url: url, service: service, config: config) { displayed in
+            let outcome = await ActionRegistry.runStreaming(action, on: text, url: url, service: service, config: config,
+                                                             sourcePID: sourcePID) { displayed in
                 streamed.text = displayed
                 // Every delta hops to main and bails if a newer popup OR a newer
                 // action on this same capsule took over, so stale tokens never leak.

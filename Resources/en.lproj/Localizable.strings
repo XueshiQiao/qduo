@@ -213,6 +213,7 @@
 "popbar.editor.kind.transform" = "Transform Text";
 "popbar.editor.kind.shortcut" = "Run Shortcut";
 "popbar.editor.kind.script" = "Run Shell Script";
+"popbar.editor.kind.keystroke" = "Press Keys";
 "popbar.editor.url" = "URL";
 "popbar.editor.url.hint" = "{text} is replaced by the selection. Web pages open in your browser or the popup's preview window; other addresses (dict://, obsidian://) open in the app that handles them.\n\nWith {text} alone, the selection itself is the address to open (example.com, or https://example.com/page); a selection that is not a web address shows a message. To search for the selection, enter a search engine's address, e.g. https://www.google.com/search?q={text}.";
 "popbar.editor.openIn" = "Open in";
@@ -231,6 +232,12 @@
 "popbar.editor.shortcut.hint" = "The name of a Shortcut in the Shortcuts app. The selection is its input; whatever it outputs is the result.";
 "popbar.editor.script" = "Shell script";
 "popbar.editor.script.hint" = "Runs in your login shell. The selection arrives on standard input (and in $QDUO_TEXT); whatever the script prints is the result. You will be asked to confirm a script the first time it runs, and again whenever it changes.";
+"popbar.editor.keys" = "Keys";
+"popbar.editor.keys.name" = "Key name";
+"popbar.editor.keys.hint" = "The keys are pressed in the app the text was selected in. If that app is no longer in front, the action presses nothing and shows an error. Allowing other apps to run this action from a URL does nothing useful: a URL run has no source app, and the action refuses to press anything.";
+"popbar.editor.keys.hotkeyClash" = "This is one of %@'s own shortcuts, so %@ catches the key and the other app never sees it.";
+"popbar.editor.keys.recording" = "Press a key… (click again to cancel)";
+"popbar.editor.keys.unrecognized" = "This key can't be used. Please pick another key. The Save button is greyed out because of this.";
 "popbar.replace.result" = "Replace the selection with this";
 "popbar.replace.lost" = "The selection has moved or lost focus, so nothing was replaced. The result is on the clipboard.";
 "popbar.replace.unavailable" = "This selection can't be replaced (it isn't in an editable field this app can reach). The result is on the clipboard.";
@@ -241,6 +248,11 @@
 "popbar.compare.unchanged" = "Nothing to change: the result is the same as the selection.";
 "popbar.error.noshortcut" = "This action has no Shortcut name. Edit it in Settings → Actions.";
 "popbar.error.noscript" = "This action has no script. Edit it in Settings → Actions.";
+"popbar.error.nokeys" = "This action has no keys. Edit it in Settings → Actions.";
+"popbar.error.badkeys" = "This action's keys are not a combination this app understands. Edit it in Settings → Actions.";
+"popbar.error.keystroke.noPermission" = "Accessibility permission is needed to press keys in another app. Turn it on in System Settings → Privacy & Security → Accessibility.";
+"popbar.error.keystroke.noSourceApp" = "There is no app to press the keys in. This action only works on text selected in an app, not on a screenshot, a sample, or a run started from a URL.";
+"popbar.error.keystroke.appNotFront" = "The app the text was selected in is no longer in front, so nothing was pressed.";
 "popbar.error.badurl" = "This action's URL is missing or invalid. Edit it in Settings → Actions.";
 "popbar.error.notaurl" = "The selection is not a web address, so no page was opened.";
 "popbar.error.unknownop" = "This action's text operation isn't known to this version of the app.";
@@ -273,6 +285,7 @@
 "template.obsidian" = "New Obsidian Note";
 "template.shortcut" = "Run Shortcut";
 "template.script" = "Run Script";
+"template.keystroke" = "Press Delete";
 "transform.uppercase" = "UPPERCASE";
 "transform.lowercase" = "lowercase";
 "transform.titleCase" = "Title Case";

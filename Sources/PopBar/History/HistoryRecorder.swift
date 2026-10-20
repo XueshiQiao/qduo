@@ -142,7 +142,7 @@ enum HistoryRecorder {
         case .transform, .copy:                                  return .text
         case .speak:                                             return .speech
         case .openURL, .webPreview, .quickLook, .revealInFinder: return .web
-        case .shortcut, .script:                                 return .automation
+        case .shortcut, .script, .keystroke:                     return .automation
         case .pause, .inspect, .settings, .group:                return .text
         }
     }

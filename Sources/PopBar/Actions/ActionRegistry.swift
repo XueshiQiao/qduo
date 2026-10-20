@@ -11,7 +11,8 @@ enum ActionRegistry {
     private static let log = FileLog("PopBar.Action")
 
     static func run(_ action: PopBarActionConfig, on text: String, url: URL?,
-                    service: LLMService?, config: LLMConfig?) async -> PopBarPresentation {
+                    service: LLMService?, config: LLMConfig?,
+                    sourcePID: pid_t? = nil) async -> PopBarPresentation {
         // Written by a newer build (see `PopBarActionConfig.unsupportedKindRaw`).
         // Say so plainly — the alternative is running it as the empty AI action it
         // decoded to, which produces a baffling "no prompt" error for something the
@@ -77,6 +78,39 @@ enum ActionRegistry {
                 return .none
             }
             return processPresentation(await ProcessRunner.runScript(script, input: text))
+
+        case .keystroke:
+            // One combination, pressed in the app the text was selected in.
+            // Nothing is sent when that app is gone: a key delivered to whatever
+            // is frontmost now (a pinned window a minute later, a URL run, the
+            // sample) would land in the wrong place. The check stops at the
+            // source app's pid: that app must still be frontmost, and the key
+            // then lands at whatever currently has focus in it. Not also
+            // matching the focused element and the selection range — what
+            // ReplaceWriter.write does — is on purpose. The popup can be pinned
+            // and used as a key panel, pressing the same combo into different
+            // fields of that one app.
+            let keysString = (action.keys ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !keysString.isEmpty else { return .error("⚠️ \(L("popbar.error.nokeys"))") }
+            guard let combo = KeyCombo(strictConfigString: keysString) else {
+                return .error("⚠️ \(L("popbar.error.badkeys"))")
+            }
+            return await MainActor.run {
+                guard AccessibilityAuthorizer.isTrusted else {
+                    return .error("⚠️ \(L("popbar.error.keystroke.noPermission"))")
+                }
+                // OCR, a URL run, the onboarding sample and the settings preview
+                // have no source app.
+                guard let sourcePID else {
+                    return .error("⚠️ \(L("popbar.error.keystroke.noSourceApp"))")
+                }
+                guard NSWorkspace.shared.frontmostApplication?.processIdentifier == sourcePID else {
+                    return .error("⚠️ \(L("popbar.error.keystroke.appNotFront"))")
+                }
+                KeySender.press(combo)
+                log.info("pressed \(combo.display) in pid \(sourcePID)")
+                return .none
+            }
 
         case .systemTranslate:
             let translated = await SystemTranslator.translate(text, to: action.targetLanguage)
@@ -239,10 +273,11 @@ enum ActionRegistry {
         url: URL?,
         service: LLMService?,
         config: LLMConfig?,
+        sourcePID: pid_t? = nil,
         onDelta: @escaping (String) -> Void
     ) async -> PopBarPresentation {
         guard action.kind == .ai else {
-            return await run(action, on: text, url: url, service: service, config: config)
+            return await run(action, on: text, url: url, service: service, config: config, sourcePID: sourcePID)
         }
 
         log.debug("stream action '\(action.title)' on \(text.count) char(s)")

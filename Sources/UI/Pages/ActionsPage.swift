@@ -180,6 +180,9 @@ struct ActionsPage: View {
             }
         }
         if action.kind == .script { tags.append(Tag(text: L("popbar.tag.script"), color: .red)) }
+        if action.kind == .keystroke, let combo = KeyCombo(strictConfigString: action.keys ?? "") {
+            tags.append(Tag(text: combo.display, color: .mint))
+        }
         if action.hasOutput {
             switch action.outputMode {
             case .panel:   break

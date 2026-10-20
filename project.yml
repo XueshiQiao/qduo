@@ -143,6 +143,8 @@ targets:
       - path: Sources/PopBar/Actions/ActionURL.swift
       - path: Sources/PopBar/Selection/CopyFirstStrategy.swift
       - path: Sources/PopBar/Trigger/Gestures.swift
+      - path: Sources/PopBar/Capture/KeyCombo.swift
+      - path: Sources/PopBar/Capture/KeyCombo+Config.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

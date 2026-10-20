@@ -2,12 +2,19 @@ import SwiftUI
 import AppKit
 import Carbon.HIToolbox   // cmdKey/shiftKey/optionKey/controlKey masks
 
-/// A click-to-record keyboard-shortcut field. Tapping it enters "recording": the next
-/// key-down (with at least one non-shift modifier) becomes the new combo. Tapping again,
-/// or pressing Esc, cancels recording without reporting a change.
+/// A click-to-record keyboard-shortcut field. Tapping it enters "recording".
+///
+/// With `requiresModifier` (the popup and OCR hotkeys), the next key-down that
+/// has ⌘, ⌥ or ⌃ becomes the combo, and Esc cancels. Without it (a keystroke
+/// action), any key is recorded — ⌫, the arrows, Return, Tab, Esc, a letter,
+/// shift+letter — and recording ends by clicking the field again or by the
+/// window losing key.
 struct HotKeyRecorderField: View {
     /// Nil shows a "click to record" prompt — a hotkey with no default (the popup one).
     let combo: KeyCombo?
+    /// When true, a bare key or shift-only is ignored and Esc cancels. When false,
+    /// the key itself is recorded, modifiers included, and Esc is a key like any other.
+    var requiresModifier: Bool = true
     /// Called with the newly recorded combo. The parent persists it and may reject it
     /// (e.g. the combo is already taken) — this view just reports intent.
     let onRecorded: (KeyCombo) -> Void
@@ -19,7 +26,7 @@ struct HotKeyRecorderField: View {
         Button {
             if isRecording { stopRecording() } else { startRecording() }
         } label: {
-            Text(isRecording ? L("popbar.ocr.hotkey.recording") : combo?.display ?? L("popbar.hotkey.record"))
+            Text(isRecording ? recordingPrompt : combo?.display ?? L("popbar.hotkey.record"))
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
                 .foregroundStyle(isRecording ? Color.accentColor : Color.primary)
                 .frame(minWidth: 100)
@@ -61,23 +68,35 @@ struct HotKeyRecorderField: View {
         isRecording = false
     }
 
+    /// "Press keys… (Esc to cancel)" only describes the modifier-required field.
+    /// A keystroke action records Esc, so its prompt says to click again.
+    private var recordingPrompt: String {
+        L(requiresModifier ? "popbar.ocr.hotkey.recording" : "popbar.editor.keys.recording")
+    }
+
     /// Handles a key-down while recording. Returns nil to swallow the event.
+    ///
+    /// Modifier keys do not produce a keyDown — AppKit sends `.flagsChanged`
+    /// for them — and this listener only receives `.keyDown`, so they need no
+    /// special handling here. The modifiers are read off the key that follows.
     private func handle(_ event: NSEvent) -> NSEvent? {
         let mask = carbonModifiers(from: event.modifierFlags)
 
-        // Esc with no modifiers cancels recording.
-        if event.keyCode == 53 && mask == 0 {
-            stopRecording()
-            return nil
-        }
+        if requiresModifier {
+            // Esc with no modifiers cancels recording.
+            if event.keyCode == 53 && mask == 0 {
+                stopRecording()
+                return nil
+            }
 
-        // Require a "real" modifier (⌘/⌥/⌃); ignore bare keys and shift-only so plain
-        // typing isn't captured. Keep waiting (swallow) until one arrives.
-        let flags = event.modifierFlags
-        let hasRealModifier = flags.contains(.command)
-            || flags.contains(.option)
-            || flags.contains(.control)
-        guard hasRealModifier else { return nil }
+            // Require a "real" modifier (⌘/⌥/⌃); ignore bare keys and shift-only so plain
+            // typing isn't captured. Keep waiting (swallow) until one arrives.
+            let flags = event.modifierFlags
+            let hasRealModifier = flags.contains(.command)
+                || flags.contains(.option)
+                || flags.contains(.control)
+            guard hasRealModifier else { return nil }
+        }
 
         let recorded = KeyCombo(keyCode: UInt32(event.keyCode), carbonModifiers: mask)
         stopRecording()
