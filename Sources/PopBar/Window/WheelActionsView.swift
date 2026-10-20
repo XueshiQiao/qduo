@@ -815,7 +815,8 @@ struct WheelActionsView: View {
             let hot = hovered == action.id
             VStack(spacing: 2) {
                 if layout.showIcons {
-                    ActionIconView(action, size: 15)
+                    ActionIconView(action, size: 15, hot: hot,
+                        hotOpacity: hot && pointerOnSecondRing(of: action.id) ? 0.55 : 1)
                         .frame(height: 18)
                 }
                 if layout.showLabels {
@@ -826,7 +827,8 @@ struct WheelActionsView: View {
             // While the pointer is out on this slice's second ring, the slice is the
             // open parent rather than the thing under the pointer: a softer tint.
             // Dim the paint, not the view: a view-level opacity also thins the halo
-            // below and lets it show through the glyphs.
+            // below and lets it show through the glyphs. A picture cannot take this
+            // tint, so the ring around it fades by the same 0.55.
             .foregroundStyle(glyphStyle(hot: hot, dark: dark)
                 .opacity(hot && pointerOnSecondRing(of: action.id) ? 0.55 : 1))
             // Halo lifts the glyphs off the glass: a white glow on the bright ring,

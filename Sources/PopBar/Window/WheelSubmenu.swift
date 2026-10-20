@@ -680,7 +680,7 @@ struct SubmenuRing<Material: View>: View, Animatable {
             let hot = i == hoveredIndex
             VStack(spacing: 2) {
                 if showIcons {
-                    ActionIconView(symbol: item.symbol, image: item.image, size: 13)
+                    ActionIconView(symbol: item.symbol, image: item.image, size: 13, hot: hot)
                         .frame(height: 16)   // fixed slot — same baseline fix as the capsule
                 }
                 if showLabels {
