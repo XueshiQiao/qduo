@@ -1,10 +1,9 @@
 import XCTest
 import AppKit
 import ImageIO
-import SwiftUI
 
-/// The user's own icon pictures and the symbol search (issue #17), and the ring
-/// a hovered picture draws around itself (issue #21).
+/// The user's own icon pictures and the symbol search (issue #17), and the
+/// shape a picture is drawn as (issue #21).
 final class ActionIconTests: XCTestCase {
 
     // MARK: - Symbol search
@@ -95,188 +94,269 @@ final class ActionIconTests: XCTestCase {
         XCTAssertEqual(written.components(separatedBy: "iconImage").count - 1, 1)
     }
 
-    // MARK: - Hover ring
+    // MARK: - The shape a picture is drawn as
 
-    /// The picture's centre pixel is the same hovered or not, and a pixel about a
-    /// point outside the picture's edge is clear until the ring is on.
-    ///
-    /// The ring is drawn outside the icon's layout size, so the rendered view is
-    /// padded: otherwise that pixel would fall outside the bitmap. The file name
-    /// is unique because `ActionIconStore` caches pictures, by the path string,
-    /// for the whole process.
-    @MainActor
-    func testAHoveredPictureKeepsItsCentreAndGainsARingOutsideIt() throws {
-        let url = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("qduo-icon-hover-\(UUID().uuidString).png")
-        try png(width: 64, height: 64).write(to: url)
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let scale: CGFloat = 2
-        let pad: CGFloat = 4
-        let side = CGFloat(15) * 1.2   // ActionIconView's picture box, `size * 1.2`
-        let ringOutset: CGFloat = 3.5
-        let lineWidth: CGFloat = 1.25
-        let pictureRight = pad + side
-        // strokeBorder draws inside the outset box, so the ink runs from
-        // `lineWidth` inside that box's edge back to the edge.
-        let bandOuter = pictureRight + ringOutset / 2
-        let bandInner = bandOuter - lineWidth
-        let bandMid = (bandInner + bandOuter) / 2
-        let mid = pad + side / 2
-        let cx = Int(mid * scale)
-        let cy = cx
-        let ox = Int(bandMid * scale)
-        let oy = cy
-        let sample = (CGFloat(ox) + 0.5) / scale
-        XCTAssertGreaterThan(sample, bandInner)
-        XCTAssertLessThan(sample, bandOuter)
-        // The right edge is straight through the middle; the corners are rounded
-        // and would miss the stroke.
-        let corner = (side + ringOutset) * 0.28
-        let localY = (CGFloat(oy) + 0.5) / scale - (mid - (side + ringOutset) / 2)
-        XCTAssertGreaterThan(localY, corner)
-        XCTAssertLessThan(localY, side + ringOutset - corner)
-
-        guard let cold = renderedIcon(path: url.path, hot: false, pad: pad, side: side, scale: scale),
-              let hot = renderedIcon(path: url.path, hot: true, pad: pad, side: side, scale: scale) else {
-            XCTFail("ImageRenderer produced no image for an NSImage-backed ActionIconView. This test bundle is not hosted in the app, so a picture view may not render here.")
-            return
+    /// A `side`-square picture: `plate` filled over `plateRect` (nil = none),
+    /// then `ink` filled over `inkRect`. Rects are in pixels, origin bottom-left.
+    private func picture(side: Int = 128, plate: CGColor?, plateRect: CGRect? = nil,
+                         ink: CGColor, inkRect: CGRect, inkIsEllipse: Bool = false,
+                         mark: (CGColor, CGRect)? = nil) -> CGImage {
+        let context = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        if let plate {
+            context.setFillColor(plate)
+            context.fill(plateRect ?? CGRect(x: 0, y: 0, width: side, height: side))
         }
-        let expected = Int(((side + pad * 2) * scale).rounded())
-        guard cold.width == expected, cold.height == expected,
-              hot.width == expected, hot.height == expected else {
-            XCTFail("ImageRenderer produced \(cold.width)×\(cold.height) and \(hot.width)×\(hot.height), expected \(expected)×\(expected).")
-            return
+        context.setFillColor(ink)
+        if inkIsEllipse { context.fillEllipse(in: inkRect) } else { context.fill(inkRect) }
+        if let mark {
+            context.setFillColor(mark.0)
+            context.fill(mark.1)
         }
-        guard let coldCentre = pixel(cold, x: cx, y: cy), let hotCentre = pixel(hot, x: cx, y: cy),
-              let coldOut = pixel(cold, x: ox, y: oy), let hotOut = pixel(hot, x: ox, y: oy) else {
-            return XCTFail("sample pixel outside the rendered image")
-        }
-        XCTAssertGreaterThan(coldCentre[3], UInt8(200), "the picture should be drawn at its centre")
-        XCTAssertEqual(coldCentre, hotCentre, "hover must not change the picture's own pixels")
-        XCTAssertEqual(coldOut[3], UInt8(0), "the pixel just outside the picture should be clear when the ring is off")
-        XCTAssertGreaterThan(hotOut[3], UInt8(0), "the ring should cover the pixel just outside the picture")
-        XCTAssertNotEqual(hotOut, hotCentre)
+        return context.makeImage()!
     }
 
-    /// A symbol draws no ring. `hot` is only read when a picture is drawn, so
-    /// the pixel the picture test samples — about a point outside the picture's
-    /// edge — stays clear when the symbol is hovered.
-    @MainActor
-    func testAHoveredSymbolLeavesThePixelOutsideThePictureClear() {
-        let scale: CGFloat = 2
-        let pad: CGFloat = 4
-        let side = CGFloat(15) * 1.2
-        let outside = outerRingSample(pad: pad, side: side, scale: scale)
-
-        guard let hot = renderedIcon(hot: true, pad: pad, side: side, scale: scale) else {
-            XCTFail("ImageRenderer produced no image for a symbol ActionIconView. This test bundle is not hosted in the app, so a symbol view may not render here.")
-            return
-        }
-        let expected = Int(((side + pad * 2) * scale).rounded())
-        guard hot.width == expected, hot.height == expected else {
-            XCTFail("ImageRenderer produced \(hot.width)×\(hot.height), expected \(expected)×\(expected).")
-            return
-        }
-        guard let hotOut = pixel(hot, x: outside.x, y: outside.y) else {
-            return XCTFail("sample pixel outside the rendered image")
-        }
-        XCTAssertEqual(hotOut[3], UInt8(0), "a hovered symbol should leave the pixel just outside the picture clear")
+    /// Alpha at (x, y), y counted from the top, of a 128-square image.
+    private func alpha(_ image: CGImage, _ x: Int, _ y: Int) -> UInt8 {
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        // Shift the image so the wanted pixel lands on the single one drawn.
+        context.draw(image, in: CGRect(x: -x, y: -(image.height - 1 - y), width: image.width, height: image.height))
+        return pixel[3]
     }
 
-    /// `hotOpacity` is how solid the picture's ring is. The same pixel the
-    /// picture test samples is still covered at 0.55, and fainter than at 1.
-    ///
-    /// The file name is unique because `ActionIconStore` caches pictures, by
-    /// the path string, for the whole process.
-    @MainActor
-    func testALowerHotOpacityDrawsAFainterRing() throws {
-        let url = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("qduo-icon-hot-opacity-\(UUID().uuidString).png")
-        try png(width: 64, height: 64).write(to: url)
-        defer { try? FileManager.default.removeItem(at: url) }
+    private let orange = CGColor(srgbRed: 1, green: 0.6, blue: 0.1, alpha: 1)
+    private let white = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
+    private let black = CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
 
-        let scale: CGFloat = 2
-        let pad: CGFloat = 4
-        let side = CGFloat(15) * 1.2
-        let outside = outerRingSample(pad: pad, side: side, scale: scale)
-
-        guard let solid = renderedIcon(path: url.path, hot: true, hotOpacity: 1, pad: pad, side: side, scale: scale),
-              let faint = renderedIcon(path: url.path, hot: true, hotOpacity: 0.55, pad: pad, side: side, scale: scale) else {
-            XCTFail("ImageRenderer produced no image for an NSImage-backed ActionIconView. This test bundle is not hosted in the app, so a picture view may not render here.")
-            return
-        }
-        let expected = Int(((side + pad * 2) * scale).rounded())
-        guard solid.width == expected, solid.height == expected,
-              faint.width == expected, faint.height == expected else {
-            XCTFail("ImageRenderer produced \(solid.width)×\(solid.height) and \(faint.width)×\(faint.height), expected \(expected)×\(expected).")
-            return
-        }
-        guard let solidOut = pixel(solid, x: outside.x, y: outside.y),
-              let faintOut = pixel(faint, x: outside.x, y: outside.y) else {
-            return XCTFail("sample pixel outside the rendered image")
-        }
-        XCTAssertGreaterThan(faintOut[3], UInt8(0), "a ring at hotOpacity 0.55 should still cover the pixel just outside the picture")
-        XCTAssertLessThan(faintOut[3], solidOut[3], "hotOpacity 0.55 should draw that pixel fainter than hotOpacity 1")
+    private func shape(_ image: CGImage) throws -> CGImage {
+        try XCTUnwrap(ActionIconTemplate.shape(ofImage: image))
     }
 
-    /// The pixel `testAHoveredPictureKeepsItsCentreAndGainsARingOutsideIt`
-    /// samples: about a point outside the picture's right edge, midway through
-    /// the stroke, on the straight side. The corners are rounded and would miss
-    /// the stroke.
-    private func outerRingSample(pad: CGFloat, side: CGFloat, scale: CGFloat) -> (x: Int, y: Int) {
-        let ringOutset: CGFloat = 3.5
-        let lineWidth: CGFloat = 1.25
-        let pictureRight = pad + side
-        let bandOuter = pictureRight + ringOutset / 2
-        let bandInner = bandOuter - lineWidth
-        let bandMid = (bandInner + bandOuter) / 2
-        let mid = pad + side / 2
-        return (x: Int(bandMid * scale), y: Int(mid * scale))
+    /// The fitted box is 85% of the square: from about 9.6 to 118.4 pixels.
+    private let inside = 12, outside = 5
+
+    /// On a transparent background the alpha is the shape, cut out of its
+    /// margin and fitted into the box.
+    func testATransparentPictureIsItsAlphaFittedToTheBox() throws {
+        let out = try shape(picture(plate: nil, ink: orange, inkRect: CGRect(x: 44, y: 44, width: 40, height: 40)))
+        XCTAssertEqual(out.width, ActionIconStore.side)
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+        XCTAssertGreaterThan(alpha(out, inside, 64), 250, "the 40-pixel square is scaled up to the box")
+        XCTAssertEqual(alpha(out, outside, 64), 0, "outside the box")
     }
 
-    /// `ActionIconView` padded so the ring, which sits outside the picture, is
-    /// inside the bitmap. `path` nil draws the SF Symbol and no picture.
-    ///
-    /// A symbol sizes to its glyph, which is smaller than the picture box. That
-    /// render is framed to the same canvas the picture test uses, so the pixel
-    /// just outside the picture is inside the bitmap. The frame does not scale
-    /// the glyph.
-    @MainActor
-    private func renderedIcon(path: String? = nil, hot: Bool, hotOpacity: Double = 1,
-                              pad: CGFloat, side: CGFloat, scale: CGFloat) -> CGImage? {
-        let canvas = side + pad * 2
-        if let path {
-            let renderer = ImageRenderer(content:
-                ActionIconView(symbol: "star", image: path, size: 15, hot: hot, hotOpacity: hotOpacity).padding(pad))
-            renderer.proposedSize = ProposedViewSize(width: canvas, height: canvas)
-            renderer.scale = scale
-            renderer.isOpaque = false
-            return renderer.cgImage
-        }
-        let renderer = ImageRenderer(content:
-            ActionIconView(symbol: "star", size: 15, hot: hot, hotOpacity: hotOpacity)
-                .padding(pad)
-                .frame(width: canvas, height: canvas))
-        renderer.proposedSize = ProposedViewSize(width: canvas, height: canvas)
-        renderer.scale = scale
-        renderer.isOpaque = false
-        return renderer.cgImage
+    /// An app-icon-style picture: a round white mark on an orange plate. The
+    /// plate is dropped, the mark kept and fitted to the box.
+    func testThePlateIsTakenOffAndTheMarkFillsTheBox() throws {
+        let out = try shape(picture(plate: orange, plateRect: CGRect(x: 8, y: 8, width: 112, height: 112),
+                                    ink: white, inkRect: CGRect(x: 44, y: 44, width: 40, height: 40),
+                                    inkIsEllipse: true))
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250, "the mark is kept")
+        XCTAssertGreaterThan(alpha(out, inside, 64), 250, "the mark is scaled up")
+        XCTAssertEqual(alpha(out, outside, 64), 0)
+        // The mark is round: the box's corner is clear. Had the plate stayed,
+        // the square plate would fill the box, corner and all.
+        XCTAssertEqual(alpha(out, inside, inside), 0, "the plate's corner is gone")
     }
 
-    /// One pixel as premultiplied RGBA, origin at the top left.
-    private func pixel(_ image: CGImage, x: Int, y: Int) -> [UInt8]? {
-        guard x >= 0, y >= 0, x < image.width, y < image.height,
-              let one = image.cropping(to: CGRect(x: x, y: y, width: 1, height: 1)) else { return nil }
-        var bytes = [UInt8](repeating: 0, count: 4)
-        let drew = bytes.withUnsafeMutableBytes { raw -> Bool in
-            guard let context = CGContext(data: raw.baseAddress, width: 1, height: 1, bitsPerComponent: 8,
-                                          bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(),
-                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-            context.interpolationQuality = .none
-            context.draw(one, in: CGRect(x: 0, y: 0, width: 1, height: 1))
-            return true
+    /// The plate is gone: beside a wide, flat mark, where the plate was, is clear.
+    func testNothingOfThePlateIsLeft() throws {
+        let out = try shape(picture(plate: orange, ink: white, inkRect: CGRect(x: 24, y: 54, width: 80, height: 20)))
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+        XCTAssertEqual(alpha(out, 64, 20), 0, "above the mark, where the plate was")
+        XCTAssertEqual(alpha(out, 64, 108), 0, "below the mark")
+    }
+
+    /// A macOS-style icon: the plate has a soft dark shadow under it. The
+    /// shadow is not opaque, so it is not shape, and it does not stop the mark
+    /// from being scaled up.
+    func testAShadowUnderThePlateIsNotShape() throws {
+        let context = CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.3))
+        context.fill(CGRect(x: 10, y: 4, width: 108, height: 108))
+        context.setFillColor(orange)
+        context.fill(CGRect(x: 10, y: 14, width: 108, height: 108))
+        context.setFillColor(white)
+        context.fill(CGRect(x: 44, y: 48, width: 40, height: 40))
+        let out = try shape(context.makeImage()!)
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+        XCTAssertGreaterThan(alpha(out, inside, 64), 250, "the shadow did not widen the cut")
+    }
+
+    /// A black glyph on white: the white is the plate.
+    func testABlackShapeOnWhiteKeepsTheShape() throws {
+        let out = try shape(picture(plate: white, ink: black, inkRect: CGRect(x: 14, y: 14, width: 100, height: 100),
+                                    inkIsEllipse: true))
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+        XCTAssertEqual(alpha(out, 14, 14), 0, "the white corner is plate")
+    }
+
+    /// A light grey mark on white is still a full-strength mark: how far a
+    /// colour must be from the plate is measured against the picture's own spread.
+    func testALightGreyMarkOnWhiteIsSolid() throws {
+        let grey = CGColor(srgbRed: 0.85, green: 0.85, blue: 0.85, alpha: 1)
+        let out = try shape(picture(plate: white, ink: grey, inkRect: CGRect(x: 34, y: 34, width: 60, height: 60)))
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+        XCTAssertGreaterThan(alpha(out, inside, 64), 250, "only the grey square, fitted")
+    }
+
+    /// A small highlight on a solid silhouette is not a mark on a plate: the
+    /// silhouette is the shape, not the highlight blown up to fill the box. The
+    /// highlight is 1.4% of the silhouette, so it is the 2% rule that decides,
+    /// not the spread (which the 99th percentile would still find).
+    func testASmallHighlightDoesNotReplaceTheSilhouette() throws {
+        let out = try shape(picture(plate: black, plateRect: CGRect(x: 14, y: 14, width: 100, height: 100),
+                                    ink: white, inkRect: CGRect(x: 16, y: 100, width: 12, height: 12)))
+        // The highlight sits in the top-left corner; the bottom-right corner is
+        // only silhouette, and the middle is silhouette too.
+        XCTAssertGreaterThan(alpha(out, 115, 115), 250, "the far corner of the silhouette is drawn")
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+    }
+
+    /// A black shape covering most of a white picture: the white reaches the
+    /// edge, so the white is the plate, however much black there is.
+    func testAMostlyBlackPictureOnWhiteIsNotInverted() throws {
+        let out = try shape(picture(plate: white, ink: black, inkRect: CGRect(x: 6, y: 6, width: 116, height: 116),
+                                    inkIsEllipse: true))
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250, "the black circle is the shape")
+        XCTAssertEqual(alpha(out, 1, 1), 0, "the white corner is not")
+    }
+
+    /// A round badge smaller than the square is still a plate: it fills most
+    /// of its own box, and its edge is one colour.
+    func testARoundBadgeIsAPlate() throws {
+        let out = try shape(picture(plate: nil, ink: orange, inkRect: CGRect(x: 14, y: 14, width: 100, height: 100),
+                                    inkIsEllipse: true, mark: (white, CGRect(x: 49, y: 49, width: 30, height: 30))))
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250, "the mark is kept")
+        XCTAssertGreaterThan(alpha(out, inside, inside), 250, "the square mark fills the box")
+    }
+
+    /// A multi-coloured ring on a transparent background has no one-colour
+    /// edge: it is drawn whole from its alpha, not cut into the colours
+    /// unlike the median.
+    func testAMultiColouredLogoIsDrawnWhole() throws {
+        let context = CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let colours = [CGColor(srgbRed: 0.9, green: 0.2, blue: 0.2, alpha: 1), CGColor(srgbRed: 1, green: 0.8, blue: 0, alpha: 1),
+                       CGColor(srgbRed: 0.2, green: 0.7, blue: 0.3, alpha: 1), CGColor(srgbRed: 0.2, green: 0.4, blue: 0.9, alpha: 1)]
+        for (k, c) in colours.enumerated() {
+            context.setFillColor(c)
+            context.fill(CGRect(x: k % 2 * 64, y: k / 2 * 64, width: 64, height: 64))
         }
-        return drew ? bytes : nil
+        let out = try shape(context.makeImage()!)
+        for (x, y) in [(inside, inside), (115, inside), (inside, 115), (115, 115)] {
+            XCTAssertGreaterThan(alpha(out, x, y), 250, "quarter at \(x),\(y)")
+        }
+    }
+
+    /// A shaded shape on a transparent background — red to dark red with a
+    /// highlight, like an emoji heart — runs through every shade between its
+    /// edge colour and its highlight. It is drawn whole, not as the highlight.
+    func testAShadedShapeIsDrawnWhole() throws {
+        let context = CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let circle = CGRect(x: 14, y: 14, width: 100, height: 100)
+        context.addEllipse(in: circle)
+        context.clip()
+        let shades = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                colors: [CGColor(srgbRed: 1, green: 0.75, blue: 0.75, alpha: 1),
+                                         CGColor(srgbRed: 0.9, green: 0.1, blue: 0.1, alpha: 1),
+                                         CGColor(srgbRed: 0.45, green: 0, blue: 0, alpha: 1)] as CFArray,
+                                locations: [0, 0.4, 1])!
+        context.drawRadialGradient(shades, startCenter: CGPoint(x: 50, y: 85), startRadius: 0,
+                                   endCenter: CGPoint(x: 64, y: 64), endRadius: 52, options: [.drawsAfterEndLocation])
+        let out = try shape(context.makeImage()!)
+        // The whole circle: its middle and a point near its lower edge.
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+        XCTAssertGreaterThan(alpha(out, 64, 110), 250, "the dark lower part is shape too")
+        XCTAssertEqual(alpha(out, inside, inside), 0, "outside the circle")
+    }
+
+    /// A mark touching the picture's border on white: the white is still the
+    /// plate, so the picture is not drawn as a solid square.
+    func testAMarkTouchingTheBorderStillLeavesThePlate() throws {
+        let out = try shape(picture(plate: white, ink: black, inkRect: CGRect(x: 0, y: 0, width: 128, height: 30)))
+        // The band, fitted into the box, is wide and flat: above it is clear.
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+        XCTAssertEqual(alpha(out, 64, 30), 0, "where the white was")
+    }
+
+    /// A rounded-square plate with a strong top-to-bottom gradient, as macOS 26
+    /// app icons have: most of its pixels are shades, yet it is a plate, and
+    /// the white mark on it is kept.
+    func testAGradientAppIconPlateIsStillTakenOff() throws {
+        let context = CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.saveGState()
+        context.addPath(CGPath(roundedRect: CGRect(x: 4, y: 4, width: 120, height: 120),
+                               cornerWidth: 26, cornerHeight: 26, transform: nil))
+        context.clip()
+        let plate = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                               colors: [CGColor(srgbRed: 0.47, green: 0.725, blue: 0.96, alpha: 1),
+                                        CGColor(srgbRed: 0.13, green: 0.325, blue: 0.79, alpha: 1)] as CFArray,
+                               locations: [0, 1])!
+        context.drawLinearGradient(plate, start: CGPoint(x: 64, y: 124), end: CGPoint(x: 64, y: 4), options: [])
+        context.restoreGState()
+        context.setFillColor(white)
+        context.fillEllipse(in: CGRect(x: 44, y: 44, width: 40, height: 40))
+        let out = try shape(context.makeImage()!)
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250, "the white mark is kept")
+        // (20, 20) is inside the rounded square once fitted to the box, but
+        // outside the round mark: plate only.
+        XCTAssertEqual(alpha(out, 20, 20), 0, "the plate is gone, not drawn as a block")
+    }
+
+    /// A disc on a transparent background, red above and white below, is a
+    /// two-coloured shape, not a white mark on a red plate: drawn whole.
+    func testATwoColouredDiscIsDrawnWhole() throws {
+        let context = CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.addEllipse(in: CGRect(x: 14, y: 14, width: 100, height: 100))
+        context.clip()
+        context.setFillColor(CGColor(srgbRed: 0.9, green: 0.1, blue: 0.1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 44, width: 128, height: 84))
+        context.setFillColor(white)
+        context.fill(CGRect(x: 0, y: 0, width: 128, height: 44))
+        let out = try shape(context.makeImage()!)
+        XCTAssertGreaterThan(alpha(out, 64, 30), 250, "the red half is shape")
+        XCTAssertGreaterThan(alpha(out, 64, 100), 250, "the white half is shape")
+    }
+
+    /// A plain square has nothing on its plate; its alpha is the shape.
+    func testAPlainSquareIsDrawnWhole() throws {
+        let out = try shape(picture(plate: orange, ink: orange, inkRect: .zero))
+        XCTAssertGreaterThan(alpha(out, inside, inside), 250)
+    }
+
+    /// A picture of another size, as a hand-written path may name, gives a
+    /// shape of the stored side.
+    func testAPictureOfAnotherSizeGivesAShapeOfTheStoredSide() throws {
+        let out = try shape(picture(side: 300, plate: orange, ink: white,
+                                    inkRect: CGRect(x: 100, y: 100, width: 100, height: 100)))
+        XCTAssertEqual(out.width, ActionIconStore.side)
+        XCTAssertEqual(out.height, ActionIconStore.side)
+        XCTAssertGreaterThan(alpha(out, 64, 64), 250)
+    }
+
+    /// Nothing visible, nothing to draw: the caller draws the symbol instead.
+    func testAnEmptyPictureHasNoShape() {
+        XCTAssertNil(ActionIconTemplate.shape(of: picture(plate: nil, ink: orange, inkRect: .zero)))
+    }
+
+    /// What is cached and drawn is marked as a template.
+    func testTheDrawnPictureIsATemplate() throws {
+        let out = try XCTUnwrap(ActionIconTemplate.shape(of: picture(plate: nil, ink: orange,
+                                                                     inkRect: CGRect(x: 0, y: 0, width: 64, height: 64))))
+        XCTAssertTrue(out.isTemplate)
     }
 }

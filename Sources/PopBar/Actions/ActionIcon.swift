@@ -6,13 +6,12 @@ import ImageIO
 /// action has one (`iconImage`) and its file can be read, the SF Symbol
 /// (`iconSymbol`) otherwise.
 ///
-/// The picture is drawn as it is — its own colours, scaled to fit the slot. It
-/// does not take the skin's ink or the hover gradient the way a symbol does; how
-/// it looks on the ring is up to whoever made it. A hovered picture is marked
-/// by a thin rounded-square stroke in the brand gradient, drawn just outside
-/// the picture, so the picture's own pixels never change. Only a picture gets
-/// that stroke. A symbol is left alone: its hover is already the gradient on
-/// the glyph, and the same paint on a picture would recolour it.
+/// A picture is drawn the way a symbol is: as a template, a shape painted with
+/// the caller's `foregroundStyle` — the skin's ink at rest, the brand gradient
+/// when hovered — so a hovered picture is marked exactly like a hovered symbol
+/// (issue #21). Only its shape is kept, not its colours; a picture on an opaque
+/// plate has the plate taken off first, and every picture is fitted to about a
+/// symbol's size (`ActionIconTemplate`).
 struct ActionIconView: View {
     let symbol: String
     let image: String?
@@ -20,53 +19,26 @@ struct ActionIconView: View {
     /// which is about the box a symbol of that size fills.
     let size: CGFloat
     var weight: Font.Weight = .medium
-    /// Hovered. Read only when a picture is drawn; the symbol branch ignores it.
-    var hot = false
-    /// How solid the picture's ring is. Callers pass the same softening they
-    /// apply to a symbol (the main ring uses 0.55 while the pointer is out on
-    /// that slice's second ring).
-    var hotOpacity: Double = 1
 
-    init(symbol: String, image: String? = nil, size: CGFloat, weight: Font.Weight = .medium,
-         hot: Bool = false, hotOpacity: Double = 1) {
+    init(symbol: String, image: String? = nil, size: CGFloat, weight: Font.Weight = .medium) {
         self.symbol = symbol
         self.image = image
         self.size = size
         self.weight = weight
-        self.hot = hot
-        self.hotOpacity = hotOpacity
     }
 
-    init(_ action: PopBarActionConfig, size: CGFloat, weight: Font.Weight = .medium,
-         hot: Bool = false, hotOpacity: Double = 1) {
-        self.init(symbol: action.iconSymbol, image: action.iconImage, size: size, weight: weight,
-                  hot: hot, hotOpacity: hotOpacity)
+    init(_ action: PopBarActionConfig, size: CGFloat, weight: Font.Weight = .medium) {
+        self.init(symbol: action.iconSymbol, image: action.iconImage, size: size, weight: weight)
     }
 
     var body: some View {
         if let picture = ActionIconStore.picture(named: image) {
-            let side = size * 1.2
             Image(nsImage: picture)
+                .renderingMode(.template)
                 .resizable()
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
-                .frame(width: side, height: side)
-                // The stroke has its own frame, the little box around this icon.
-                // A gradient framed to the wheel would resolve across the whole
-                // canvas and give each icon a different colour by where it sits
-                // (see `submenuTicks`). The overlay does not change the slot.
-                // `brandGradient()` with no flag matches the symbol hover: every
-                // place that turns this ring on resolves dark mode the way
-                // `LiquidInk.isDark` does.
-                .overlay {
-                    if hot {
-                        RoundedRectangle(cornerRadius: (side + 3.5) * 0.28, style: .continuous)
-                            .strokeBorder(LiquidInk.brandGradient(), lineWidth: 1.25)
-                            .frame(width: side + 3.5, height: side + 3.5)
-                            .opacity(hotOpacity)
-                            .allowsHitTesting(false)
-                    }
-                }
+                .frame(width: size * 1.2, height: size * 1.2)
         } else {
             Image(systemName: symbol)
                 .font(.system(size: size, weight: weight))
@@ -121,7 +93,8 @@ enum ActionIconStore {
         cache.countLimit = 200
         return cache
     }()
-    /// Names whose file could not be read. Remembered too: this is asked from
+    /// Names whose file could not be read, or holds nothing visible (the symbol
+    /// is drawn for those too). Remembered too: this is asked from
     /// view bodies, and the ring redraws on every pointer move — a missing file
     /// must not mean a trip to the disk each time. Main thread only, like the
     /// views that ask. An import never reuses a name, so nothing here goes stale
@@ -129,18 +102,43 @@ enum ActionIconStore {
     /// of the config does).
     private static var unreadable = Set<String>()
 
-    /// The picture for an `iconImage` value; nil when there is none or its file
-    /// cannot be read (the caller then draws the symbol).
+    /// The picture for an `iconImage` value, ready to draw as a template (see
+    /// `ActionIconTemplate`); nil when there is none or its file cannot be read
+    /// (the caller then draws the symbol). The plate is taken off once, when the
+    /// file is first read, and the result is what is cached.
     static func picture(named name: String?) -> NSImage? {
         guard let name, !name.isEmpty else { return nil }
         if let cached = cache.object(forKey: name as NSString) { return cached }
         if unreadable.contains(name) { return nil }
-        guard let picture = NSImage(contentsOf: url(for: name)), picture.isValid else {
+        guard let source = image(at: url(for: name)) else {
             unreadable.insert(name)
             return nil
         }
-        cache.setObject(picture, forKey: name as NSString)
-        return picture
+        guard let shape = ActionIconTemplate.shape(of: source) else {
+            unreadable.insert(name)
+            return nil
+        }
+        cache.setObject(shape, forKey: name as NSString)
+        return shape
+    }
+
+    /// The file's picture, no larger than `side` on its longer edge. Read
+    /// scaled down, as `normalized` does: a hand-written path may name a huge
+    /// image, and this runs on the main thread. A format ImageIO cannot read as
+    /// a bitmap (PDF) is drawn at `side` through NSImage instead.
+    private static func image(at url: URL) -> CGImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: side,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+        ]
+        if let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+           let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
+            return image
+        }
+        guard let picture = NSImage(contentsOf: url), picture.isValid else { return nil }
+        var rect = CGRect(x: 0, y: 0, width: side, height: side)
+        return picture.cgImage(forProposedRect: &rect, context: nil, hints: nil)
     }
 
     /// Whether the file starts with the PNG signature. The file's name is not
@@ -214,6 +212,239 @@ extension ActionIconStore {
             try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
             cache.removeObject(forKey: name as NSString)
         }
+    }
+}
+
+/// A picture turned into the shape a template draws.
+///
+/// macOS draws a template image (`NSImage.isTemplate`, SwiftUI's
+/// `renderingMode(.template)`) from its alpha alone: every pixel takes the
+/// paint, as solid as it is opaque. That suits a picture on a transparent
+/// background. A picture on an opaque plate — an app-icon-style rounded
+/// square, a glyph on white — is opaque all over, and would be drawn as a
+/// solid block. macOS has no public call that finds the shape on such a plate
+/// (the tinted app icons of iOS 18 and macOS 26 are made in the private
+/// IconServices), so it is done here:
+///
+///     if the opaque pixels fill more than half of the box around them, and
+///     the edge of the opaque area is mostly one colour (60% of it), the picture
+///     may sit on a plate (a mark touching the picture's border leaves the rest):
+///         plate colour = the median colour of that edge (an app icon's plate and
+///             a white background both reach the edge; the mark on them does not)
+///         spread = how far the most different pixels are from it (the 99th percentile)
+///         a pixel is shape when it is opaque (a shadow or a soft margin around
+///             the plate is not) and its colour is far from the plate's,
+///             measured against the spread, so a light grey mark on white counts
+///         if the spread is tiny (a plain square), or the shape is under 2% of the
+///             opaque pixels (a small highlight on a solid silhouette):
+///             no plate after all — the picture's alpha is the shape
+///         if, besides, the outline is not a square (it fills 90% of its box
+///         or less — an emoji, a round badge), a plate needs more evidence:
+///             where the outline meets transparency, 80% of it is the plate colour
+///             (a disc half red, half white is two colours, not a mark on a plate)
+///             and no more than 40% of the opaque pixels are shades between plate
+///             and mark (a shaded emoji heart runs through every shade; a mark
+///             meets its plate at a hard edge)
+///             otherwise the alpha is the shape
+///     otherwise: the picture's alpha is the shape
+///     the shape is cut out of its empty margin and fitted into 85% of the
+///     square, so every picture is drawn about as large as a symbol
+///
+/// What this cannot do, and the editor's hint says so: detail told apart only
+/// by colour on a transparent background is lost; a plate with a strong
+/// gradient or a see-through plate is not taken off cleanly; a photo comes out
+/// as patches of light and dark. On a transparent background, a flat shape
+/// mostly of one colour with parts of another inside it (a black circle with
+/// white eyes, a green battery with a dark tip, a folder in two blues) cannot
+/// be told from a mark on a plate, and is drawn as those other parts.
+enum ActionIconTemplate {
+
+    /// Share of the opaque area's bounding box the opaque pixels must fill for
+    /// the picture to sit on a plate. Measured against that box, not the whole
+    /// square, so a round badge smaller than the square counts.
+    static let plateCoverage = 0.5
+    /// How alike the edge of the opaque area must be to be one plate colour:
+    /// this share of its pixels within `edgeTolerance` of its median colour.
+    static let edgeShare = 0.6
+    static let edgeTolerance = 0.2
+    /// A pixel at least this opaque counts as opaque.
+    static let opaqueAlpha = 0.9
+    /// Below this spread, every opaque pixel is the plate's colour: a plain square.
+    static let minimumSpread = 0.06
+    /// Colour distance from the plate, as a share of the spread: below the
+    /// first, plate; above the second, shape; a smooth ramp between.
+    static let knockout = (from: 0.35, to: 0.6)
+    /// Alpha ramp for shape on a plate: anything less opaque is outside it.
+    static let plateAlpha = (from: 0.85, to: 0.95)
+    /// Less shape than this, as a share of the opaque pixels, is not a mark on a plate.
+    static let minimumShare = 0.02
+    /// Above this box fill the outline is a square or rounded square (an app
+    /// icon's plate, a picture opaque to its edges); at or below it the
+    /// outline is a shape of its own, and the two checks after this one apply.
+    static let squareFill = 0.9
+    /// Where the outline meets transparency, this share of it must be the
+    /// plate colour when the outline is a shape.
+    static let innerEdgeShare = 0.8
+    /// Distances, as a share of the spread, that are neither plate nor mark…
+    static let betweenBand = (from: 0.15, to: 0.85)
+    /// …and the most of the opaque pixels that may lie there on a plate.
+    static let maximumBetween = 0.4
+    /// How much of a pixel must be shape for it to count when the margin is cut.
+    static let inkThreshold = 0.1
+    /// The share of the square the shape is fitted into.
+    static let fill: CGFloat = 0.85
+
+    /// The image to draw, marked as a template so it is painted even where no
+    /// `renderingMode` is set.
+    /// nil when nothing in the picture is visible: the caller then draws the symbol.
+    static func shape(of image: CGImage) -> NSImage? {
+        guard let shape = shape(ofImage: image) else { return nil }
+        let picture = NSImage(cgImage: shape, size: NSSize(width: ActionIconStore.side, height: ActionIconStore.side))
+        picture.isTemplate = true
+        return picture
+    }
+
+    /// The shape, as white with the shape in its alpha, `ActionIconStore.side`
+    /// square. nil when nothing in the picture is visible.
+    static func shape(ofImage image: CGImage) -> CGImage? {
+        let n = ActionIconStore.side
+        guard let pixels = rgba(image, side: n) else { return nil }
+        let count = n * n
+        var alpha = [Double](repeating: 0, count: count)
+        var opaque: [Int] = []
+        for i in 0..<count {
+            alpha[i] = Double(pixels[i * 4 + 3]) / 255
+            if alpha[i] > opaqueAlpha { opaque.append(i) }
+        }
+        let filled = boxFill(opaque, side: n)
+        let ink = (filled > plateCoverage
+                   ? plateRemoved(pixels, alpha: alpha, opaque: opaque, boxFill: filled, side: n) : nil) ?? alpha
+
+        var shape = [UInt8](repeating: 0, count: count * 4)
+        var minX = n, minY = n, maxX = -1, maxY = -1
+        for i in 0..<count where ink[i] > 0 {
+            let byte = UInt8((ink[i] * 255).rounded())
+            // White, premultiplied: the colour bytes equal the alpha.
+            shape[i * 4] = byte; shape[i * 4 + 1] = byte; shape[i * 4 + 2] = byte; shape[i * 4 + 3] = byte
+            if ink[i] > inkThreshold {
+                let x = i % n, y = i / n
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= minX,
+              let full = makeImage(from: &shape, side: n),
+              let cut = full.cropping(to: CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)),
+              let context = bitmap(side: n) else { return nil }
+        context.interpolationQuality = .high
+        let box = CGFloat(n) * fill
+        let fitted = ActionIconStore.fitted(CGSize(width: cut.width, height: cut.height), side: box)
+        context.draw(cut, in: fitted.offsetBy(dx: (CGFloat(n) - box) / 2, dy: (CGFloat(n) - box) / 2))
+        return context.makeImage()
+    }
+
+    /// The share of their own bounding box the opaque pixels fill.
+    private static func boxFill(_ opaque: [Int], side n: Int) -> Double {
+        guard !opaque.isEmpty else { return 0 }
+        var minX = n, minY = n, maxX = -1, maxY = -1
+        for i in opaque {
+            minX = min(minX, i % n); maxX = max(maxX, i % n); minY = min(minY, i / n); maxY = max(maxY, i / n)
+        }
+        let box = Double((maxX - minX + 1) * (maxY - minY + 1))
+        return Double(opaque.count) / box
+    }
+
+    /// How much of each pixel is shape once the plate is taken off; nil when
+    /// the picture turns out not to be a mark on a plate.
+    private static func plateRemoved(_ pixels: [UInt8], alpha: [Double], opaque: [Int], boxFill: Double,
+                                     side n: Int) -> [Double]? {
+        // A square or rounded-square outline says nothing by itself: drawn
+        // from its alpha it is a block. Any other outline (an emoji, a round
+        // badge) is a shape worth keeping, so a plate is believed only on
+        // stronger evidence.
+        let outlineIsAShape = boxFill <= squareFill
+        // Colours are stored premultiplied; the plate is compared un-multiplied.
+        func channel(_ i: Int, _ c: Int) -> Double { Double(pixels[i * 4 + c]) / 255 / max(alpha[i], 1 / 255) }
+        // The edge of the opaque area: opaque pixels on the square's border or
+        // next to one that is not opaque. A mark drawn on the plate is inside it.
+        func isOpaque(_ x: Int, _ y: Int) -> Bool { alpha[y * n + x] > opaqueAlpha }
+        let edge = opaque.filter { i in
+            let x = i % n, y = i / n
+            guard x > 0, y > 0, x < n - 1, y < n - 1 else { return true }
+            return !isOpaque(x - 1, y) || !isOpaque(x + 1, y) || !isOpaque(x, y - 1) || !isOpaque(x, y + 1)
+        }
+        func median(_ c: Int) -> Double {
+            let values = edge.map { channel($0, c) }.sorted()
+            return values[values.count / 2]
+        }
+        let plate = (median(0), median(1), median(2))
+        func distance(_ i: Int) -> Double {
+            let dr = channel(i, 0) - plate.0, dg = channel(i, 1) - plate.1, db = channel(i, 2) - plate.2
+            return (dr * dr + dg * dg + db * db).squareRoot() / 3.0.squareRoot()
+        }
+        // A plate is one colour along its edge; a multi-coloured logo is not.
+        let alike = edge.filter { distance($0) <= edgeTolerance }.count
+        guard Double(alike) >= edgeShare * Double(edge.count) else { return nil }
+        // Where that outline meets transparency, not the picture's border, it
+        // must be the plate colour almost all round: a disc half red, half
+        // white is a two-coloured shape, not a white mark on a red plate.
+        // Only the border may be crossed by a mark (a band on white).
+        if outlineIsAShape {
+            let inner = edge.filter { i in let x = i % n, y = i / n; return x > 0 && y > 0 && x < n - 1 && y < n - 1 }
+            let innerAlike = inner.filter { distance($0) <= edgeTolerance }.count
+            guard inner.isEmpty || Double(innerAlike) >= innerEdgeShare * Double(inner.count) else { return nil }
+        }
+        let spreads = opaque.map(distance).sorted()
+        let spread = spreads[min(spreads.count - 1, spreads.count * 99 / 100)]
+        guard spread >= minimumSpread else { return nil }
+
+        var ink = [Double](repeating: 0, count: alpha.count)
+        var marked = 0
+        for i in 0..<alpha.count where alpha[i] > 0 {
+            ink[i] = smoothstep(plateAlpha.from, plateAlpha.to, alpha[i])
+                * smoothstep(knockout.from * spread, knockout.to * spread, distance(i))
+            if ink[i] > 0.5 { marked += 1 }
+        }
+        guard Double(marked) >= minimumShare * Double(opaque.count) else { return nil }
+        // A mark meets its plate at a hard edge: few colours lie between the
+        // two. A shaded shape (an emoji heart, red to dark red with a
+        // highlight) runs through every shade, and taking off its edge colour
+        // would leave only the highlight. Too many in-between colours: it is
+        // a shape, not a plate. A square outline is exempt: the plates of
+        // macOS 26 app icons carry gradients and gloss just as shaded, and
+        // their outline drawn from alpha would be a block anyway.
+        if outlineIsAShape {
+            let between = opaque.filter { (betweenBand.from * spread..<betweenBand.to * spread).contains(distance($0)) }.count
+            guard Double(between) <= maximumBetween * Double(opaque.count) else { return nil }
+        }
+        return ink
+    }
+
+    private static func smoothstep(_ a: Double, _ b: Double, _ x: Double) -> Double {
+        let t = min(max((x - a) / (b - a), 0), 1)
+        return t * t * (3 - 2 * t)
+    }
+
+    private static func bitmap(side: Int, data: UnsafeMutableRawPointer? = nil) -> CGContext? {
+        CGContext(data: data, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4,
+                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    }
+
+    /// `image` drawn into a `side`-square buffer, whole and centred. Row 0 is the top.
+    private static func rgba(_ image: CGImage, side: Int) -> [UInt8]? {
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = bitmap(side: side, data: buffer.baseAddress) else { return false }
+            context.interpolationQuality = .high
+            context.draw(image, in: ActionIconStore.fitted(CGSize(width: image.width, height: image.height),
+                                                          side: CGFloat(side)))
+            return true
+        }
+        return drawn ? pixels : nil
+    }
+
+    private static func makeImage(from pixels: inout [UInt8], side: Int) -> CGImage? {
+        pixels.withUnsafeMutableBytes { buffer in bitmap(side: side, data: buffer.baseAddress)?.makeImage() }
     }
 }
 

@@ -257,7 +257,7 @@ enum ConfigSchema {
             "id": { "type": "string", "description": "Stable id. Leave it alone; a new action needs a new one." },
             "title": { "type": "string", "description": "What the popup shows." },
             "iconSymbol": { "type": "string", "description": "An SF Symbol name, e.g. \\"doc.on.doc\\". Any name this Mac can draw." },
-            "iconImage": { "type": "string", "description": "Your own picture instead of the symbol: a PNG, 128x128. A bare file name is looked up in the icons folder beside this file; a value with a slash is a path (~ allowed). Drawn as it is, in its own colours, scaled to fit. When the file cannot be read, iconSymbol is drawn." },
+            "iconImage": { "type": "string", "description": "Your own picture instead of the symbol: a PNG, 128x128. A bare file name is looked up in the icons folder beside this file; a value with a slash is a path (~ allowed). Drawn as a template, like the symbol: only its shape is kept and it takes the theme's colours. When it sits on an opaque plate (an app-icon-style square, a shape on white), the plate's colour, read from its edge, is taken off first. The shape is fitted to about the size of a symbol. When the file cannot be read, iconSymbol is drawn." },
             "kind": {
               "type": "string",
               "enum": ["ai", "copy", "webPreview", "quickLook", "revealInFinder", "openURL", "speak",

@@ -558,7 +558,8 @@ struct ActionEditorView: View {
             Text(L("popbar.editor.icon.image")).font(.system(size: 12.5, weight: .semibold))
             VStack(spacing: 6) {
                 if let picture = ActionIconStore.picture(named: draft.iconImage) {
-                    Image(nsImage: picture).resizable().interpolation(.high)
+                    // As the popup will draw it: a template, its shape only.
+                    Image(nsImage: picture).renderingMode(.template).resizable().interpolation(.high)
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 40, height: 40)
                 } else {
