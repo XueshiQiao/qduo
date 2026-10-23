@@ -1,3 +1,21 @@
+<h3>What's New in 26.10.25</h3>
+<ul>
+  <li><b>An action that presses a key</b> — A new action type, Press Keys, presses one key or key combination, such as ⌫ or ⇧⌘K, in the app where you selected the text. It is sent directly, without a shell script, and needs Accessibility permission. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/18">#18</a>.</li>
+  <li><b>Press a modifier twice as a shortcut</b> — The popup shortcut and the Screenshot Text shortcut can now be ⌃⌃, ⇧⇧, ⌘⌘ or ⌥⌥: press the key twice while recording. A double-press Screenshot Text shortcut needs Accessibility permission, and the app in front still sees the two presses, so macOS Dictation set to ⌃⌃ starts at the same time. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/19">#19</a>.</li>
+  <li><b>System Translate: a second language</b> — When the selected text is already in the action's target language, System Translate now translates it into a second language instead of saying it is already in that language. By default the second language is the second one in your Mac's preferred languages; pick another, or "Don't translate, just say so" for the old behaviour, in the action's editor. Language detection is also more accurate for short English and for mixed Chinese and English. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/20">#20</a>.</li>
+  <li><b>Picture icons light up when you point at them</b> — An action icon made from your own picture is now drawn by its shape in one colour, like the built-in icons, and turns to the blue gradient when the pointer is on it. A picture on a solid background, such as an app icon, has the background taken off first; the preview in the editor shows the result. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/21">#21</a>.</li>
+  <li><b>Back up and restore</b> — Settings → Advanced → Backup exports your settings, action icons, API keys and history to one zip file, and imports it on this Mac or another one. API keys are included only when you set a password, and are encrypted with it (the password is shown as you type it, so you can check it); everything else in the file, history included, can be read by anyone who has the file. Imported history is added to what you have; nothing is deleted. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/22">#22</a>.</li>
+</ul>
+
+<h3>26.10.25 更新内容</h3>
+<ul>
+  <li><b>新动作：按一个键</b> — 新的动作类型「按下按键」，会在你选中文字的那个 App 里按下一个键或者一组组合键，比如 ⌫ 或 ⇧⌘K。按键是直接发出去的，不经过脚本，需要「辅助功能」权限。感谢 X 上的不隔山 @elviscai 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/18">#18</a>。</li>
+  <li><b>快捷键可以是连按两下修饰键</b> — 弹窗快捷键和「截屏取字」快捷键现在可以设成 ⌃⌃、⇧⇧、⌘⌘ 或 ⌥⌥，录快捷键时把这个键连按两下就行。「截屏取字」用连按两下时需要「辅助功能」权限；前台的 App 也会收到这两下按键，所以如果系统听写设成了 ⌃⌃，会同时被打开。感谢 X 上的不隔山 @elviscai 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/19">#19</a>。</li>
+  <li><b>系统翻译：第二语言</b> — 选中的文字本来就是动作的目标语言时，「系统翻译」现在会翻译成第二语言，不再提示「已经是这种语言」。第二语言默认是 Mac 首选语言里的第二个；可以在动作的编辑页里换成别的，想要以前的效果就选「不翻译，只提示」。另外，短的英文、中英混在一起的文字，语言识别得更准了。感谢 X 上的不隔山 @elviscai 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/20">#20</a>。</li>
+  <li><b>图片图标在鼠标指上去时会亮起来</b> — 用自己的图片做的动作图标，现在和自带图标一样，按图片的外形画成单色，鼠标指上去时变成蓝色渐变。如果图片带一块不透明的底色（比如 App 图标），会先把底色去掉；编辑页里的预览就是实际的效果。感谢 X 上的不隔山 @elviscai 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/21">#21</a>。</li>
+  <li><b>备份和恢复</b> — 在「设置 → 高级 → 备份」里，可以把设置、动作图标、API Key 和历史记录导出成一个 zip 文件，再在这台或另一台 Mac 上导入。只有设了密码，API Key 才会放进备份，并且用这个密码加密（输入的密码直接显示出来，方便你核对）；文件里的其他内容，包括历史记录，拿到文件的人都能看到。导入的历史记录会加到现有的记录里，不会删掉任何记录。感谢 X 上的不隔山 @elviscai 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/22">#22</a>。</li>
+</ul>
+
 <h3>What's New in 26.10.24</h3>
 <ul>
   <li><b>Open the address you selected</b> — An Open URL action whose address is just <code>{text}</code> now opens the selected text itself when it is a web address: <code>https://example.com/page</code>, <code>example.com</code> or <code>localhost:3000</code>. It used to say the action's URL was missing or invalid. A selection that is not a web address shows a message saying so, and nothing is opened.</li>
