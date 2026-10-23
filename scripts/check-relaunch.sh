@@ -8,7 +8,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-WORK=$(mktemp -d)
+# pwd -P: processes see /private/var/..., mktemp prints /var/...
+WORK=$(cd "$(mktemp -d)" && pwd -P)
 APP="$WORK/RelaunchCheck.app"
 mkdir -p "$APP/Contents/MacOS"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -26,20 +27,48 @@ swiftc -O Sources/App/AppRelaunch.swift Sources/Core/FileLog.swift Sources/Core/
   Tools/RelaunchCheck/main.swift -o "$APP/Contents/MacOS/RelaunchCheck"
 
 MARKER="$WORK/marker.txt"
-open -n "$APP" --args --marker "$MARKER"
-sleep 6
 
-first=$(grep -c '^first ' "$MARKER" 2>/dev/null || true)
-again=$(grep -c '^relaunched ' "$MARKER" 2>/dev/null || true)
-left=$(pgrep -f "$APP/Contents/MacOS/RelaunchCheck" || true)
+# On any exit: stop what is left of the test app, by pid, and only processes
+# running from this run's own folder; then remove the folder.
+# Waiting relaunch shells go first: stopping the app before them would set
+# them off.
+cleanup() {
+  for pid in $(pgrep -f "$APP" || true); do
+    case "$(ps -o command= -p "$pid" 2>/dev/null)" in
+      */bin/sh*"$APP"*) kill "$pid" 2>/dev/null || true ;;
+    esac
+  done
+  for pid in $(pgrep -f "$APP/Contents/MacOS/RelaunchCheck" || true); do
+    case "$(ps -o command= -p "$pid" 2>/dev/null)" in
+      "$APP/Contents/MacOS/RelaunchCheck"*) kill "$pid" 2>/dev/null || true ;;
+    esac
+  done
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
+
+open -n "$APP" --args --marker "$MARKER"
+
+# Wait up to 20 s for the first launch to quit and one relaunch to report.
+for _ in $(seq 1 200); do
+  if grep -q '^relaunched ' "$MARKER" 2>/dev/null; then break; fi
+  sleep 0.1
+done
+sleep 1   # time for a second, unwanted relaunch to show up
+
 cat "$MARKER" 2>/dev/null || true
-if [ -n "$left" ]; then
-  echo "FAIL: the first process did not quit (pid $left). Stop it by pid." >&2
+first_pid=$(sed -n 's/^first \([0-9]*\) .*/\1/p' "$MARKER" 2>/dev/null || true)
+if ! grep -q '^first [0-9]* sheet=true$' "$MARKER" 2>/dev/null; then
+  echo "FAIL: the test did not run with a sheet open" >&2
   exit 1
 fi
-if [ "$first" != 1 ] || [ "$again" != 1 ]; then
-  echo "FAIL: expected one first launch and exactly one relaunch, got $first and $again" >&2
+if [ -n "$first_pid" ] && ps -p "$first_pid" >/dev/null; then
+  echo "FAIL: the first process ($first_pid) did not quit" >&2
   exit 1
 fi
-rm -rf "$WORK"
+again=$(grep -c '^relaunched ' "$MARKER" || true)
+if [ "$again" != 1 ]; then
+  echo "FAIL: expected exactly one relaunch, got $again" >&2
+  exit 1
+fi
 echo "PASS: quit with a sheet open, relaunched exactly once"

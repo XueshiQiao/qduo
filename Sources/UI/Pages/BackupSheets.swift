@@ -105,13 +105,7 @@ private struct PasswordField: View {
                 guard focusOnAppear else { return }
                 DispatchQueue.main.async { focused = true }
             }
-            .onChange(of: focused) { isFocused in
-                guard isFocused else { return }
-                // The field editor exists once the box is being edited.
-                DispatchQueue.main.async {
-                    Self.typeAsIs(NSApp.keyWindow?.firstResponder as? NSTextView)
-                }
-            }
+            .background(TypeAsIsGuard())
     }
 
     /// Whatever is typed or pasted goes in unchanged. Text Replacement (System
@@ -128,6 +122,38 @@ private struct PasswordField: View {
         editor.isAutomaticDataDetectionEnabled = false
         editor.isAutomaticLinkDetectionEnabled = false
         editor.smartInsertDeleteEnabled = false
+    }
+}
+
+/// Keeps the sheet's field editor typing as-is. The editor is shared by the
+/// window and only exists while a box is being edited, and the window may not
+/// be key when the box gets focus (another app in front), so it is checked on
+/// every update of this view's own window rather than once on focus.
+private struct TypeAsIsGuard: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { GuardView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class GuardView: NSView {
+        private var token: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let token { NotificationCenter.default.removeObserver(token) }
+            token = nil
+            guard let window else { return }
+            token = NotificationCenter.default.addObserver(
+                forName: NSWindow.didUpdateNotification, object: window, queue: .main) { [weak window] _ in
+                    guard let editor = window?.firstResponder as? NSTextView,
+                          editor.isFieldEditor, editor.isAutomaticTextReplacementEnabled
+                            || editor.isAutomaticQuoteSubstitutionEnabled || editor.isAutomaticDashSubstitutionEnabled
+                            || editor.smartInsertDeleteEnabled else { return }
+                    PasswordField.typeAsIs(editor)
+                }
+        }
+
+        deinit {
+            if let token { NotificationCenter.default.removeObserver(token) }
+        }
     }
 }
 

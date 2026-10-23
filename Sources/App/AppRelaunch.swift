@@ -24,6 +24,9 @@ enum AppRelaunch {
     /// The arguments for the new process, set once a relaunch is asked for.
     private static var pendingArguments: [String]?
     private static var observer: NSObjectProtocol?
+    /// A quit is being retried. A second click only updates the arguments;
+    /// two retry loops could otherwise clear each other's arguments.
+    private static var quitting = false
 
     static func relaunch(arguments: [String]) {
         if !Thread.isMainThread {
@@ -37,6 +40,8 @@ enum AppRelaunch {
                     startHelper()
                 }
         }
+        guard !quitting else { return }
+        quitting = true
         log.info("relaunching")
         quit(triesLeft: 50)
     }
@@ -55,6 +60,7 @@ enum AppRelaunch {
         guard triesLeft > 0 else {
             log.error("quit was refused; not relaunching")
             pendingArguments = nil
+            quitting = false
             return
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { quit(triesLeft: triesLeft - 1) }
