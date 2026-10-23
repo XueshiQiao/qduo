@@ -156,7 +156,7 @@ struct CapsuleSubmenuView: View {
     private func row(_ item: PopBarActionConfig) -> some View {
         Button { model.onPick?(item) } label: {
             HStack(spacing: 8) {
-                ActionIconView(item, size: 13, hot: model.highlighted == item.id)
+                ActionIconView(item, size: 13)
                     .frame(width: 18)
                 Text(item.title.isEmpty ? L("popbar.action.untitled") : item.title)
                     .font(.system(size: 12.5))

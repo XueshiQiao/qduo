@@ -118,9 +118,13 @@ struct ActionsPage: View {
     private func actionRow(_ action: PopBarActionConfig) -> some View {
         HStack(spacing: 10) {
             if let picture = ActionIconStore.picture(named: action.iconImage) {
-                Image(nsImage: picture).resizable().interpolation(.high)
+                // Drawn as the popup draws it, a template, and on the same tile a
+                // symbol gets.
+                Image(nsImage: picture).renderingMode(.template).resizable().interpolation(.high)
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 26, height: 26)
+                    .frame(width: 15, height: 15)
+                    .foregroundStyle(.white)
+                    .colorTile(.indigo)
             } else {
                 IconTile(symbol: action.iconSymbol, color: .indigo)
             }
