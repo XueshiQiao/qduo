@@ -150,85 +150,22 @@ enum BackupImporter {
         let zipSize = (attributes[.size] as? NSNumber)?.int64Value ?? 0
         guard zipSize <= BackupFiles.maxArchiveBytes else { throw Failure.tooLarge }
 
-        let listed: [String]
-        do {
-            listed = try BackupArchive.listEntries(of: zip)
-        } catch {
-            throw Failure.notABackup
-        }
-        guard let root = BackupEntryRules.rootDirectory(of: listed),
-              listed.contains("\(root)/manifest.json") else { throw Failure.notABackup }
-
-        // What the zip says it unpacks to, before it is unpacked: a small file
-        // that expands to fill the disk is refused here, not after.
-        guard let declared = try? BackupArchive.declaredUncompressedSize(of: zip) else { throw Failure.notABackup }
-        guard declared <= BackupFiles.maxArchiveBytes else { throw Failure.tooLarge }
-
         let scratch = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(Brand.slug)-import-\(UUID().uuidString)", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
-            try BackupArchive.unzip(zip, into: scratch)
-            let disk = try BackupFiles.relativeEntries(under: scratch, maxBytes: BackupFiles.maxArchiveBytes)
-            guard BackupEntryRules.rootDirectory(of: disk) == root,
-                  BackupFiles.isCovered(disk, by: listed),
-                  disk.contains("\(root)/manifest.json") else { throw Failure.notABackup }
-            let manifest = try readManifest(in: scratch, root: root)
-            try requireFiles(namedBy: manifest, root: scratch.appendingPathComponent(root, isDirectory: true))
+            let (root, manifest) = try BackupLayout.unpack(zip, into: scratch)
             let titles = localKeyTitles()
             return BackupInspection(zipURL: zip, accessing: accessing, scratch: scratch,
                                     root: root, manifest: manifest, localKeyTitles: titles)
-        } catch let failure as Failure {
-            try? FileManager.default.removeItem(at: scratch)
-            throw failure
-        } catch BackupFiles.Failure.tooLarge {
+        } catch BackupLayout.Failure.tooLarge {
             try? FileManager.default.removeItem(at: scratch)
             throw Failure.tooLarge
+        } catch BackupLayout.Failure.newerFormat {
+            try? FileManager.default.removeItem(at: scratch)
+            throw Failure.newerFormat
         } catch {
             try? FileManager.default.removeItem(at: scratch)
-            throw Failure.notABackup
-        }
-    }
-
-    private static func readManifest(in scratch: URL, root: String) throws -> BackupManifest {
-        let url = scratch.appendingPathComponent(root).appendingPathComponent("manifest.json")
-        let data: Data
-        do {
-            data = try BackupFiles.readRegularFile(at: url, maxBytes: BackupFiles.maxDocumentBytes)
-        } catch BackupFiles.Failure.tooLarge {
-            throw Failure.tooLarge
-        } catch {
-            throw Failure.notABackup
-        }
-        let manifest: BackupManifest
-        do {
-            manifest = try JSONDecoder().decode(BackupManifest.self, from: data)
-        } catch {
-            throw Failure.notABackup
-        }
-        if manifest.isNewerThanThisBuild { throw Failure.newerFormat }
-        guard manifest.format == BackupManifest.format, !manifest.exportedAt.isEmpty,
-              !manifest.availableParts.isEmpty else { throw Failure.notABackup }
-        if let config = manifest.parts.config, config.file != "config.json" { throw Failure.notABackup }
-        if let icons = manifest.parts.icons, icons.dir != "icons" || icons.count < 0 { throw Failure.notABackup }
-        if let keys = manifest.parts.keys,
-           keys.file != "keys.enc" || keys.encrypted != true || keys.count < 0 { throw Failure.notABackup }
-        if let history = manifest.parts.history,
-           history.file != "history.sqlite" || history.records < 0 { throw Failure.notABackup }
-        return manifest
-    }
-
-    private static func requireFiles(namedBy manifest: BackupManifest, root: URL) throws {
-        if manifest.parts.config != nil && !BackupFiles.isRegularFile(root.appendingPathComponent("config.json")) {
-            throw Failure.notABackup
-        }
-        if manifest.parts.keys != nil && !BackupFiles.isRegularFile(root.appendingPathComponent("keys.enc")) {
-            throw Failure.notABackup
-        }
-        if manifest.parts.history != nil && !BackupFiles.isRegularFile(root.appendingPathComponent("history.sqlite")) {
-            throw Failure.notABackup
-        }
-        if manifest.parts.icons != nil && !BackupFiles.isDirectory(root.appendingPathComponent("icons")) {
             throw Failure.notABackup
         }
     }
@@ -247,31 +184,13 @@ enum BackupImporter {
         } catch {
             throw Failure.notABackup
         }
-        let envelope: BackupCrypto.Envelope
         do {
-            envelope = try JSONDecoder().decode(BackupCrypto.Envelope.self, from: data)
-        } catch {
-            throw Failure.notABackup
-        }
-        let plaintext: Data
-        do {
-            plaintext = try BackupCrypto.open(envelope, password: password, aad: aad)
-        } catch BackupCrypto.Failure.authentication, BackupCrypto.Failure.passwordRequired {
+            return try BackupKeysFile.decode(data, password: password, aad: aad)
+        } catch BackupKeysFile.Failure.wrongPassword {
             throw Failure.wrongPassword
         } catch {
             throw Failure.notABackup
         }
-        guard let object = try? JSONSerialization.jsonObject(with: plaintext) as? [String: Any] else {
-            throw Failure.notABackup
-        }
-        var items: [String: String] = [:]
-        for (account, value) in object {
-            guard let value = value as? String, !account.isEmpty, !account.contains("\u{0}") else {
-                throw Failure.notABackup
-            }
-            items[account] = value
-        }
-        return items
     }
 
     /// The backup's config, read and decoded before anything is written. It has
@@ -296,18 +215,11 @@ enum BackupImporter {
     /// memory before anything is written. Anything else in the folder is
     /// skipped, as it was skipped on the way out.
     private static func readImportedIcons(in root: URL) throws -> [(name: String, data: Data)] {
-        let source = root.appendingPathComponent("icons", isDirectory: true)
-        guard BackupFiles.isDirectory(source) else { throw Failure.notABackup }
-        let names = try FileManager.default.contentsOfDirectory(atPath: source.path)
-        var icons: [(String, Data)] = []
-        for name in names.sorted() {
-            guard BackupEntryRules.isIconFileName(name),
-                  let data = try? BackupFiles.readRegularFile(at: source.appendingPathComponent(name),
-                                                              maxBytes: BackupFiles.maxIconBytes),
-                  ActionIconStore.isPNG(data) else { continue }
-            icons.append((name, data))
+        do {
+            return try BackupLayout.icons(in: root)
+        } catch {
+            throw Failure.notABackup
         }
-        return icons
     }
 
     /// Write the pictures into the icons folder, resolving a symlink so the

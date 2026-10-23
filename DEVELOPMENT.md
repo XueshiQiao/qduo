@@ -46,6 +46,12 @@ test without publishing.
 The whole routine — writing the bilingual `RELEASE_NOTES.html` block, the checks,
 and verifying the downloaded DMG afterwards — is `.claude/skills/release/SKILL.md`.
 
+Before handing a feature over for on-device testing, read
+`docs/lessons-from-issue-22.md`: code that writes and code that reads the same
+format share one module and get a round-trip test; quit/relaunch/sheet behaviour
+is checked with a script (`scripts/check-relaunch.sh` after touching
+`AppRelaunch.swift`); only what cannot be automated goes on the manual list.
+
 All repository secrets are set: `MAC_CERTS_P12_BASE64`, `MAC_CERTS_P12_PASSWORD`,
 `APPLE_ID`, `APPLE_TEAM_ID`, `APP_SPECIFIC_PASSWORD`, `MAC_PROVISION_PROFILE_BASE64`
 (the QDuo Developer ID profile — it authorizes the `keychain-access-groups`

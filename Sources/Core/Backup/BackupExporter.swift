@@ -81,57 +81,28 @@ enum BackupExporter {
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
 
         let exportedAt = BackupManifest.exportedAtString(now)
-        var manifestParts = BackupManifest.Parts()
 
-        if parts.contains(.config) {
-            guard let configData else { throw Failure.unreadable }
-            try configData.write(to: root.appendingPathComponent("config.json"), options: .atomic)
-            manifestParts.config = .init(file: "config.json")
-        }
-        if parts.contains(.icons) {
-            let iconsDir = root.appendingPathComponent("icons", isDirectory: true)
-            try fileManager.createDirectory(at: iconsDir, withIntermediateDirectories: true)
-            for (name, data) in icons {
-                try data.write(to: iconsDir.appendingPathComponent(name), options: .atomic)
-            }
-            manifestParts.icons = .init(dir: "icons", count: icons.count)
-        }
+        var keys: (items: [String: String], password: String)?
         if parts.contains(.keys) {
             guard let password else { throw Failure.passwordRequired }
-            let items: [String: String]
             do {
-                items = try KeychainStore(service: Brand.keychainService).allItems()
+                keys = (try KeychainStore(service: Brand.keychainService).allItems(), password)
             } catch {
                 log.error("could not read the keychain: \(error)")
                 throw Failure.unreadable
             }
-            let plaintext = try JSONSerialization.data(withJSONObject: items, options: [.sortedKeys])
-            let envelope = try BackupCrypto.seal(plaintext, password: password,
-                                                  aad: BackupManifest.keysAAD(format: BackupManifest.format,
-                                                                               exportedAt: exportedAt))
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-            var encoded = try encoder.encode(envelope)
-            encoded.append(0x0A)
-            try encoded.write(to: root.appendingPathComponent("keys.enc"), options: .atomic)
-            manifestParts.keys = .init(file: "keys.enc", encrypted: true, count: items.count)
         }
+        if parts.contains(.config) && configData == nil { throw Failure.unreadable }
+        var historyRecords: Int?
         if parts.contains(.history) {
-            let snapshot = root.appendingPathComponent("history.sqlite")
-            let records = try await HistoryStore.shared.snapshot(to: snapshot)
-            manifestParts.history = .init(file: "history.sqlite", records: records)
+            historyRecords = try await HistoryStore.shared.snapshot(to: root.appendingPathComponent("history.sqlite"))
         }
-
-        let manifest = BackupManifest(
-            format: BackupManifest.format,
+        let manifest = try BackupLayout.write(
+            into: root, exportedAt: exportedAt,
             app: .init(version: Brand.version, build: Brand.build, bundleID: Brand.bundleID),
-            exportedAt: exportedAt,
-            parts: manifestParts)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        var manifestData = try encoder.encode(manifest)
-        manifestData.append(0x0A)
-        try manifestData.write(to: root.appendingPathComponent("manifest.json"), options: .atomic)
+            config: parts.contains(.config) ? configData : nil,
+            icons: parts.contains(.icons) ? icons : nil,
+            keys: keys, historyRecords: historyRecords)
 
         // Zip beside the folder first and look at the names. The destination is
         // only replaced once the zip is one backup folder — a failed export must
@@ -141,6 +112,14 @@ enum BackupExporter {
         let entries = try BackupArchive.listEntries(of: staging)
         guard BackupEntryRules.rootDirectory(of: entries) == rootName else {
             log.error("archive entries were not one backup folder: \(entries.joined(separator: ", "))")
+            throw Failure.badArchive
+        }
+        // Read the zip back the way the import will, password included, so a
+        // backup that would not import is never handed over.
+        do {
+            try BackupLayout.verify(staging, password: password)
+        } catch {
+            log.error("the new backup does not read back: \(error)")
             throw Failure.badArchive
         }
         try place(staging, at: destination)

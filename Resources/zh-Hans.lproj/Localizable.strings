@@ -670,9 +670,11 @@
 "backup.count.history" = "（%1$d 条，%2$@）";
 "backup.count.historyRecords" = "（%d 条）";
 "backup.password" = "密码";
-"backup.password.confirm" = "再输一次密码";
-"backup.password.mismatch" = "两次输入的密码不一样。";
 "backup.password.wrong" = "密码不对。";
+"backup.password.export.prompt" = "给 API Key 设一个密码";
+"backup.password.import.prompt" = "导出时设的密码";
+"backup.export.needsPassword" = "设好密码才能导出";
+"backup.import.needsPassword" = "输入密码才能恢复";
 "backup.import.config.replace" = "会替换现在的设置。现在的设置文件会先另存一份，放在旁边，名字是 config.json.bak-<时间>。";
 "backup.import.icons.note" = "同名的图片会被替换，其他图片不动。";
 "backup.import.keys.overwrite" = "这台 Mac 上同一个服务商的 Key 会被替换：%@。其他 Key 不动。";

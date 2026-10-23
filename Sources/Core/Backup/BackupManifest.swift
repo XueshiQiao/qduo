@@ -63,6 +63,15 @@ struct BackupManifest: Codable, Equatable {
 
     var keysAAD: Data { Self.keysAAD(format: format, exportedAt: exportedAt) }
 
+    /// `manifest.json` as the export writes it.
+    func fileData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        var data = try encoder.encode(self)
+        data.append(0x0A)
+        return data
+    }
+
     static func exportedAtString(_ date: Date = Date()) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
