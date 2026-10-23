@@ -671,9 +671,11 @@
 "backup.count.history" = "(%1$d records, %2$@)";
 "backup.count.historyRecords" = "(%d records)";
 "backup.password" = "Password";
-"backup.password.confirm" = "Password again";
-"backup.password.mismatch" = "The two passwords are not the same.";
 "backup.password.wrong" = "Wrong password.";
+"backup.password.export.prompt" = "Password for the API keys";
+"backup.password.import.prompt" = "Password set when exporting";
+"backup.export.needsPassword" = "Set a password to export.";
+"backup.import.needsPassword" = "Enter the password to restore.";
 "backup.import.config.replace" = "Replaces the current settings. The current settings file is kept beside it as config.json.bak-<time>.";
 "backup.import.icons.note" = "Pictures with the same name are replaced; other pictures stay.";
 "backup.import.keys.overwrite" = "Keys already on this Mac for the same service are replaced: %@. Other keys stay.";

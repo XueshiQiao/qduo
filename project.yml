@@ -153,6 +153,8 @@ targets:
       - path: Sources/Core/Backup/BackupCrypto.swift
       - path: Sources/Core/Backup/BackupEntryRules.swift
       - path: Sources/Core/Backup/BackupArchive.swift
+      - path: Sources/Core/Backup/BackupKeysFile.swift
+      - path: Sources/Core/Backup/BackupLayout.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

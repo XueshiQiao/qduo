@@ -25,21 +25,41 @@ private func partSymbol(_ part: BackupManifest.Part) -> (String, Color) {
     }
 }
 
-/// One checkbox row: icon tile, title with its count, and a line under it.
-private struct PartToggle: View {
+/// Lines up whatever sits under a row (the password boxes) with the row's text,
+/// not with its checkbox.
+private extension HorizontalAlignment {
+    enum PartText: AlignmentID {
+        static func defaultValue(in d: ViewDimensions) -> CGFloat { d[.leading] }
+    }
+    static let partText = HorizontalAlignment(PartText.self)
+}
+
+/// One checkbox row: checkbox, icon tile, title with its count, and a line under
+/// it, all centred on one line. `extra` (the password boxes) goes underneath,
+/// lined up with the text. The checkbox is a bare control so it stays centred
+/// on the tile; a Toggle with this label puts it level with the first line.
+private struct PartToggle<Extra: View>: View {
     let part: BackupManifest.Part
     let detail: String?
     let note: String?
     @Binding var isOn: Bool
+    @ViewBuilder var extra: Extra
+
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
-        Toggle(isOn: $isOn) {
-            let (symbol, color) = partSymbol(part)
-            HStack(spacing: 10) {
+        VStack(alignment: .partText, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                Toggle(partTitle(part), isOn: $isOn)
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                let (symbol, color) = partSymbol(part)
                 IconTile(symbol: symbol, color: color)
+                    .onTapGesture { if isEnabled { isOn.toggle() } }
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text(partTitle(part))
+                        // The checkbox already carries this name for VoiceOver.
+                        Text(partTitle(part)).accessibilityHidden(true)
                         if let detail { Text(detail).foregroundStyle(.secondary) }
                     }
                     if let note {
@@ -48,9 +68,78 @@ private struct PartToggle: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { if isEnabled { isOn.toggle() } }
+                .alignmentGuide(.partText) { $0[.leading] }
             }
+            extra
         }
-        .toggleStyle(.checkbox)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The backup password box. It shows what is typed, in plain text: a backup
+/// password is typed once and has to be typed again, maybe on another Mac,
+/// so seeing it matters more than hiding it from someone looking over a
+/// shoulder. Monospaced, so l and 1, O and 0 can be told apart. It has a border
+/// and a prompt: a grouped Form otherwise draws a bare, right-aligned field.
+private struct PasswordField: View {
+    let title: String
+    let prompt: String
+    @Binding var text: String
+    /// Put the cursor in this box when it first appears.
+    var focusOnAppear = false
+
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(title, text: $text, prompt: Text(prompt))
+            .labelsHidden()
+            .font(.body.monospaced())
+            .autocorrectionDisabled()
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 280)
+            .focused($focused)
+            .onAppear {
+                guard focusOnAppear else { return }
+                DispatchQueue.main.async { focused = true }
+            }
+            .onChange(of: focused) { isFocused in
+                guard isFocused else { return }
+                // The field editor exists once the box is being edited.
+                DispatchQueue.main.async {
+                    Self.typeAsIs(NSApp.keyWindow?.firstResponder as? NSTextView)
+                }
+            }
+    }
+
+    /// Whatever is typed or pasted goes in unchanged. Text Replacement (System
+    /// Settings → Keyboard) is on in a plain text field, and smart quotes,
+    /// dashes and paste spacing follow the person's settings, so each could
+    /// turn the password into something other than what was typed.
+    static func typeAsIs(_ editor: NSTextView?) {
+        guard let editor else { return }
+        editor.isAutomaticTextReplacementEnabled = false
+        editor.isAutomaticQuoteSubstitutionEnabled = false
+        editor.isAutomaticDashSubstitutionEnabled = false
+        editor.isAutomaticSpellingCorrectionEnabled = false
+        editor.isContinuousSpellCheckingEnabled = false
+        editor.isAutomaticDataDetectionEnabled = false
+        editor.isAutomaticLinkDetectionEnabled = false
+        editor.smartInsertDeleteEnabled = false
+    }
+}
+
+/// Why the main button is greyed out, shown beside it.
+private struct BlockedReason: View {
+    let text: String
+
+    var body: some View {
+        Label(text, systemImage: "key.fill")
+            .font(.caption).foregroundStyle(.secondary)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -101,7 +190,6 @@ struct BackupExportSheet: View {
 
     @State private var chosen = Set(BackupManifest.Part.allCases)
     @State private var password = ""
-    @State private var confirm = ""
     @State private var iconCount = 0
     @State private var keyCount = 0
     @State private var historyCount: Int?
@@ -110,12 +198,13 @@ struct BackupExportSheet: View {
     @State private var errorText: String?
     @State private var savedTo: URL?
 
-    private var passwordsMatch: Bool { password == confirm }
     /// Nothing can be changed while the file is being written, or once it is.
     private var locked: Bool { working || savedTo != nil }
     private var canExport: Bool {
-        !chosen.isEmpty && !working && (!chosen.contains(.keys) || (!password.isEmpty && passwordsMatch))
+        !chosen.isEmpty && !working && (!chosen.contains(.keys) || hasPassword)
     }
+    /// Spaces alone do not count: they cannot be seen in the box.
+    private var hasPassword: Bool { !password.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -124,15 +213,13 @@ struct BackupExportSheet: View {
                     toggle(.config, detail: nil, note: L("backup.part.config.note"))
                     toggle(.icons, detail: String(format: L("backup.count.icons"), iconCount), note: nil)
                     toggle(.keys, detail: String(format: L("backup.count.keys"), keyCount),
-                           note: L("backup.part.keys.note"))
-                    if chosen.contains(.keys) {
-                        SecureField(L("backup.password"), text: $password)
-                            .disabled(locked)
-                        SecureField(L("backup.password.confirm"), text: $confirm)
-                            .disabled(locked)
-                        if !confirm.isEmpty && !passwordsMatch {
-                            Text(L("backup.password.mismatch"))
-                                .font(.caption).foregroundStyle(.orange)
+                           note: L("backup.part.keys.note")) {
+                        if chosen.contains(.keys) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                PasswordField(title: L("backup.password"),
+                                              prompt: L("backup.password.export.prompt"), text: $password,
+                                              focusOnAppear: true)
+                            }
                         }
                     }
                     toggle(.history,
@@ -168,6 +255,9 @@ struct BackupExportSheet: View {
             Divider()
             HStack {
                 if working { ProgressView().controlSize(.small) }
+                if !locked && chosen.contains(.keys) && !hasPassword {
+                    BlockedReason(text: L("backup.export.needsPassword"))
+                }
                 Spacer()
                 Button(savedTo == nil ? L("backup.cancel") : L("backup.done")) { onClose() }
                     .keyboardShortcut(.cancelAction)
@@ -186,12 +276,17 @@ struct BackupExportSheet: View {
     }
 
     private func toggle(_ part: BackupManifest.Part, detail: String?, note: String?) -> some View {
+        toggle(part, detail: detail, note: note) { EmptyView() }
+    }
+
+    private func toggle<Extra: View>(_ part: BackupManifest.Part, detail: String?, note: String?,
+                                     @ViewBuilder extra: () -> Extra) -> some View {
         PartToggle(part: part, detail: detail, note: note, isOn: Binding(
             get: { chosen.contains(part) },
             set: { on in
                 if on { chosen.insert(part) } else { chosen.remove(part) }
                 errorText = nil
-            }))
+            }), extra: extra)
         .disabled(locked)
     }
 
@@ -283,6 +378,10 @@ struct BackupImportSheet: View {
             Divider()
             HStack {
                 if working { ProgressView().controlSize(.small) }
+                if inspection != nil && finished == nil && !working
+                    && chosen.contains(.keys) && password.isEmpty {
+                    BlockedReason(text: L("backup.import.needsPassword"))
+                }
                 Spacer()
                 if let finished {
                     // After settings, icons or keys there is no going back to the
@@ -329,14 +428,18 @@ struct BackupImportSheet: View {
                 toggle(.keys, detail: String(format: L("backup.count.keys"), keys.count),
                        note: inspection.localKeyTitles.isEmpty ? nil
                            : String(format: L("backup.import.keys.overwrite"),
-                                    inspection.localKeyTitles.joined(separator: ", ")))
-                if chosen.contains(.keys) {
-                    SecureField(L("backup.password"), text: $password)
-                        .onChange(of: password) { _ in wrongPassword = false }
-                        .disabled(finished != nil || working)
-                    if wrongPassword {
-                        Text(L("backup.password.wrong"))
-                            .font(.caption).foregroundStyle(.orange)
+                                    inspection.localKeyTitles.joined(separator: ", "))) {
+                    if chosen.contains(.keys) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            PasswordField(title: L("backup.password"),
+                                          prompt: L("backup.password.import.prompt"), text: $password,
+                                          focusOnAppear: true)
+                                .onChange(of: password) { _ in wrongPassword = false }
+                            if wrongPassword {
+                                Text(L("backup.password.wrong"))
+                                    .font(.caption).foregroundStyle(.orange)
+                            }
+                        }
                     }
                 }
             }
@@ -355,12 +458,17 @@ struct BackupImportSheet: View {
     }
 
     private func toggle(_ part: BackupManifest.Part, detail: String?, note: String?) -> some View {
+        toggle(part, detail: detail, note: note) { EmptyView() }
+    }
+
+    private func toggle<Extra: View>(_ part: BackupManifest.Part, detail: String?, note: String?,
+                                     @ViewBuilder extra: () -> Extra) -> some View {
         PartToggle(part: part, detail: detail, note: note, isOn: Binding(
             get: { chosen.contains(part) },
             set: { on in
                 if on { chosen.insert(part) } else { chosen.remove(part) }
                 errorText = nil
-            }))
+            }), extra: extra)
         .disabled(finished != nil || working)
     }
 
