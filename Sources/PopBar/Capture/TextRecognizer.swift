@@ -1,12 +1,25 @@
 import Foundation
 import CoreGraphics
 import Vision
+import CoreText
 
 /// Vision-backed OCR. Runs the recognition off the main thread and hands back the
 /// text in natural reading order.
+///
+/// This uses the old `VNRecognizeTextRequest`, not the new `RecognizeTextRequest`
+/// (macOS 15+). The new one does not shorten the first-use compile described at
+/// `warmUp()`: on a fresh process it took 23.7–23.9 s with auto-detect (3 runs) and
+/// 12.3 s with a language list (1 run), the same as the old one. QDuo still supports
+/// macOS 13 and 14, where the new request does not exist, so using it would mean
+/// keeping two code paths for no gain.
 enum TextRecognizer {
 
     private static let log = FileLog("PopBar.OCR")
+
+    /// One queue for the warm-up and every real recognition, so a capture made while
+    /// the warm-up is still running waits for it instead of starting a second
+    /// compilation next to it.
+    private static let queue = DispatchQueue(label: "me.xueshi.qduo.ocr", qos: .userInitiated)
 
     /// How close two observations' vertical positions must be to count as the same
     /// line (normalized coordinates, so this is a fraction of image height).
@@ -18,7 +31,7 @@ enum TextRecognizer {
         let width = image.width
         let height = image.height
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        queue.async {
             let start = Date()
 
             let req = VNRecognizeTextRequest()
@@ -37,6 +50,57 @@ enum TextRecognizer {
 
             DispatchQueue.main.async { completion(text) }
         }
+    }
+
+    private static var warmedUp = false
+
+    /// The first time a newly built or newly installed copy of the app runs Vision text
+    /// recognition, macOS compiles the recognizer's networks for the Neural Engine
+    /// (ANECompilerService). Measured here on freshly compiled test programs: the whole
+    /// cost is about 24 s, and it is paid in different shapes. Starting with real
+    /// screenshots (4 of 4 programs), the first recognition took 12–14 s and the second
+    /// another 12–13 s. Starting with the generated image below (5 of 5 programs), the
+    /// first recognition took 23–27 s and every later one, real screenshots included,
+    /// took 75–150 ms. Why it splits in two for real screenshots is not known. So run
+    /// that one generated image in the background as soon as Screenshot Text is on,
+    /// with the same settings as `recognize`, to pay the whole cost before the user's
+    /// first capture. A capture made while it is still running waits for it, which is
+    /// why the caller shows a "recognizing…" hint.
+    /// Not yet seen cold inside the app itself: the Xcode-signed Debug build was always
+    /// already warm when this ran (90–105 ms).
+    /// Main thread only; does nothing after the first call.
+    static func warmUp() {
+        guard !warmedUp else { return }
+        warmedUp = true
+        queue.async {
+            let start = Date()
+            guard let image = warmUpImage() else { return }
+            let req = VNRecognizeTextRequest()
+            req.recognitionLevel = .accurate
+            req.usesLanguageCorrection = true
+            req.automaticallyDetectsLanguage = true
+            try? VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
+            log.info("OCR warm-up finished in \(Int(Date().timeIntervalSince(start) * 1000))ms")
+        }
+    }
+
+    /// A white image with a line of black text on it, so the warm-up runs the whole
+    /// recognition path rather than being skipped for an empty image.
+    private static func warmUpImage() -> CGImage? {
+        let size = CGSize(width: 400, height: 60)
+        guard let ctx = CGContext(data: nil, width: Int(size.width), height: Int(size.height),
+                                  bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.setFillColor(CGColor(gray: 1, alpha: 1))
+        ctx.fill(CGRect(origin: .zero, size: size))
+        let line = CTLineCreateWithAttributedString(NSAttributedString(
+            string: "Hello 你好 12345",
+            attributes: [.font: CTFontCreateWithName("Helvetica" as CFString, 32, nil),
+                         .foregroundColor: CGColor(gray: 0, alpha: 1)]))
+        ctx.textPosition = CGPoint(x: 10, y: 18)
+        CTLineDraw(line, ctx)
+        return ctx.makeImage()
     }
 
     // MARK: - Reading order

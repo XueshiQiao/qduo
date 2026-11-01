@@ -89,7 +89,10 @@ final class PopBarWindowManager {
     /// of how many pinned windows exist.
     func showTransient(text: String, url: URL?, source: SelectionSource? = nil, element: AXUIElement? = nil,
                        anchor: CGPoint, actions: [PopBarActionConfig], origin: HistoryOrigin? = nil) {
-        let placed = offsetAwayFromPinned(anchor)
+        // The stacking nudge is worked out from the capsule's geometry (bottom-center a
+        // little above the anchor). The wheel is centred ON its anchor instead, and
+        // should stay on the pointer, so it is never nudged.
+        let placed = PopBarPreferences.style.isWheel ? anchor : offsetAwayFromPinned(anchor)
         transient.show(text: text, url: url, source: source, element: element, anchor: placed, actions: actions,
                        origin: origin)
     }

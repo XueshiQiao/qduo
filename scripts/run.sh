@@ -35,9 +35,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-echo "› killing any running ${DEBUG_NAME}…"
-pkill -f "${DEBUG_NAME}" 2>/dev/null || true
-sleep 1
+echo "› stopping any running QDuo (release and debug)…"
+scripts/stop-qduo.sh
 
 echo "› xcodegen generate…"
 xcodegen generate >/dev/null

@@ -198,6 +198,7 @@
 "popbar.ocr.perm.open" = "打开设置";
 "popbar.ocr.noText" = "未识别到文本";
 "popbar.ocr.captureFailed" = "截屏失败";
+"popbar.ocr.recognizing" = "识别中…";
 "popbar.ocr.overlay.hint" = "拖拽框选要识别的区域 · Esc 取消";
 "diagnostics.config.title" = "设置文件";
 "diagnostics.revealConfig" = "在访达中显示";

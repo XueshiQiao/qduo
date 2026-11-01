@@ -394,6 +394,78 @@ private final class RegionOverlayView: NSView {
     }
 }
 
+// MARK: - Progress hint
+
+/// A small "recognizing…" label with a spinner that stays up until `dismiss()`. It is
+/// shown only if `delay` seconds pass first, so a recognition that finishes at once
+/// (usually under 0.2 s) never flashes it. Created and dismissed on the main thread.
+final class RegionProgressHint {
+
+    private var panel: NSPanel?
+    private var dismissed = false
+
+    init(_ text: String, atGlobalCocoa point: CGPoint, delay: TimeInterval) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, !self.dismissed else { return }
+            self.present(text, at: point)
+        }
+    }
+
+    deinit { panel?.orderOut(nil) }
+
+    /// Take the hint off the screen now. Safe to call more than once, and before the
+    /// hint has appeared (then it never appears).
+    func dismiss() {
+        dismissed = true
+        panel?.orderOut(nil)
+        panel = nil
+    }
+
+    private func present(_ text: String, at point: CGPoint) {
+        let label = NSTextField(labelWithString: text)
+        label.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        label.textColor = .white
+        label.sizeToFit()
+
+        let spinner = NSProgressIndicator()
+        spinner.style = .spinning
+        spinner.controlSize = .small
+        spinner.appearance = NSAppearance(named: .darkAqua)
+        spinner.sizeToFit()
+
+        let padX: CGFloat = 14, padY: CGFloat = 10, gap: CGFloat = 8
+        let contentH = max(ceil(label.frame.height), spinner.frame.height)
+        let size = CGSize(width: padX * 2 + spinner.frame.width + gap + ceil(label.frame.width),
+                          height: padY * 2 + contentH)
+        // Same spot as RegionToast: centered on point.x, a little above point.y.
+        let frame = CGRect(x: point.x - size.width / 2, y: point.y + 12, width: size.width, height: size.height)
+
+        let panel = NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
+                            backing: .buffered, defer: false)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.level = .screenSaver
+        panel.ignoresMouseEvents = true
+        panel.isReleasedWhenClosed = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+
+        let container = NSView(frame: CGRect(origin: .zero, size: size))
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.78).cgColor
+        container.layer?.cornerRadius = 10
+        spinner.frame.origin = CGPoint(x: padX, y: (size.height - spinner.frame.height) / 2)
+        label.frame.origin = CGPoint(x: padX + spinner.frame.width + gap, y: (size.height - label.frame.height) / 2)
+        container.addSubview(spinner)
+        container.addSubview(label)
+        panel.contentView = container
+
+        self.panel = panel
+        panel.orderFrontRegardless()
+        spinner.startAnimation(nil)
+    }
+}
+
 // MARK: - Toast
 
 /// A minimal, one-shot fading label used for OCR feedback ("no text found", etc.).

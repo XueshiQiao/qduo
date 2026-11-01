@@ -199,6 +199,7 @@
 "popbar.ocr.perm.open" = "Open Settings";
 "popbar.ocr.noText" = "No text found";
 "popbar.ocr.captureFailed" = "Couldn't capture the screen";
+"popbar.ocr.recognizing" = "Recognizing text…";
 "popbar.ocr.overlay.hint" = "Drag to select an area to recognize · Esc to cancel";
 "diagnostics.config.title" = "Settings file";
 "diagnostics.revealConfig" = "Reveal in Finder";
