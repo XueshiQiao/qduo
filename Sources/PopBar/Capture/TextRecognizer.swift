@@ -34,22 +34,41 @@ enum TextRecognizer {
         queue.async {
             let start = Date()
 
-            let req = VNRecognizeTextRequest()
-            req.recognitionLevel = .accurate
-            req.usesLanguageCorrection = true
-            req.automaticallyDetectsLanguage = true
-
-            let handler = VNImageRequestHandler(cgImage: image, options: [:])
-            try? handler.perform([req])
-
-            let observations = req.results ?? []
-            let text = orderedText(from: observations)
+            // An empty result is not always "no text in the image": in a 24 h run, one
+            // recognition of an image that had text returned nothing in 8 ms. So an empty
+            // result (or a thrown error) is tried exactly once more before giving up.
+            let text = recognizeWithRetry(image)
 
             let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
             log.info("OCR \(width)x\(height) px -> \(text.count) chars in \(elapsedMs)ms")
 
             DispatchQueue.main.async { completion(text) }
         }
+    }
+
+    /// `recognizeOnce`, and if that gives nothing, exactly one more time. Runs on `queue`.
+    private static func recognizeWithRetry(_ image: CGImage) -> String {
+        let start = Date()
+        let first = recognizeOnce(image)
+        guard first.isEmpty else { return first }
+        log.warn("OCR came back empty after \(Int(Date().timeIntervalSince(start) * 1000))ms — trying once more")
+        return recognizeOnce(image)
+    }
+
+    /// One Vision pass over `image`. Returns "" if Vision threw or found nothing
+    /// (text that is only spaces counts as nothing).
+    private static func recognizeOnce(_ image: CGImage) -> String {
+        let req = VNRecognizeTextRequest()
+        req.recognitionLevel = .accurate
+        req.usesLanguageCorrection = true
+        req.automaticallyDetectsLanguage = true
+        do {
+            try VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
+        } catch {
+            log.warn("OCR request failed: \(error)")
+            return ""
+        }
+        return orderedText(from: req.results ?? []).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static var warmedUp = false
@@ -75,11 +94,7 @@ enum TextRecognizer {
         queue.async {
             let start = Date()
             guard let image = warmUpImage() else { return }
-            let req = VNRecognizeTextRequest()
-            req.recognitionLevel = .accurate
-            req.usesLanguageCorrection = true
-            req.automaticallyDetectsLanguage = true
-            try? VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
+            _ = recognizeWithRetry(image)
             log.info("OCR warm-up finished in \(Int(Date().timeIntervalSince(start) * 1000))ms")
         }
     }
