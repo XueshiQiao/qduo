@@ -657,10 +657,75 @@ enum URLTemplate {
     static func fill(_ template: String, with text: String) -> URL? {
         let value = text.addingPercentEncoding(withAllowedCharacters: valueAllowed) ?? ""
         let trimmed = template.trimmingCharacters(in: .whitespacesAndNewlines)
-        let filled = trimmed.replacingOccurrences(of: placeholder, with: value)
+        let filled = escapingLiteral(trimmed).replacingOccurrences(of: placeholder, with: value)
         guard let url = URL(string: filled), let scheme = url.scheme?.lowercased() else { return nil }
         guard scheme == writtenScheme(of: trimmed) else { return nil }
         return url
+    }
+
+    /// What the template's own text may contain as is after the host: the ASCII
+    /// characters a URL path or query is made of. Not `[` `]` (only legal in a
+    /// host) and not `%` (kept only where it begins an escape, see below) —
+    /// either one left raw makes `URL(string:)` encode the whole string again.
+    static let literalAllowed = CharacterSet(charactersIn:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#@!$&'()*+,;=")
+
+    /// The template with everything else in its own text percent-encoded —
+    /// Chinese, spaces — after the host. The placeholder is left in place.
+    ///
+    /// Without this, a template such as `app://ask?q=查询{text}评分` is handed to
+    /// `URL(string:)` with raw Chinese next to the already-encoded selection.
+    /// macOS 14 then encodes the whole string again, `%` included, and the
+    /// selection arrives as literal `%E9%B8%AD…`; macOS 13 refuses the string.
+    /// The host is not touched: a Chinese domain name is encoded another way
+    /// (punycode), which `URL(string:)` does itself.
+    static func escapingLiteral(_ template: String) -> String {
+        var head = ""
+        var rest = Substring(template)
+        // A host exists only when `//` comes right after the scheme. A `://`
+        // further in (`mailto:a@b.c?body=https://x.com/`) is ordinary text.
+        if let scheme = writtenScheme(of: template) {
+            let afterScheme = template.index(template.startIndex, offsetBy: scheme.count + 1)
+            if template[afterScheme...].hasPrefix("//") {
+                let hostStart = template.index(afterScheme, offsetBy: 2)
+                let afterHost = template[hostStart...].firstIndex(where: { "/?#".contains($0) }) ?? template.endIndex
+                head = String(template[..<afterHost])
+                rest = template[afterHost...]
+            }
+        }
+        return head + rest.components(separatedBy: placeholder).map(escapingPart).joined(separator: placeholder)
+    }
+
+    /// One stretch of template text between placeholders. A `%` followed by two
+    /// hex digits is an escape the user typed and stays; any other `%` is a
+    /// percent sign and becomes `%25`.
+    private static func escapingPart(_ part: String) -> String {
+        var out = ""
+        var run = ""
+        func flush() {
+            out += run.addingPercentEncoding(withAllowedCharacters: literalAllowed) ?? run
+            run = ""
+        }
+        let chars = Array(part)
+        var i = 0
+        while i < chars.count {
+            if chars[i] == "%" {
+                flush()
+                if i + 2 < chars.count + 0, chars[i + 1].isHexDigit, chars[i + 2].isHexDigit,
+                   chars[i + 1].isASCII, chars[i + 2].isASCII {
+                    out += String(chars[i...i + 2])
+                    i += 3
+                } else {
+                    out += "%25"
+                    i += 1
+                }
+            } else {
+                run.append(chars[i])
+                i += 1
+            }
+        }
+        flush()
+        return out
     }
 
     /// The scheme the template itself spells out before its first placeholder

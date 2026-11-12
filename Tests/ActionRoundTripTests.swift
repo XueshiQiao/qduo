@@ -211,6 +211,34 @@ final class ActionRoundTripTests: XCTestCase {
                        "https://s.com/?q=a%20b%26c%3Dd%23e%3Ff%2Fg")
         XCTAssertEqual(URLTemplate.fill("dict://{text}", with: "你好")?.absoluteString,
                        "dict://%E4%BD%A0%E5%A5%BD")
+        // Chinese (or a space) written in the template itself: encoded once, and the
+        // selection next to it is NOT encoded a second time.
+        XCTAssertEqual(URLTemplate.fill("flowy://ask?q=查询{text}豆瓣评分&pin=1", with: "鸭子侦探")?.absoluteString,
+                       "flowy://ask?q=%E6%9F%A5%E8%AF%A2%E9%B8%AD%E5%AD%90%E4%BE%A6%E6%8E%A2%E8%B1%86%E7%93%A3%E8%AF%84%E5%88%86&pin=1")
+        XCTAssertEqual(URLTemplate.fill("https://s.com/a b?q={text} 电影", with: "x y")?.absoluteString,
+                       "https://s.com/a%20b?q=x%20y%20%E7%94%B5%E5%BD%B1")
+        // An escape the user typed in the template stays one escape.
+        XCTAssertEqual(URLTemplate.fill("https://s.com/?q=%E4%BD%A0{text}", with: "好")?.absoluteString,
+                       "https://s.com/?q=%E4%BD%A0%E5%A5%BD")
+        XCTAssertEqual(URLTemplate.escapingLiteral("https://s.com/?q={text}&a=1#f"), "https://s.com/?q={text}&a=1#f",
+                       "a template of plain URL characters is not changed")
+        XCTAssertEqual(URLTemplate.escapingLiteral("dict://{text}"), "dict://{text}")
+        // Square brackets and a bare percent sign in the template would also make
+        // the whole string be encoded again; they are escaped, a typed escape is kept.
+        XCTAssertEqual(URLTemplate.fill("https://s.com/?a[b]={text}", with: "你")?.absoluteString,
+                       "https://s.com/?a%5Bb%5D=%E4%BD%A0")
+        XCTAssertEqual(URLTemplate.fill("https://s.com/?p=50%&q={text}%", with: "你")?.absoluteString,
+                       "https://s.com/?p=50%25&q=%E4%BD%A0%25")
+        XCTAssertEqual(URLTemplate.escapingLiteral("https://s.com/?q=%e4%BD%a0%4%zz"), "https://s.com/?q=%e4%BD%a0%254%25zz")
+        // "://" inside a parameter is not a host: the Chinese before it is still escaped.
+        XCTAssertEqual(URLTemplate.fill("mailto:a@b.com?subject=你好&body=https://x.com/{text}", with: "好")?.absoluteString,
+                       "mailto:a@b.com?subject=%E4%BD%A0%E5%A5%BD&body=https://x.com/%E5%A5%BD")
+        // A Chinese domain name is left to URL(string:), which writes it as punycode;
+        // the selection after it is still encoded once.
+        XCTAssertEqual(URLTemplate.fill("https://中文.com/?q={text}", with: "你")?.absoluteString,
+                       "https://xn--fiq228c.com/?q=%E4%BD%A0")
+        XCTAssertEqual(URLTemplate.escapingLiteral("http://[::1]:8080/a[1]?q={text}"), "http://[::1]:8080/a%5B1%5D?q={text}")
+        XCTAssertEqual(URLTemplate.escapingLiteral("tel:{text}"), "tel:{text}")
         XCTAssertNil(URLTemplate.fill("   ", with: "x"), "no scheme, no URL")
         // The scheme has to be the template's own: a template that begins with
         // the placeholder would take it from the selection.
