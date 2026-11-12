@@ -1,3 +1,19 @@
+<h3>What's New in 26.11.26</h3>
+<ul>
+  <li><b>Screenshot Text: the first recognition no longer looks stuck</b> — The first text recognition after you install or update QDuo can take over 20 seconds, because macOS prepares its text recognizer then. QDuo now does this in the background as soon as Screenshot Text is turned on, and shows "Recognizing text…" whenever a recognition takes more than a moment.</li>
+  <li><b>Screenshot Text: popup at the pointer</b> — With the wheel style, the popup now opens where you finished dragging, not at the top of the selected area.</li>
+  <li><b>Screenshot Text: fewer wrong "no text found"</b> — When a recognition comes back empty, QDuo tries once more before telling you no text was found. Cancelling a new capture also no longer throws away the result of the one before it.</li>
+  <li><b>Open URL: Chinese and spaces in the address</b> — An Open URL action whose address contains Chinese, spaces, square brackets or a lone <code>%</code>, such as <code>https://example.com/search?q=电影 {text}</code>, now opens the right address. Before, the selected text was encoded twice and arrived as <code>%E9%B8%AD…</code> instead of the text itself.</li>
+</ul>
+
+<h3>26.11.26 更新内容</h3>
+<ul>
+  <li><b>截屏取字：第一次识别不再像卡住了</b> — 安装或更新 QDuo 之后的第一次文字识别可能要 20 多秒，因为 macOS 要在这时准备文字识别的模型。现在只要打开了「截屏取字」，QDuo 就会在后台提前准备好；识别稍微久一点时，还会显示「识别中…」。</li>
+  <li><b>截屏取字：弹窗出现在鼠标的位置</b> — 使用圆环样式时，弹窗现在出现在你拖动结束的地方，不再出现在选区的顶部。</li>
+  <li><b>截屏取字：更少误报「没有找到文字」</b> — 识别结果为空时，QDuo 会自动再识别一次，仍然为空才提示没有找到文字。另外，取消一次新的截屏，不会再把上一次截屏的识别结果丢掉。</li>
+  <li><b>打开网址：网址里可以写中文和空格</b> — 「打开网址」动作的网址里带中文、空格、方括号或者单独一个 <code>%</code> 时（比如 <code>https://example.com/search?q=电影 {text}</code>），现在能打开正确的地址。以前选中的文字会被编码两遍，对方收到的是 <code>%E9%B8%AD…</code> 这样的一串，而不是文字本身。</li>
+</ul>
+
 <h3>What's New in 26.10.25</h3>
 <ul>
   <li><b>An action that presses a key</b> — A new action type, Press Keys, presses one key or key combination, such as ⌫ or ⇧⌘K, in the app where you selected the text. It is sent directly, without a shell script, and needs Accessibility permission. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/18">#18</a>.</li>
