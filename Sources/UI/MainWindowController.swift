@@ -18,10 +18,16 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         let hosting = NSHostingController(rootView: root)
 
         window = NSWindow(contentViewController: hosting)
-        window.title = Brand.name
+        // Keep the title visible (do NOT set titleVisibility = .hidden): in the unified
+        // toolbar the title is what pushes a page's toolbar items to the trailing edge.
+        // Start with the initial page's name; each page's navigationTitle takes over.
+        //
+        // Deliberately do NOT set titlebarAppearsTransparent = true: keeping the native
+        // unified titlebar gives macOS's automatic scroll-edge blur when right-pane
+        // content scrolls under the toolbar, while staying transparent at scroll
+        // offset 0 and keeping the sidebar full-height under traffic lights.
+        window.title = appState.selection.title
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         window.toolbarStyle = .unified
         window.setContentSize(NSSize(width: 860, height: 600))
