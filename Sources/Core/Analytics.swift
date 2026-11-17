@@ -48,11 +48,6 @@ enum Analytics {
         startSending()
         if launchProps.isEmpty { track("app_launched") } else { track("app_launched", with: launchProps) }
         trackUpdateInstalledIfNeeded()
-        // Set only when another of the author's apps installed and launched us
-        // from its More Apps page; tells us which one sent the user.
-        if let source = MoreApps.launchReferrer {
-            trackMoreApps(.referredLaunch(source: source))
-        }
     }
 
     /// The SDK only starts its send timer when the app becomes active
