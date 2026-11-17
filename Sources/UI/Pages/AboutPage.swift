@@ -1,7 +1,9 @@
 import SwiftUI
 import AppKit
+import MoreAppsKit
 
-/// The About page: a centered app hero, author/cross-promo link rows, the
+/// The About page: a centered app hero, author link rows, a one-row entry to
+/// the More Apps page, the
 /// anonymous-usage opt-out, and copyright. A check-for-updates button lives in
 /// the page toolbar. Mirrors AnyDrag's AboutPage.
 struct AboutPage: View {
@@ -40,9 +42,16 @@ struct AboutPage: View {
                 }
                 linkRow(asset: "XLogo", tint: Self.brandTint,
                         title: Brand.authorXHandle, url: Brand.authorXURL)
-                linkRow(systemImage: "globe", tint: .blue,
-                        title: "\(L("about.website.description")) \(Brand.authorWebsiteURL.host ?? "")",
-                        url: Brand.authorWebsiteURL)
+            }
+
+            // One row leading to the More Apps page (icons of the author's
+            // other apps, how many there are, a chevron).
+            Section {
+                MoreAppsEntryRow(store: appState.moreApps, title: SettingsPage.moreApps.title) {
+                    IconTile(symbol: SettingsPage.moreApps.symbol, color: SettingsPage.moreApps.color)
+                } action: {
+                    appState.showMoreApps(from: "about")
+                }
             }
 
             Section {

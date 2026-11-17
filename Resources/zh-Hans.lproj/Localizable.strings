@@ -18,6 +18,7 @@
 "page.ocr" = "截屏取字";
 "page.speech" = "朗读";
 "page.models" = "AI 模型";
+"page.moreApps" = "更多应用";
 "page.about" = "关于";
 
 /* The popup itself, plus the shared About / AI Models pages. */
@@ -38,7 +39,6 @@
 "diagnostics.revealLog" = "在访达中显示";
 "diagnostics.readViaBadge" = "弹窗下显示读取方式（AX / Clipboard / ⌘C，仅调试版）";
 "GitHub Repository" = "GitHub 仓库";
-"about.website.description" = "作者网站 —";
 "about.analytics.toggle" = "分享匿名使用统计";
 "about.analytics.subtitle" = "帮助改进这个 App。你选中的文字、进程名、路径和任何个人数据都不会离开你的设备。";
 "about.copyright" = "© 2026 XueshiQiao。保留所有权利。";

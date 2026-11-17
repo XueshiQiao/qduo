@@ -1,5 +1,6 @@
 import Foundation
 import Aptabase
+import MoreAppsKit
 
 /// Thin facade over the Aptabase SDK. All call sites go through this enum so the
 /// rest of the codebase never imports `Aptabase` directly and the opt-out gate
@@ -47,6 +48,11 @@ enum Analytics {
         startSending()
         if launchProps.isEmpty { track("app_launched") } else { track("app_launched", with: launchProps) }
         trackUpdateInstalledIfNeeded()
+        // Set only when another of the author's apps installed and launched us
+        // from its More Apps page; tells us which one sent the user.
+        if let source = MoreApps.launchReferrer {
+            trackMoreApps(.referredLaunch(source: source))
+        }
     }
 
     /// The SDK only starts its send timer when the app becomes active
@@ -115,6 +121,15 @@ enum Analytics {
             track("update_installed", with: ["from_version": last, "to_version": current])
         }
         if !current.isEmpty { d.set(current, forKey: Preferences.Key.lastSeenVersion) }
+    }
+
+    /// Forwards an event from the shared More Apps page (page views, Get clicks,
+    /// install results). The names and properties are defined by MoreAppsKit so
+    /// every app that embeds the page reports them identically. They name which
+    /// of the author's own apps the user clicked on that page, by catalog id
+    /// such as `anydrag`; nothing about the apps the user runs or has installed.
+    static func trackMoreApps(_ event: MoreAppsEvent) {
+        if event.properties.isEmpty { track(event.name) } else { track(event.name, with: event.properties) }
     }
 
     // MARK: - Internals

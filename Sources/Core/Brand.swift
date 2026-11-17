@@ -55,7 +55,6 @@ enum Brand {
 
     /// The author's links. These are about the person, not the product, so a rename
     /// leaves them alone and they are allowed to be literals.
-    static let authorWebsiteURL = URL(string: "https://xueshi.dev")!
     static let authorXURL = URL(string: "https://x.com/XueshiQiao")!
     static let authorXHandle = "@XueshiQiao"
     static let feedbackURL = URL(

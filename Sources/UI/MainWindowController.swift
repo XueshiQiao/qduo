@@ -1,5 +1,6 @@
 import Cocoa
 import SwiftUI
+import MoreAppsKit
 
 // MARK: - MainWindowController
 //
@@ -39,7 +40,14 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         window.delegate = self
     }
 
-    func show() {
+    /// Shows the window. With `moreAppsFrom` it also switches to the More Apps
+    /// page; the value says where the user came from (`menu`) and is reported
+    /// with the page-view analytics event.
+    func show(moreAppsFrom source: String? = nil) {
+        let wasVisible = window.isVisible
+        let wasOnMoreApps = appState.selection == .moreApps
+        if let source { appState.showMoreApps(from: source) }
+
         // ORDER MATTERS on macOS 14+ (cooperative activation): order the window
         // front FIRST, then activate the app. The other way round routinely leaves
         // the window BEHIND the previously-frontmost app, because the system defers
@@ -48,10 +56,19 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         // Deliberately NOT `orderFrontRegardless`: that fronts the window without
         // keying it (only the ACTIVE app can own a key window), which breaks text
         // field focus app-wide — keystrokes leak to the previously-active app.
-        if !window.isVisible { window.center() }
+        if !wasVisible { window.center() }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         FileLog("MainWindow").debug("window shown — windowNumber=\(self.window.windowNumber)")
+
+        // SwiftUI calls a page's `onAppear` only when the page's view is
+        // created. When More Apps is already the current page, neither reopening
+        // the window nor asking for that page again creates it, so tell the page
+        // ourselves: it re-reads which apps are installed and reports the view.
+        if wasOnMoreApps, source != nil || !wasVisible {
+            if source == nil { appState.moreApps.nextViewSource = "window" }
+            appState.moreApps.pageAppeared()
+        }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -112,6 +129,12 @@ struct MainView: View {
         case .ocr:        OCRPage(store: appState.store)
         case .models:     ModelsPage(settings: appState.llm.settings)
         case .speech:     SpeechSettingsView()
+        // All content and behaviour come from the shared MoreAppsKit package;
+        // this app supplies only the title and the store.
+        case .moreApps:
+            MoreAppsPage(store: appState.moreApps)
+                .navigationTitle(SettingsPage.moreApps.title)
+                .accessibilityElement(children: .contain)
         case .about:      AboutPage()
         }
     }

@@ -161,7 +161,7 @@ final class MenuBarController: NSObject {
         menu.addItem(feedbackItem)
 
         let moreAppsItem = NSMenuItem(title: L("More Apps by Author…"),
-                                      action: #selector(openAuthorWebsite(_:)), keyEquivalent: "")
+                                      action: #selector(openMoreApps(_:)), keyEquivalent: "")
         moreAppsItem.target = self
         menu.addItem(moreAppsItem)
 
@@ -212,8 +212,9 @@ final class MenuBarController: NSObject {
         NSWorkspace.shared.open(Brand.feedbackURL)
     }
 
-    @objc private func openAuthorWebsite(_ sender: NSMenuItem) {
-        NSWorkspace.shared.open(Brand.authorWebsiteURL)
+    /// Opens the settings window on the More Apps page.
+    @objc private func openMoreApps(_ sender: NSMenuItem) {
+        mainWindowController.show(moreAppsFrom: "menu")
     }
 
     @objc private func quitApp(_ sender: NSMenuItem) {

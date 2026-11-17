@@ -1,4 +1,5 @@
 import SwiftUI
+import MoreAppsKit
 import Combine
 
 /// The root model. Owns the popup's controller and stores, the shared LLM service
@@ -26,6 +27,10 @@ final class AppState: ObservableObject {
 
     /// The settings-facing view model over `controller` + preferences.
     let store: PopBarStore
+
+    /// Model of the "More Apps" page (the author's other apps, with in-place
+    /// install). Lives here so the page and the About entry row share one state.
+    let moreApps: MoreAppsStore
 
     @Published var selection: SettingsPage {
         didSet {
@@ -59,11 +64,24 @@ final class AppState: ObservableObject {
         let launchPage = Self.launchArgument("--page")
         self.selection = launchPage.flatMap(SettingsPage.init(rawValue:)) ?? .general
 
+        // The page follows the app's language setting (nil follows the system).
+        let moreApps = MoreAppsStore(configuration: .init(language: LocalizationOverride.activeCode))
+        moreApps.onEvent = { Analytics.trackMoreApps($0) }
+        self.moreApps = moreApps
+
         languageObserver = NotificationCenter.default.addObserver(
             forName: .appLanguageChanged, object: nil, queue: .main
         ) { [weak self] _ in
+            self?.moreApps.language = LocalizationOverride.activeCode
             self?.languageRevision &+= 1
         }
+    }
+
+    /// Jump to the More Apps page from inside the window. `source` says where
+    /// the user came from (`about`) and is reported with the page-view event.
+    func showMoreApps(from source: String) {
+        moreApps.nextViewSource = source
+        selection = .moreApps
     }
 
     deinit {

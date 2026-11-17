@@ -15,19 +15,24 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
     case history
     case models
     case speech
+    case moreApps
     case about
 
     var id: String { rawValue }
 
     /// Which sidebar block the row sits in. Blocks are separated by a gap with no
     /// header, the way System Settings separates its groups.
-    enum Block: Int, CaseIterable { case popup, history, app }
+    ///
+    /// `info` holds what is not a feature of this app: the author's other apps,
+    /// and About. Cross-promotion stays out of the feature list.
+    enum Block: Int, CaseIterable { case popup, history, app, info }
 
     var block: Block {
         switch self {
         case .general, .advanced, .actions, .ocr: return .popup
         case .history:                              return .history
-        case .models, .speech, .about:              return .app
+        case .models, .speech:                      return .app
+        case .moreApps, .about:                     return .info
         }
     }
 
@@ -40,6 +45,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .ocr:        return L("page.ocr")
         case .models:     return L("page.models")
         case .speech:     return L("page.speech")
+        case .moreApps:   return L("page.moreApps")
         case .about:      return L("page.about")
         }
     }
@@ -53,6 +59,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .ocr:        return "viewfinder"
         case .models:     return "brain.head.profile"
         case .speech:     return "speaker.wave.2.fill"
+        case .moreApps:   return "square.grid.2x2.fill"
         case .about:      return "info.circle.fill"
         }
     }
@@ -66,6 +73,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .ocr:        return .teal
         case .models:     return .blue
         case .speech:     return .orange
+        case .moreApps:   return .cyan
         case .about:      return .pink
         }
     }

@@ -40,6 +40,10 @@ packages:
   Aptabase:
     url: https://github.com/aptabase/aptabase-swift
     from: "0.3.4"
+  # The shared "More Apps" page (the author's other apps, with in-place install).
+  MoreAppsKit:
+    url: https://github.com/XueshiQiao/MoreAppsKit
+    from: "1.1.0"
   MarkdownUI:
     url: https://github.com/gonzalezreal/swift-markdown-ui
     from: "2.4.0"
@@ -100,6 +104,8 @@ targets:
         product: Aptabase
       - package: MarkdownUI
         product: MarkdownUI
+      - package: MoreAppsKit
+        product: MoreAppsKit
       # macOS 15+ only, and the app runs on 13: weak, or dyld refuses to launch
       # it on 13/14. `_Translation_SwiftUI` is the overlay `.translationTask`
       # lives in, linked implicitly by Swift, so it is weakened the same way.

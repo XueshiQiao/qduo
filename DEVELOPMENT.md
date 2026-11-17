@@ -76,6 +76,15 @@ Supporting/            Info.plist · App.entitlements
 scripts/               run.sh · bump-version.sh
 ```
 
+The **More Apps** page (the author's other apps, with a Get button that
+downloads, verifies, installs and opens one) is not QDuo code: catalog,
+installer, views and analytics event names all come from the shared
+`MoreAppsKit` Swift package, which the sibling apps embed too. QDuo adds only
+the `moreApps` case in `SettingsPage`, the detail case in `MainView`, the entry
+row on the About page, `AppState.moreApps` / `showMoreApps(from:)`, the menu
+item's target (`MainWindowController.show(moreAppsFrom:)`) and
+`Analytics.trackMoreApps`. See the package's README for the catalog format.
+
 `PopBar` is the internal name of the popup machinery and is unrelated to what the
 app is called — renaming the product does not touch it.
 
