@@ -590,7 +590,9 @@ private struct AIStepPage: View {
             StepHeader(step: .ai, title: L("onboarding.ai.title"), required: false,
                        lead: L("onboarding.ai.lead"))
             FlowLayout(spacing: 6) {
-                ForEach(LLMConfig.providers, id: \.self) { p in providerChip(p) }
+                // Custom needs an address and a standard, which only the AI
+                // Models page asks for.
+                ForEach(LLMConfig.providers.filter { $0 != LLMConfig.custom }, id: \.self) { p in providerChip(p) }
             }
             .padding(.bottom, 10)
             keyRows
@@ -628,7 +630,7 @@ private struct AIStepPage: View {
         let p = settings.provider
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                if p == "ollama" {
+                if !LLMConfig.needsKey(p) {
                     Text(L("onboarding.ai.key.label.generic")).frame(width: 110, alignment: .leading)
                     Text(L("onboarding.ai.key.ollama")).font(.system(size: 12)).foregroundStyle(.secondary)
                     Spacer(minLength: 0)
@@ -642,7 +644,7 @@ private struct AIStepPage: View {
                     model.test()
                 }
                 .disabled(model.testState == .testing
-                          || (p != "ollama" && model.keyDraft.trimmingCharacters(in: .whitespaces).isEmpty
+                          || (LLMConfig.needsKey(p) && model.keyDraft.trimmingCharacters(in: .whitespaces).isEmpty
                               && !settings.hasKey(for: p)))
             }
             .font(.system(size: 12.5))
@@ -650,7 +652,7 @@ private struct AIStepPage: View {
             HStack(spacing: 8) {
                 Spacer().frame(width: 110)
                 VStack(alignment: .leading, spacing: 3) {
-                    if p != "ollama" {
+                    if LLMConfig.needsKey(p) {
                         if settings.hasKey(for: p) && model.keyDraft.isEmpty {
                             Text(L("onboarding.ai.key.saved")).foregroundStyle(.green)
                         } else if let site = Self.providerSite(p), let url = URL(string: "https://\(site)") {
@@ -730,15 +732,7 @@ private struct AIStepPage: View {
         }
     }
 
-    static func providerSite(_ p: String) -> String? {
-        switch p {
-        case "deepseek": return "platform.deepseek.com"
-        case "openai":   return "platform.openai.com"
-        case "doubao":   return "console.volcengine.com/ark"
-        case "alibaba":  return "bailian.console.aliyun.com"
-        default:         return nil
-        }
-    }
+    static func providerSite(_ p: String) -> String? { LLMConfig.preset(p).keySite }
 }
 
 /// Lays children out left to right, wrapping onto a new line when out of room.

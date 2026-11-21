@@ -127,7 +127,7 @@ struct MainView: View {
         case .history:    HistoryPage()
         case .advanced:   AdvancedPage(store: appState.store)
         case .ocr:        OCRPage(store: appState.store)
-        case .models:     ModelsPage(settings: appState.llm.settings)
+        case .models:     ModelsPage(settings: appState.llm.settings, models: appState.llm.models)
         case .speech:     SpeechSettingsView()
         // All content and behaviour come from the shared MoreAppsKit package;
         // this app supplies only the title and the store.

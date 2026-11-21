@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import AIModelKit
 
 /// The **AI Models** settings page: the app-wide default model + an API key per
 /// provider, shared by every tool through `LLMService`. Mirrors the visual language
@@ -8,13 +9,17 @@ import AppKit
 struct ModelsPage: View {
 
     @ObservedObject private var settings: LLMSettingsStore
+    private let models: ModelListStore
 
     @State private var keyDraft = ""
     @State private var keyError: String?
 
-    init(settings: LLMSettingsStore) {
+    init(settings: LLMSettingsStore, models: ModelListStore) {
         _settings = ObservedObject(wrappedValue: settings)
+        self.models = models
     }
+
+    private var isCustom: Bool { settings.provider == LLMConfig.custom }
 
     var body: some View {
         Form {
@@ -30,18 +35,20 @@ struct ModelsPage: View {
     private var defaultModelSection: some View {
         Section {
             Picker(selection: Binding(get: { settings.provider },
-                                      set: { settings.setProvider($0); keyDraft = "" })) {
+                                      set: { settings.setProvider($0); keyDraft = ""; keyError = nil })) {
                 ForEach(LLMConfig.providers, id: \.self) { p in
                     Text(LLMConfig.displayName(p)).tag(p)
                 }
             } label: { iconLabel("cpu", .indigo, L("models.provider")) }
 
-            LabeledContent {
-                TextField(L("models.model"),
-                          text: Binding(get: { settings.model }, set: { settings.setModel($0) }))
-                    .labelsHidden()
-                    .multilineTextAlignment(.trailing).frame(maxWidth: 220)
-            } label: { iconLabel("shippingbox", .indigo, L("models.model")) }
+            if isCustom {
+                Picker(selection: Binding(get: { settings.customFormat },
+                                          set: { settings.setCustomFormat($0) })) {
+                    ForEach(APIFormat.allCases, id: \.self) { f in
+                        Text(L("models.format.\(f.rawValue)")).tag(f)
+                    }
+                } label: { iconLabel("arrow.left.arrow.right", .indigo, L("models.format")) }
+            }
 
             LabeledContent {
                 TextField(L("models.baseURL"),
@@ -51,6 +58,12 @@ struct ModelsPage: View {
                     .font(.system(size: 11, design: .monospaced))
             } label: { iconLabel("link", .indigo, L("models.baseURL")) }
 
+            ModelPicker(provider: settings.provider,
+                        selection: Binding(get: { settings.model }, set: { settings.setModel($0) }),
+                        store: models) {
+                iconLabel("shippingbox", .indigo, L("models.model"))
+            }
+
             Picker(selection: Binding(get: { settings.reasoningEffort },
                                       set: { settings.setReasoningEffort($0) })) {
                 ForEach(settings.thinkingOptions, id: \.tag) { opt in Text(opt.label).tag(opt.tag) }
@@ -58,7 +71,11 @@ struct ModelsPage: View {
         } header: {
             Text(L("models.default.header"))
         } footer: {
-            Text(L("models.default.footer")).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L("models.default.footer"))
+                if isCustom { Text(L("models.custom.footer")) }
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -74,7 +91,9 @@ struct ModelsPage: View {
                         Button(L("models.key.clear")) { settings.clearKey(for: settings.provider) }
                             .controlSize(.small)
                     }
-                } else if settings.provider == "ollama" {
+                } else if isCustom {
+                    Text(L("models.key.optional")).font(.system(size: 11)).foregroundStyle(.secondary)
+                } else if !LLMConfig.needsKey(settings.provider) {
                     Text(L("models.key.notNeeded")).font(.system(size: 11)).foregroundStyle(.secondary)
                 } else {
                     Text(L("models.key.missing")).font(.system(size: 11)).foregroundStyle(.orange)

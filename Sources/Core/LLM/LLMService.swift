@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import Combine
+import AIModelKit
 
 /// The app-level shared LLM facade. ONE instance is created by `AppState` at
 /// launch and injected into any tool that needs a model, so the LLM capability is
@@ -15,17 +16,21 @@ import Combine
 /// service stay in sync.
 ///
 /// Main-thread only by convention (matches the rest of the SwiftUI/AppKit layer);
-/// the actual network calls run off-main inside `LLMClient`.
+/// the actual network calls run off-main inside `AIModelKit.ModelClient`.
 final class LLMService: ObservableObject {
 
     /// The observable settings model (default config + per-provider keys). Backs the
     /// AI Models page; tools read it to resolve configs and check key presence.
     let settings: LLMSettingsStore
 
+    /// The model lists fetched so far, shared by every model picker.
+    let models: ModelListStore
+
     private var settingsObserver: AnyCancellable?
 
     init(settings: LLMSettingsStore = LLMSettingsStore()) {
         self.settings = settings
+        self.models = ModelListStore(settings: settings)
         // Republish the nested store's changes so views observing `LLMService`
         // (e.g. PopBar's action tags) refresh when keys/default model change.
         settingsObserver = settings.objectWillChange.sink { [weak self] _ in
@@ -53,13 +58,13 @@ final class LLMService: ObservableObject {
 
     /// One-shot completion: system + user → assistant text.
     func complete(_ config: LLMConfig, system: String, user: String) async throws -> String {
-        try await LLMClient(config: config).complete(system: system, user: user)
+        try await ModelClient(config.connection).complete(system: system, user: user)
     }
 
     /// One very small request, to prove a provider + key + model work together
     /// (the onboarding guide's Test button). Throws the provider's error as is.
     func testConnection(_ config: LLMConfig) async throws {
-        _ = try await LLMClient(config: config, timeout: 20)
+        _ = try await ModelClient(config.connection, timeout: 20)
             .complete(system: "Reply with the single word OK.", user: "ping")
     }
 
@@ -68,6 +73,6 @@ final class LLMService: ObservableObject {
     @discardableResult
     func stream(_ config: LLMConfig, system: String, user: String,
                 onDelta: @escaping (String) -> Void) async throws -> String {
-        try await LLMClient(config: config).stream(system: system, user: user, onDelta: onDelta)
+        try await ModelClient(config.connection).stream(system: system, user: user, onDelta: onDelta)
     }
 }

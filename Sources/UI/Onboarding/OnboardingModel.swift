@@ -263,7 +263,7 @@ final class OnboardingModel: ObservableObject {
     /// Store whatever is in the key field. nil on success or when empty.
     private func saveDraftKey() -> String? {
         let key = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty, settings.provider != "ollama" else { return nil }
+        guard !key.isEmpty, LLMConfig.needsKey(settings.provider) else { return nil }
         if let error = settings.saveKey(key, for: settings.provider) { return error }
         keyDraft = ""
         return nil
