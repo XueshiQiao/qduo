@@ -13,10 +13,19 @@ struct ModelsPage: View {
 
     @State private var keyDraft = ""
     @State private var keyError: String?
+    @State private var testing = false
+    @State private var testResult: ConnectionTestResult?
+    /// What the shown result was for: a result for another provider, model or
+    /// address is not shown.
+    @State private var testedIdentity: String?
+    @State private var testedModel = ""
+    @State private var testTask: Task<Void, Never>?
+    private let llm: LLMService
 
-    init(settings: LLMSettingsStore, models: ModelListStore) {
-        _settings = ObservedObject(wrappedValue: settings)
-        self.models = models
+    init(llm: LLMService) {
+        _settings = ObservedObject(wrappedValue: llm.settings)
+        self.models = llm.models
+        self.llm = llm
     }
 
     private var isCustom: Bool { settings.provider == LLMConfig.custom }
@@ -35,7 +44,7 @@ struct ModelsPage: View {
     private var defaultModelSection: some View {
         Section {
             Picker(selection: Binding(get: { settings.provider },
-                                      set: { settings.setProvider($0); keyDraft = ""; keyError = nil })) {
+                                      set: { settings.setProvider($0); keyDraft = ""; keyError = nil; resetTest() })) {
                 ForEach(LLMConfig.providers, id: \.self) { p in
                     Text(LLMConfig.displayName(p)).tag(p)
                 }
@@ -68,6 +77,8 @@ struct ModelsPage: View {
                                       set: { settings.setReasoningEffort($0) })) {
                 ForEach(settings.thinkingOptions, id: \.tag) { opt in Text(opt.label).tag(opt.tag) }
             } label: { iconLabel("brain", .indigo, L("models.thinking")) }
+
+            testRow
         } header: {
             Text(L("models.default.header"))
         } footer: {
@@ -79,6 +90,81 @@ struct ModelsPage: View {
         }
     }
 
+    // MARK: - Test
+
+    private var testRow: some View {
+        LabeledContent {
+            VStack(alignment: .trailing, spacing: 3) {
+                HStack(spacing: 8) {
+                    if testing { ProgressView().controlSize(.small) }
+                    Button(testing ? L("models.test.testing") : L("models.test")) { runTest() }
+                        .disabled(testing || !settings.isConfigured(forProvider: settings.provider))
+                }
+                if let result = testResult, testedIdentity == testIdentity {
+                    ForEach(Array(testLines(result).enumerated()), id: \.offset) { _, line in
+                        Text(line.text)
+                            .font(.system(size: 11))
+                            .foregroundStyle(line.color)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: 360, alignment: .trailing)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+        } label: { iconLabel("checkmark.seal", .indigo, L("models.test.label")) }
+        .help(L("models.test.footer"))
+    }
+
+    /// What a test result belongs to, without reading the key: change any of
+    /// these and the old result is hidden.
+    private var testIdentity: String {
+        "\(settings.provider)|\(settings.format.rawValue)|\(settings.apiURL)|\(settings.model)|\(settings.reasoningEffort)"
+    }
+
+    private func runTest() {
+        guard let config = settings.defaultConfig() else { return }
+        let identity = testIdentity
+        testing = true
+        testResult = nil
+        testTask?.cancel()
+        testTask = Task {
+            let result = await llm.testConnection(config)
+            await MainActor.run {
+                guard !Task.isCancelled else { return }
+                testResult = result
+                testedIdentity = identity
+                testedModel = config.model
+                testing = false
+            }
+        }
+    }
+
+    /// Drops the shown result and stops a test still running: after a key or
+    /// provider change, a result from before would be about something else.
+    private func resetTest() {
+        testTask?.cancel()
+        testTask = nil
+        testing = false
+        testResult = nil
+    }
+
+    /// The result in a line or two: the verdict, then any warning.
+    private func testLines(_ r: ConnectionTestResult) -> [(text: String, color: Color)] {
+        guard r.succeeded else {
+            return [(r.problem?.localizedText ?? "", .red)]
+        }
+        let model = testedModel
+        var lines: [(String, Color)] = [(String(format: L("models.test.ok"), model, r.latency ?? 0), .green)]
+        if r.modelListed == false {
+            lines.append((String(format: L("models.test.notListed"), model), .secondary))
+        }
+        if let p = r.listProblem {
+            lines.append((String(format: L("models.test.listFailed"), p.localizedText), .secondary))
+        }
+        return lines
+    }
+
     // MARK: - API key (per provider)
 
     private var keySection: some View {
@@ -88,7 +174,7 @@ struct ModelsPage: View {
                     HStack(spacing: 8) {
                         Text(L("models.key.saved"))
                             .font(.system(size: 11, weight: .medium)).foregroundStyle(.green)
-                        Button(L("models.key.clear")) { settings.clearKey(for: settings.provider) }
+                        Button(L("models.key.clear")) { settings.clearKey(for: settings.provider); resetTest() }
                             .controlSize(.small)
                     }
                 } else if isCustom {
@@ -107,6 +193,7 @@ struct ModelsPage: View {
                 SecureField(L("models.key.placeholder"), text: $keyDraft)
                 Button(L("models.key.save")) {
                     keyError = settings.saveKey(keyDraft, for: settings.provider)
+                    resetTest()
                     if keyError == nil { keyDraft = "" }
                 }
                 .disabled(keyDraft.trimmingCharacters(in: .whitespaces).isEmpty)

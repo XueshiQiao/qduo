@@ -61,11 +61,11 @@ final class LLMService: ObservableObject {
         try await ModelClient(config.connection).complete(system: system, user: user)
     }
 
-    /// One very small request, to prove a provider + key + model work together
-    /// (the onboarding guide's Test button). Throws the provider's error as is.
-    func testConnection(_ config: LLMConfig) async throws {
-        _ = try await ModelClient(config.connection, timeout: 20)
-            .complete(system: "Reply with the single word OK.", user: "ping")
+    /// Proves a provider + key + model work together (the Test buttons on the AI
+    /// Models page and in the first-run guide): fetches the model list, then asks
+    /// for one word. Never throws; a failure comes back sorted into a cause.
+    func testConnection(_ config: LLMConfig) async -> ConnectionTestResult {
+        await ModelClient(config.connection, timeout: 20).testConnection()
     }
 
     /// Streaming completion: deltas (displayed text so far) arrive via `onDelta`;
