@@ -648,10 +648,10 @@ struct ActionEditorView: View {
             get: { draft.modelOverride != nil },
             set: { on in
                 if on {
-                    let p = llm.settings.provider
-                    let d = LLMConfig.providerDefaults(p)
-                    draft.modelOverride = ModelOverride(provider: p, model: d.model,
-                                                        reasoningEffort: LLMConfig.clampThinking("none", for: p))
+                    // Starts as a copy of the default model, which is set up and works.
+                    let s = llm.settings
+                    draft.modelOverride = ModelOverride(provider: s.provider, model: s.model,
+                                                        reasoningEffort: s.reasoningEffort)
                 } else {
                     draft.modelOverride = nil
                 }
@@ -661,21 +661,27 @@ struct ActionEditorView: View {
             Picker(L("popbar.llm.provider"), selection: Binding(
                 get: { override.provider },
                 set: { p in
-                    let d = LLMConfig.providerDefaults(p)
-                    draft.modelOverride = ModelOverride(provider: p, model: d.model,
-                                                        reasoningEffort: LLMConfig.clampThinking("none", for: p))
+                    let s = llm.settings
+                    // The default provider keeps its chosen model; another starts at its default.
+                    let model = p == s.provider ? s.model : LLMConfig.providerDefaults(p).model
+                    draft.modelOverride = ModelOverride(provider: p, model: model,
+                                                        reasoningEffort: LLMConfig.initialEffort(for: p, format: s.format(for: p)))
                 })) {
                 ForEach(LLMConfig.providers, id: \.self) { p in Text(LLMConfig.displayName(p)).tag(p) }
             }
 
-            TextField(L("popbar.llm.model"), text: Binding(
-                get: { draft.modelOverride?.model ?? "" },
-                set: { draft.modelOverride?.model = $0 }))
+            ModelPicker(provider: override.provider,
+                        selection: Binding(get: { draft.modelOverride?.model ?? "" },
+                                           set: { draft.modelOverride?.model = $0 }),
+                        store: llm.models) {
+                Text(L("popbar.llm.model"))
+            }
 
             Picker(L("popbar.llm.thinking"), selection: Binding(
                 get: { draft.modelOverride?.reasoningEffort ?? "none" },
                 set: { draft.modelOverride?.reasoningEffort = $0 })) {
-                ForEach(LLMConfig.thinkingOptions(for: override.provider), id: \.tag) { opt in
+                ForEach(LLMConfig.thinkingOptions(for: override.provider,
+                                                  format: llm.settings.format(for: override.provider)), id: \.tag) { opt in
                     Text(opt.label).tag(opt.tag)
                 }
             }
