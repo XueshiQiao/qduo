@@ -112,6 +112,9 @@ enum ActionRegistry {
                 return .none
             }
 
+        case .systemTranslate where action.engine == BilibiliTranslator.engineID:
+            return await runBilibiliTranslate(action, text: text)
+
         case .systemTranslate:
             let translated = await SystemTranslator.translate(text, to: action.targetLanguage,
                                                               second: action.secondLanguage)
@@ -201,6 +204,40 @@ enum ActionRegistry {
         // the app that owns it, whatever the action asked for.
         if action.openTarget == .preview, URLTemplate.isWeb(url) { return .webPreview(url) }
         return .openExternal(url)
+    }
+
+    /// Bilibili's translator, with the system translator as the fallback: when
+    /// the service cannot be reached, or its answer is not a translation into
+    /// the target (see `BilibiliTranslator`), the system translator gets the
+    /// same text and settings where it can run (macOS 15+).
+    private static func runBilibiliTranslate(_ action: PopBarActionConfig, text: String) async -> PopBarPresentation {
+        let translated = await BilibiliTranslator.translate(text, to: action.targetLanguage, second: action.secondLanguage)
+        if Task.isCancelled { return .none }
+        let message: String
+        switch translated {
+        case .success(let out):
+            return out.isEmpty ? .error(L("popbar.error.empty")) : .output(out)
+        case .failure(.noTarget):
+            return .error("⚠️ \(L("systemTranslate.error.noTarget"))")
+        case .failure(.alreadyInTarget(let target)):
+            let name = SystemTranslator.displayName(of: target)
+            return .error("⚠️ \(String(format: L("systemTranslate.error.alreadyInTarget"), name))")
+        case .failure(.unsupportedTarget(let target)):
+            message = String(format: L("bilibiliTranslate.error.unsupported"), SystemTranslator.displayName(of: target))
+        case .failure(.service(let problem)):
+            message = String(format: L("bilibiliTranslate.error.service"), problem.localizedText)
+        case .failure(.badReply), .failure(.wrongLanguage):
+            message = L("bilibiliTranslate.error.badReply")
+        }
+        guard SystemTranslator.isAvailable else { return .error("⚠️ \(message)") }
+        log.info("Bilibili translate failed — trying the system translator")
+        if case .success(let out) = await SystemTranslator.translate(text, to: action.targetLanguage,
+                                                                    second: action.secondLanguage), !out.isEmpty {
+            if Task.isCancelled { return .none }
+            return .output(out)
+        }
+        if Task.isCancelled { return .none }
+        return .error("⚠️ \(message)")
     }
 
     private static func transformPresentation(_ action: PopBarActionConfig, text: String) -> PopBarPresentation {

@@ -59,7 +59,15 @@ struct ActionEditorView: View {
                     // other kind on an action that holds some is a group that
                     // also runs when clicked. Not offered to an action that is
                     // INSIDE a group — two levels, never three.
-                    Picker(L("popbar.editor.kind"), selection: $draft.kind) {
+                    Picker(L("popbar.editor.kind"), selection: Binding(
+                        get: { draft.kind },
+                        set: { kind in
+                            draft.kind = kind
+                            // Before macOS 15 only Bilibili's translator can run.
+                            if kind == .systemTranslate, !SystemTranslator.isAvailable, draft.engine == nil {
+                                draft.engine = BilibiliTranslator.engineID
+                            }
+                        })) {
                         if canBeGroup || draft.kind == .group {
                             Text(L("popbar.editor.kind.group")).tag(PopBarActionConfig.Kind.group)
                             Divider()
@@ -75,11 +83,9 @@ struct ActionEditorView: View {
                         Text(L("popbar.editor.kind.shortcut")).tag(PopBarActionConfig.Kind.shortcut)
                         Text(L("popbar.editor.kind.script")).tag(PopBarActionConfig.Kind.script)
                         Text(L("popbar.editor.kind.keystroke")).tag(PopBarActionConfig.Kind.keystroke)
-                        // Offered on macOS 15+ only — but an action that already
-                        // is one keeps its entry, so the picker never shows blank.
-                        if SystemTranslator.isAvailable || draft.kind == .systemTranslate {
-                            Text(L("popbar.editor.kind.systemTranslate")).tag(PopBarActionConfig.Kind.systemTranslate)
-                        }
+                        // Every macOS: Bilibili's translator runs on all of them,
+                        // the system one on 15+ (the engine picker says which).
+                        Text(L("popbar.editor.kind.systemTranslate")).tag(PopBarActionConfig.Kind.systemTranslate)
                         Text(L("popbar.editor.kind.pause")).tag(PopBarActionConfig.Kind.pause)
                         Text(L("popbar.editor.kind.inspect")).tag(PopBarActionConfig.Kind.inspect)
                         Text(L("popbar.editor.kind.settings")).tag(PopBarActionConfig.Kind.settings)
@@ -328,6 +334,14 @@ struct ActionEditorView: View {
             }
         case .systemTranslate:
             Section {
+                Picker(L("popbar.editor.engine"), selection: Binding(
+                    get: { draft.engine ?? "" },
+                    set: { draft.engine = $0.isEmpty ? nil : $0 })) {
+                    if SystemTranslator.isAvailable || draft.engine == nil {
+                        Text(L("popbar.editor.engine.system")).tag("")
+                    }
+                    Text(L("popbar.editor.engine.bilibili")).tag(BilibiliTranslator.engineID)
+                }
                 Picker(L("popbar.editor.targetLanguage"), selection: Binding(
                     get: { draft.targetLanguage ?? "" },
                     set: { newValue in
@@ -355,7 +369,11 @@ struct ActionEditorView: View {
                         Text(SystemTranslator.displayName(of: id)).tag(id)
                     }
                 }
-                .task { if translateTargets.isEmpty { translateTargets = await SystemTranslator.supportedTargets() } }
+                // Each engine has its own list; switching keeps the chosen
+                // language, shown below the list if the other one lacks it.
+                .task(id: draft.engine) {
+                    translateTargets = isBilibili ? BilibiliTranslator.targets() : await SystemTranslator.supportedTargets()
+                }
                 Picker(L("popbar.editor.secondLanguage"), selection: Binding(
                     get: { draft.secondLanguage ?? "" },
                     set: { draft.secondLanguage = $0.isEmpty ? nil : $0 })) {
@@ -374,11 +392,13 @@ struct ActionEditorView: View {
                 }
                 outputPicker
             } footer: {
-                Text(L(SystemTranslator.isAvailable ? "popbar.editor.systemTranslate.hint"
-                                                    : "systemTranslate.error.needsNewerSystem"))
+                Text(isBilibili ? L(SystemTranslator.isAvailable ? "popbar.editor.bilibili.hint"
+                                                                 : "popbar.editor.bilibili.hint.noFallback")
+                                : L(SystemTranslator.isAvailable ? "popbar.editor.systemTranslate.hint"
+                                                                 : "systemTranslate.error.needsNewerSystem"))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if SystemTranslator.isAvailable {
+            if SystemTranslator.isAvailable && !isBilibili {
                 Section {
                     LabeledContent(L("popbar.editor.systemTranslate.shortcut")) {
                         if translateShortcutInstalled == true {
@@ -412,6 +432,8 @@ struct ActionEditorView: View {
             EmptyView()
         }
     }
+
+    private var isBilibili: Bool { draft.engine == BilibiliTranslator.engineID }
 
     /// "跟随系统（英语）" / "Same as system (English)". The name is the language
     /// the text will actually go to when it is already the target: the system's

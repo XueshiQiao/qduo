@@ -140,6 +140,7 @@ targets:
       - path: Sources/PopBar/Actions/TextTransform.swift
       - path: Sources/PopBar/Actions/TranslateDecision.swift
       - path: Sources/PopBar/Actions/LanguageDetection.swift
+      - path: Sources/PopBar/Actions/BilibiliTranslator.swift
       - path: Sources/PopBar/Actions/TextDiff.swift
       - path: Sources/UI/Onboarding/OnboardingProgress.swift
       - path: Sources/PopBar/Selection/OwnWindowHit.swift

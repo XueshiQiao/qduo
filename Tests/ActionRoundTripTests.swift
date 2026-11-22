@@ -160,6 +160,20 @@ final class ActionRoundTripTests: XCTestCase {
         XCTAssertNil(out[path: "secondLanguage"], "a missing second language must not be written back")
     }
 
+    func testBilibiliEngineRoundTripsAndTheSystemEngineWritesNothing() throws {
+        let json = """
+        [{ "id": "t", "title": "Translate", "iconSymbol": "translate", "kind": "systemTranslate",
+           "targetLanguage": "zh", "engine": "bilibili" },
+         { "id": "s", "title": "System", "iconSymbol": "translate", "kind": "systemTranslate",
+           "targetLanguage": "zh" }]
+        """
+        let actions = try JSONDecoder().decode([PopBarActionConfig].self, from: Data(json.utf8))
+        XCTAssertEqual(actions.map(\.engine), ["bilibili", nil])
+        let out = try XCTUnwrap(try roundTrip(json).arrayValue)
+        XCTAssertEqual(out[0][path: "engine"]?.stringValue, "bilibili")
+        XCTAssertNil(out[1][path: "engine"], "the system engine is the default and is not written")
+    }
+
     func testTheCompareOutputLoadsAndSavesAsCompare() throws {
         let json = """
         [{ "id": "p", "title": "Polish", "iconSymbol": "wand.and.stars", "kind": "ai", "prompt": "p", "output": "compare" }]

@@ -99,7 +99,7 @@ struct ActionsPage: View {
                                 editingSource = .template
                                 editingAction = template
                             } label: {
-                                Label(template.title, systemImage: template.iconSymbol)
+                                Label(ActionTemplates.menuTitle(for: template), systemImage: template.iconSymbol)
                             }
                         }
                     }

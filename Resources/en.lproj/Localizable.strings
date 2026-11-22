@@ -422,7 +422,7 @@
 "onboarding.sr.on" = "On. Press %@ any time (change it in Settings → Screenshot Text).";
 "onboarding.sr.openAgain" = "Open System Settings again";
 "onboarding.ai.title" = "Connect an AI model";
-"onboarding.ai.lead" = "The popup already has three AI actions — Translate, Polish and Explain — and they need a model. Pick a provider and paste an API key.";
+"onboarding.ai.lead" = "The popup already has three AI actions — Translate, Polish and Explain — and they need a model. Pick a provider and paste an API key. Or skip for now: Translate then uses Bilibili's free online translator, no key needed (the selected text is sent to Bilibili's servers), and you can switch it back to an AI model in the action at any time.";
 "onboarding.ai.templates" = "Add more AI actions to the popup? (optional)";
 "onboarding.ai.footnote" = "Keys live in the macOS Keychain, never in the config file. Fine-tune the model later in Settings → AI Models; Settings → Actions → Add from Template has dozens more.";
 "onboarding.ai.key.label" = "%@ key";
@@ -571,13 +571,24 @@
 "popbar.editor.kind.settings" = "Open settings";
 "popbar.editor.settings.hint.format" = "Opens the %@ settings window. The selected text is not used.";
 
-"popbar.editor.kind.systemTranslate" = "System Translate";
-"popbar.editor.systemTranslate.hint" = "Translates with macOS's own on-device translator: no model, no API key, works offline (except through the Shortcut below). The language of the text is detected; the list shows every language macOS can translate into. The first time a language pair is used, macOS may ask to download it. If the text is already in the chosen language, it is translated into the second language. By default that follows the system's second language. Simplified and Traditional Chinese are not sent to the translator: each character is converted on this Mac, so 軟體 becomes 软体, not 软件.";
+"popbar.editor.kind.systemTranslate" = "Translation Engine";
+"popbar.editor.systemTranslate.hint" = "Translates with macOS's own on-device translator: no API key, works offline (except through the Shortcut below). The language of the text is detected; the list shows every language macOS can translate into. The first time a language pair is used, macOS may ask to download it. If the text is already in the chosen language, it is translated into the second language. By default that follows the system's second language. Simplified and Traditional Chinese are not sent to the translator: each character is converted on this Mac, so 軟體 becomes 软体, not 软件.";
 "popbar.editor.systemTranslate.shortcut" = "Translate without downloading";
 "popbar.editor.systemTranslate.shortcut.add" = "Add Shortcut…";
 "popbar.editor.systemTranslate.shortcut.added" = "Shortcut added";
 "popbar.editor.systemTranslate.shortcut.hint" = "Optional. With this Shortcut added, a language that isn't downloaded yet is translated through the Shortcuts app instead of asking for the download. Click Add Shortcut, then confirm in the Shortcuts app. The Shortcuts app then asks for permission once: choose Always Allow. Text translated this way is sent to Apple's translation server instead of being translated on this Mac, so it needs an internet connection.";
 "template.systemTranslate" = "System Translate";
+"template.bilibiliTranslate" = "Bilibili Translate";
+"template.tags.online" = "%@ (free · online)";
+"template.tags.onDevice" = "%@ (free · on this Mac)";
+"popbar.editor.engine" = "Engine";
+"popbar.editor.engine.system" = "macOS (on this Mac)";
+"popbar.editor.engine.bilibili" = "Bilibili Index-Translate (free, online)";
+"popbar.editor.bilibili.hint" = "Translates with Bilibili's free online Index-Translate: no API key, no account. The selected text is sent to Bilibili's servers. It is a free service with no published terms or limits, and it may change at any time; when it cannot be reached, or its answer is not a translation into the chosen language, macOS's own translator is used instead. The language of the text is detected; if it is already in the chosen language, it is translated into the second language. Simplified and Traditional Chinese are not sent anywhere: each character is converted on this Mac.";
+"popbar.editor.bilibili.hint.noFallback" = "Translates with Bilibili's free online Index-Translate: no API key, no account. The selected text is sent to Bilibili's servers. It is a free service with no published terms or limits, and it may change at any time. The language of the text is detected; if it is already in the chosen language, it is translated into the second language. Simplified and Traditional Chinese are not sent anywhere: each character is converted on this Mac.";
+"bilibiliTranslate.error.unsupported" = "Bilibili's translator cannot translate into %@.";
+"bilibiliTranslate.error.service" = "Bilibili's translator is not available right now: %@";
+"bilibiliTranslate.error.badReply" = "Bilibili did not answer with a translation; it may have taken the selected text as an instruction. Try macOS's translator or an AI model instead.";
 "systemTranslate.window.title" = "Translation Languages";
 "systemTranslate.window.body" = "macOS needs to download a language before it can translate this. Choose Download in the sheet; the translation appears once it is done.";
 "systemTranslate.error.needsNewerSystem" = "System Translate needs macOS 15 or later. On this Mac, use the AI Translate action instead.";
