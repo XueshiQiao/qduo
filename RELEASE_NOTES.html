@@ -1,7 +1,7 @@
 <h3>What's New in 26.11.29</h3>
 <ul>
-  <li><b>Choose the model from a list</b> — On the AI Models page and in an action's model override, the model is now a menu of the models your provider offers, fetched with your key, so you no longer need to know how a model's name is spelled. You can still type a name, and the text field comes back on its own when the list cannot be fetched (#30).</li>
-  <li><b>New providers: Anthropic, Gemini, Magpie and Custom</b> — Magpie works without any setup: QDuo fills in its address, needs no key, and picks the first model you set up in Magpie. Custom connects any other service that speaks the OpenAI, Anthropic or Gemini standard, such as OpenRouter or LM Studio: paste its address and choose the standard (#31).</li>
+  <li><b>Choose the model from a list</b> — On the AI Models page and in an action's model override, the model is now a menu of the models your provider offers, fetched with your key, so you no longer need to know how a model's name is spelled. You can still type a name, and the text field comes back on its own when the list cannot be fetched. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/30">#30</a>.</li>
+  <li><b>New providers: Anthropic, Gemini, Magpie and Custom</b> — Magpie works without any setup: QDuo fills in its address, needs no key, and picks the first model you set up in Magpie. Custom connects any other service that speaks the OpenAI, Anthropic or Gemini standard, such as OpenRouter or LM Studio: paste its address and choose the standard. Thanks 不隔山 @elviscai on X for <a href="https://github.com/XueshiQiao/qduo/issues/31">#31</a>.</li>
   <li><b>Thinking levels per model</b> — With Magpie, the Thinking menu offers exactly the levels the chosen model supports, such as Off, Low, High and Max for DeepSeek.</li>
   <li><b>Test button</b> — The AI Models page has a Test button. It fetches the model list, asks the model for one word and shows how long it took. When something is wrong, it says what in plain words: wrong key, service not running, wrong address or model, or a timeout.</li>
   <li><b>Action overrides use your address</b> — An action that uses another model now reaches the provider at the address set on the AI Models page.</li>
@@ -9,8 +9,8 @@
 
 <h3>26.11.29 更新内容</h3>
 <ul>
-  <li><b>从列表里选模型</b> — 「AI 模型」页和动作里的「单独指定模型」，模型都改成了下拉菜单，列出服务商用你的密钥能用的模型，不用再记模型名怎么拼。仍然可以自己输入名字；拿不到列表时会自动换回输入框（#30）。</li>
-  <li><b>新增服务商：Anthropic、Gemini、Magpie 和自定义</b> — 选 Magpie 什么都不用填：地址自动填好，不需要密钥，模型自动选你在 Magpie 里配的第一个。「自定义」可以接入其他使用 OpenAI、Anthropic 或 Gemini 接口标准的服务，比如 OpenRouter、LM Studio，填上地址、选好接口标准就行（#31）。</li>
+  <li><b>从列表里选模型</b> — 「AI 模型」页和动作里的「单独指定模型」，模型都改成了下拉菜单，列出服务商用你的密钥能用的模型，不用再记模型名怎么拼。仍然可以自己输入名字；拿不到列表时会自动换回输入框。感谢 X 上的不隔山 @elviscai 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/30">#30</a>。</li>
+  <li><b>新增服务商：Anthropic、Gemini、Magpie 和自定义</b> — 选 Magpie 什么都不用填：地址自动填好，不需要密钥，模型自动选你在 Magpie 里配的第一个。「自定义」可以接入其他使用 OpenAI、Anthropic 或 Gemini 接口标准的服务，比如 OpenRouter、LM Studio，填上地址、选好接口标准就行。感谢 X 上的不隔山 @elviscai 的建议 <a href="https://github.com/XueshiQiao/qduo/issues/31">#31</a>。</li>
   <li><b>每个模型有自己的思考档位</b> — 用 Magpie 时，「思考」菜单里只列出所选模型支持的档位，比如 DeepSeek 是 Off、Low、High、Max。</li>
   <li><b>测试按钮</b> — 「AI 模型」页新增「测试」按钮：先获取模型列表，再让模型回一个词，并显示用了多久。出问题时会直接说明原因：密钥不对、服务没在运行、地址或模型不对，还是超时了。</li>
   <li><b>单独指定模型的动作也用你填的地址</b> — 动作单独指定了别的模型时，现在会按「AI 模型」页里填的地址去连那个服务商。</li>
