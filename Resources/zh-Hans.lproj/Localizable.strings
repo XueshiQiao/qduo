@@ -421,7 +421,7 @@
 "onboarding.sr.on" = "已开启。随时按 %@ 截屏取字（快捷键可以在 设置 → 截屏取字 里改）。";
 "onboarding.sr.openAgain" = "再打开一次系统设置";
 "onboarding.ai.title" = "连接一个 AI 模型";
-"onboarding.ai.lead" = "弹窗里已经有「翻译」「润色」「解释」三个 AI 动作，要连上一个模型才能用。选个服务商，贴上 API 密钥就行。";
+"onboarding.ai.lead" = "弹窗里已经有「翻译」「润色」「解释」三个 AI 动作，要连上一个模型才能用。选个服务商，贴上 API 密钥就行。也可以先跳过：「翻译」会先改用哔哩哔哩免费的在线翻译，不用密钥（选中的文字会发到哔哩哔哩的服务器），以后随时可以在动作里换回 AI 模型。";
 "onboarding.ai.templates" = "再加几个 AI 动作到弹窗里？（可选）";
 "onboarding.ai.footnote" = "密钥存在 macOS 钥匙串里，不写进配置文件。模型名、思考深度等以后在「设置 → AI 模型」里调；「设置 → 动作 → 从模板添加」里还有几十个现成动作。";
 "onboarding.ai.key.label" = "%@ 密钥";
@@ -570,13 +570,24 @@
 "popbar.editor.kind.settings" = "打开设置";
 "popbar.editor.settings.hint.format" = "打开 %@ 的设置窗口，不使用选中的文字。";
 
-"popbar.editor.kind.systemTranslate" = "系统翻译";
-"popbar.editor.systemTranslate.hint" = "用 macOS 自带的本地翻译：不用模型、不用 API key、断网也能用（下面的快捷指令除外）。原文语言自动识别；列表里是 macOS 能译成的全部语言。某个语言第一次用时，macOS 可能会要求先下载。原文如果已经是要译成的语言，就改译成第二种语言。默认跟着系统的第二语言走。简体和繁体不会送去翻译，而是在这台 Mac 上逐个字转换，所以「軟體」会变成「软体」，不会变成「软件」。";
+"popbar.editor.kind.systemTranslate" = "翻译引擎";
+"popbar.editor.systemTranslate.hint" = "用 macOS 自带的本地翻译：不用填 API Key，断网也能用（下面的快捷指令除外）。原文语言自动识别；列表里是 macOS 能译成的全部语言。某个语言第一次用时，macOS 可能会要求先下载。原文如果已经是要译成的语言，就改译成第二种语言。默认跟着系统的第二语言走。简体和繁体不会送去翻译，而是在这台 Mac 上逐个字转换，所以「軟體」会变成「软体」，不会变成「软件」。";
 "popbar.editor.systemTranslate.shortcut" = "不下载语言也能翻译";
 "popbar.editor.systemTranslate.shortcut.add" = "添加快捷指令…";
 "popbar.editor.systemTranslate.shortcut.added" = "快捷指令已添加";
 "popbar.editor.systemTranslate.shortcut.hint" = "可选。添加这个快捷指令之后，遇到还没下载的语言，会改用「快捷指令」App 来翻译，不再要求先下载。点「添加快捷指令」，然后在「快捷指令」App 里确认。随后「快捷指令」App 会询问一次是否允许，请选「始终允许」。用这种方式翻译时，文字会发送到 Apple 的翻译服务器，不是在这台 Mac 上翻译，所以需要联网。";
 "template.systemTranslate" = "系统翻译";
+"template.bilibiliTranslate" = "哔哩哔哩翻译";
+"template.tags.online" = "%@（免费 · 在线）";
+"template.tags.onDevice" = "%@（免费 · 本机）";
+"popbar.editor.engine" = "引擎";
+"popbar.editor.engine.system" = "macOS 自带（本机）";
+"popbar.editor.engine.bilibili" = "哔哩哔哩 Index-Translate（免费，在线）";
+"popbar.editor.bilibili.hint" = "用哔哩哔哩免费的 Index-Translate 在线翻译：不用 API Key，不用注册。选中的文字会发到哔哩哔哩的服务器翻译。这是免费服务，官方没有写使用条款和频率限制，随时可能变化；连不上、或者返回的不是目标语言的译文时，会自动改用 macOS 自带的翻译。原文语言自动识别；原文如果已经是要译成的语言，就改译成第二种语言。简体和繁体不会送出去，而是在这台 Mac 上逐个字转换。";
+"popbar.editor.bilibili.hint.noFallback" = "用哔哩哔哩免费的 Index-Translate 在线翻译：不用 API Key，不用注册。选中的文字会发到哔哩哔哩的服务器翻译。这是免费服务，官方没有写使用条款和频率限制，随时可能变化。原文语言自动识别；原文如果已经是要译成的语言，就改译成第二种语言。简体和繁体不会送出去，而是在这台 Mac 上逐个字转换。";
+"bilibiliTranslate.error.unsupported" = "哔哩哔哩的翻译不支持译成%@。";
+"bilibiliTranslate.error.service" = "哔哩哔哩的翻译服务暂时用不了：%@";
+"bilibiliTranslate.error.badReply" = "哔哩哔哩返回的不是译文，可能把选中的文字当成了指令。可以换成 macOS 自带的翻译或 AI 模型再试。";
 "systemTranslate.window.title" = "翻译语言";
 "systemTranslate.window.body" = "macOS 需要先下载语言才能翻译这段文字。请在弹出的面板里点「下载」，下载完成后译文会自动出现。";
 "systemTranslate.error.needsNewerSystem" = "系统翻译需要 macOS 15 或更高版本。这台 Mac 上请使用 AI 翻译动作。";

@@ -95,7 +95,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         case shortcut       // run the macOS Shortcut named `shortcut` on the selection
         case script         // run the shell command `script` on the selection
         case keystroke      // press the one key combination in `keys`, in the app the text was selected in
-        case systemTranslate // local: macOS's on-device translator (macOS 15+), no model
+        case systemTranslate // a translation engine, no key or prompt: macOS's own (15+) or Bilibili's (`engine`)
         case pause          // pause the popup, like the menu bar's Pause (the selection is ignored)
         case inspect        // debug: show the selection's accessibility element and its path
         case settings       // open the app's settings window (the selection is ignored)
@@ -155,6 +155,9 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     /// shows the "already in this language" message. Any other value is a
     /// language id in the same form as `targetLanguage`.
     var secondLanguage: String?
+    /// `systemTranslate`: which translator. nil = macOS's own (macOS 15+);
+    /// "bilibili" = Bilibili's free online Index-Translate (`BilibiliTranslator`).
+    var engine: String?
     /// `ai`, `transform`, `shortcut`, `script`, `systemTranslate`: an `ActionOutput` raw value.
     /// nil = the panel.
     var output: String?
@@ -252,7 +255,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
     // Forward-compatible decode: tolerate older/newer payloads missing fields.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, id, title, iconSymbol, iconImage, kind, prompt, modelOverride, children
-        case url, openIn, op, shortcut, script, keys, output, reader, targetLanguage, secondLanguage
+        case url, openIn, op, shortcut, script, keys, output, reader, targetLanguage, secondLanguage, engine
         case marksGroup = "group"
         case urlName
     }
@@ -283,6 +286,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         reader = try? c.decodeIfPresent(String.self, forKey: .reader)
         targetLanguage = try? c.decodeIfPresent(String.self, forKey: .targetLanguage)
         secondLanguage = try? c.decodeIfPresent(String.self, forKey: .secondLanguage)
+        engine = try? c.decodeIfPresent(String.self, forKey: .engine)
         marksGroup = try? c.decodeIfPresent(Bool.self, forKey: .marksGroup)
         urlName = try? c.decodeIfPresent(String.self, forKey: .urlName)
         // Flatten anything deeper than one level (see `children`). Decoding is
@@ -344,6 +348,7 @@ struct PopBarActionConfig: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(reader, forKey: key(.reader))
         try c.encodeIfPresent(targetLanguage, forKey: key(.targetLanguage))
         try c.encodeIfPresent(secondLanguage, forKey: key(.secondLanguage))
+        try c.encodeIfPresent(engine, forKey: key(.engine))
         if marksGroup == true { try c.encode(true, forKey: key(.marksGroup)) }
         try c.encodeIfPresent(urlName, forKey: key(.urlName))
         // Only written when there is something to write, so an action that never
@@ -442,6 +447,49 @@ enum DefaultActions {
         PopBarActionConfig(title: L("template.systemTranslate"), iconSymbol: "translate", kind: .systemTranslate)
     }
 
+    /// Translate with Bilibili's free online service: no key, no account, any
+    /// macOS. Ready to use as it comes: the target is the first of the user's
+    /// languages the service has (English otherwise), and text already in it
+    /// goes to the second language, as with the system translator.
+    static func bilibiliTranslateAction() -> PopBarActionConfig {
+        var action = PopBarActionConfig(title: L("template.bilibiliTranslate"), iconSymbol: "character.bubble",
+                                        kind: .systemTranslate)
+        action.engine = BilibiliTranslator.engineID
+        action.targetLanguage = bilibiliDefaultTarget(locales: Locale.preferredLanguages)
+        return action
+    }
+
+    /// The seed's Translate, unchanged: an AI action with the seed's prompt, no
+    /// model of its own and the default output.
+    static func isUntouchedSeedTranslate(_ action: PopBarActionConfig) -> Bool {
+        action.kind == .ai && action.prompt == translatePrompt && action.modelOverride == nil
+            && action.output == nil && (action.children ?? []).isEmpty
+    }
+
+    /// `action` (the seed's Translate) as Bilibili's free translator. Everything
+    /// else it has (id, name, icon, its name for URL runs) stays, so it keeps
+    /// its place in the ring.
+    static func freeTranslate(replacing action: PopBarActionConfig) -> PopBarActionConfig {
+        var free = action
+        let template = bilibiliTranslateAction()
+        free.kind = template.kind
+        free.prompt = ""
+        free.engine = template.engine
+        free.targetLanguage = template.targetLanguage
+        free.secondLanguage = nil
+        return free
+    }
+
+    /// "zh" for a Mac whose first language is Simplified Chinese, "zh-TW" for
+    /// Traditional, "ja" for Japanese… "en" when the service lacks it.
+    static func bilibiliDefaultTarget(locales: [String]) -> String {
+        guard let first = locales.first else { return "en" }
+        if TranslateDecision.sameLanguageCode(first, "zh") {
+            return TranslateDecision.language(ofTargetID: first) == "zh-Hant" ? "zh-TW" : "zh"
+        }
+        return BilibiliTranslator.languages.first { !$0.id.hasPrefix("zh") && TranslateDecision.sameLanguageCode($0.id, first) }?.id ?? "en"
+    }
+
     /// Pause the popup from the popup itself. Not in the seed: it is there for
     /// whoever wants a one-tap pause on their ring, from the templates.
     static func pauseAction() -> PopBarActionConfig {
@@ -494,6 +542,17 @@ enum ActionTemplates {
         let id: String
         let title: String
         let actions: [PopBarActionConfig]
+    }
+
+    /// How a template reads in the Add from Template menu. The two translators
+    /// carry what tells them apart: both are free (no key), one stays on this
+    /// Mac, the other sends the text online. Only the menu says so; the action
+    /// keeps its short title, which is what the ring shows.
+    static func menuTitle(for template: PopBarActionConfig) -> String {
+        guard template.kind == .systemTranslate else { return template.title }
+        // No engine named: macOS's own, on this Mac. Any engine named is a service.
+        let tags = template.engine == nil ? "template.tags.onDevice" : "template.tags.online"
+        return String(format: L(tags), template.title)
     }
 
     static func sections() -> [Section] {
@@ -555,11 +614,13 @@ enum ActionTemplates {
         ]
     }
 
-    /// Offered only where the kind can run: macOS 13/14 have no API that hands
-    /// a translation back to the app.
+    /// The system translator only where it can run: macOS 13/14 have no API
+    /// that hands a translation back to the app. Bilibili's runs everywhere.
     private static func systemTranslateTemplates() -> [PopBarActionConfig] {
-        if #available(macOS 15.0, *) { return [DefaultActions.systemTranslateAction()] }
-        return []
+        if #available(macOS 15.0, *) {
+            return [DefaultActions.systemTranslateAction(), DefaultActions.bilibiliTranslateAction()]
+        }
+        return [DefaultActions.bilibiliTranslateAction()]
     }
 
     private static func toneGroup() -> PopBarActionConfig {

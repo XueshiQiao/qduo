@@ -3,7 +3,7 @@ import SwiftUI
 import Translation
 
 /// The `systemTranslate` kind: translate with macOS's own translator (the
-/// Translation framework), no model and no API key. On the device, with one
+/// Translation framework), no API key or prompt. On the device, with one
 /// exception: the Shortcut route below.
 ///
 /// The target language is the action's own `targetLanguage`, chosen by the user

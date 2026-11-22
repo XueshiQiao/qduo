@@ -278,7 +278,16 @@ final class OnboardingModel: ObservableObject {
 
     func skipAI() {
         progress.aiSkipped = !env.aiConfigured && !progress.aiConnected
+        if progress.aiSkipped { useFreeTranslate() }
         go(.tryIt)
+    }
+
+    /// No model: Translate goes to Bilibili's free translator instead, so it
+    /// works on the next page already (the guide says so on the AI page).
+    private func useFreeTranslate() {
+        if appState.actions.useFreeTranslateForSeed() {
+            Self.log.info("AI skipped: the seed's Translate now uses Bilibili's free translator")
+        }
     }
 
     /// "Continue" / "Add N Actions & Continue" on the AI page.
@@ -293,8 +302,11 @@ final class OnboardingModel: ObservableObject {
             Self.log.info("added \(chosen.count) template action(s)")
             picks = []
         }
-        if !env.aiConfigured && !progress.aiConnected && chosen.isEmpty {
-            progress.aiSkipped = true
+        // No model, whether or not templates were added: Translate would
+        // only say "no key" on the next page.
+        if !env.aiConfigured && !progress.aiConnected {
+            useFreeTranslate()
+            if chosen.isEmpty { progress.aiSkipped = true }
         }
     }
 

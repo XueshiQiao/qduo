@@ -88,6 +88,18 @@ final class ActionStore: ObservableObject {
 
     func resetToDefaults() { actions = DefaultActions.seed(); save() }
 
+    /// The guide's AI step was skipped (no key): the seed's Translate, if it is
+    /// still as the seed made it, switches to Bilibili's free translator, so
+    /// translating works at once. An action the user changed is left alone.
+    /// Returns whether it switched.
+    @discardableResult
+    func useFreeTranslateForSeed() -> Bool {
+        guard let i = actions.firstIndex(where: DefaultActions.isUntouchedSeedTranslate) else { return false }
+        actions[i] = DefaultActions.freeTranslate(replacing: actions[i])
+        save()
+        return true
+    }
+
     // MARK: - Persistence
 
     /// Writes through to the config file. `ConfigStore` debounces and writes
