@@ -52,7 +52,7 @@ packages:
   # Shared with the sibling apps.
   AIModelKit:
     url: https://github.com/XueshiQiao/AIModelKit
-    from: "1.1.0"
+    from: "1.2.0"
 
 schemes:
   QDuo:

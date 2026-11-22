@@ -677,13 +677,12 @@ struct ActionEditorView: View {
                 Text(L("popbar.llm.model"))
             }
 
-            Picker(L("popbar.llm.thinking"), selection: Binding(
-                get: { draft.modelOverride?.reasoningEffort ?? "none" },
-                set: { draft.modelOverride?.reasoningEffort = $0 })) {
-                ForEach(LLMConfig.thinkingOptions(for: override.provider,
-                                                  format: llm.settings.format(for: override.provider)), id: \.tag) { opt in
-                    Text(opt.label).tag(opt.tag)
-                }
+            ThinkingPicker(provider: override.provider, format: llm.settings.format(for: override.provider),
+                           model: override.model,
+                           selection: Binding(get: { draft.modelOverride?.reasoningEffort ?? "none" },
+                                              set: { draft.modelOverride?.reasoningEffort = $0 }),
+                           store: llm.models) {
+                Text(L("popbar.llm.thinking"))
             }
 
             if !llm.isConfigured(forProvider: override.provider) {

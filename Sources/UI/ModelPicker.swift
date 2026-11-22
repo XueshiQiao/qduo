@@ -46,6 +46,19 @@ struct ModelPicker<Label: View>: View {
         }
         // A different list (provider, standard, address or key): offer it.
         .onChange(of: store.cacheKey(for: provider)) { _ in typing = false }
+        .onAppear { pickFirstIfNone(state) }
+        .onChange(of: state) { pickFirstIfNone($0) }
+        // Switching to Magpie with its list already fetched: the state may not change.
+        .onChange(of: provider) { _ in pickFirstIfNone(store.state(for: provider)) }
+    }
+
+    /// Magpie has no default model: while none is set, the first one its list
+    /// offers becomes the model (see `LLMConfig.picksFirstListedModel`).
+    private func pickFirstIfNone(_ state: ModelListStore.State) {
+        guard LLMConfig.picksFirstListedModel(provider), !typing,
+              selection.trimmingCharacters(in: .whitespaces).isEmpty,
+              case .loaded(let models) = state, let first = models.first else { return }
+        selection = first.id
     }
 
     // MARK: - Pieces

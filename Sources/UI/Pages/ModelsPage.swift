@@ -73,10 +73,12 @@ struct ModelsPage: View {
                 iconLabel("shippingbox", .indigo, L("models.model"))
             }
 
-            Picker(selection: Binding(get: { settings.reasoningEffort },
-                                      set: { settings.setReasoningEffort($0) })) {
-                ForEach(settings.thinkingOptions, id: \.tag) { opt in Text(opt.label).tag(opt.tag) }
-            } label: { iconLabel("brain", .indigo, L("models.thinking")) }
+            ThinkingPicker(provider: settings.provider, format: settings.format, model: settings.model,
+                           selection: Binding(get: { settings.reasoningEffort },
+                                              set: { settings.setReasoningEffort($0) }),
+                           store: models) {
+                iconLabel("brain", .indigo, L("models.thinking"))
+            }
 
             testRow
         } header: {
@@ -123,7 +125,7 @@ struct ModelsPage: View {
     }
 
     private func runTest() {
-        guard let config = settings.defaultConfig() else { return }
+        guard let config = llm.defaultConfig() else { return }
         let identity = testIdentity
         testing = true
         testResult = nil

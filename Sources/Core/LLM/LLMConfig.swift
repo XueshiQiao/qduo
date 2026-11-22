@@ -61,18 +61,26 @@ struct LLMConfig: Equatable {
     static func needsKey(_ provider: String) -> Bool { preset(provider).needsKey }
 
     /// The 思考 picker's choices, per provider (and, for custom, per format).
-    static func thinkingOptions(for provider: String, format: APIFormat? = nil) -> [(tag: String, label: String)] {
-        preset(provider).thinkingOptions(for: format)
+    /// `levels`: the chosen model's own levels, when its list says (Magpie).
+    static func thinkingOptions(for provider: String, format: APIFormat? = nil,
+                                levels: [String]? = nil) -> [(tag: String, label: String)] {
+        preset(provider).thinkingOptions(for: format, levels: levels)
     }
 
     /// Clamp a stored effort into the provider's valid set: invalid → "none"
     /// where there is an off-switch, else "" (model default).
-    static func clampThinking(_ effort: String, for provider: String, format: APIFormat? = nil) -> String {
-        preset(provider).clampThinking(effort, for: format)
+    static func clampThinking(_ effort: String, for provider: String, format: APIFormat? = nil,
+                              levels: [String]? = nil) -> String {
+        preset(provider).clampThinking(effort, for: format, levels: levels)
     }
 
     /// The level a newly picked provider starts at (off where possible, else fastest).
     static func initialEffort(for provider: String, format: APIFormat? = nil) -> String {
         preset(provider).initialEffort(for: format)
     }
+
+    /// Whether the first model the provider lists becomes the model while none
+    /// is set. Only Magpie: its list is the models the user set up in Magpie, so
+    /// any of them is one they chose. A vendor's list is its whole catalogue.
+    static func picksFirstListedModel(_ provider: String) -> Bool { provider == Provider.magpie.id }
 }

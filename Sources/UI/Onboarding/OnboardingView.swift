@@ -632,7 +632,8 @@ private struct AIStepPage: View {
             HStack(spacing: 8) {
                 if !LLMConfig.needsKey(p) {
                     Text(L("onboarding.ai.key.label.generic")).frame(width: 110, alignment: .leading)
-                    Text(L("onboarding.ai.key.ollama")).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(L(p == "magpie" ? "onboarding.ai.key.magpie" : "onboarding.ai.key.ollama"))
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                 } else {
                     Text(String(format: L("onboarding.ai.key.label"), Self.providerName(p)))
@@ -727,7 +728,7 @@ private struct AIStepPage: View {
         switch p {
         case "doubao":  return L("onboarding.ai.provider.doubao.note")
         case "alibaba": return L("onboarding.ai.provider.alibaba.note")
-        case "ollama":  return L("onboarding.ai.provider.ollama.note")
+        case "ollama", "magpie":  return L("onboarding.ai.provider.ollama.note")
         default:        return nil
         }
     }

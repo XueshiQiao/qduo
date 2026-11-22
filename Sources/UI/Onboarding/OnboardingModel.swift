@@ -216,14 +216,49 @@ final class OnboardingModel: ObservableObject {
             testState = .failed(L("onboarding.ai.test.doubaoModel"))
             return
         }
-        guard let config = settings.defaultConfig() else {
+        guard var config = settings.defaultConfig() else {
             testState = .failed(L("onboarding.ai.test.noKey"))
             return
         }
         testState = .testing
         testTask?.cancel()
         let llm = appState.llm
+        let settings = settings
         testTask = Task { [weak self] in
+            // Magpie has no default model, and the guide has no model picker:
+            // the first model Magpie lists becomes the model. When Magpie cannot
+            // be reached, the test below says so.
+            if LLMConfig.picksFirstListedModel(provider), config.model.trimmingCharacters(in: .whitespaces).isEmpty {
+                let failure: String?
+                do {
+                    let models = try await ModelClient(config.connection).listModels()
+                    if let first = models.first {
+                        failure = nil
+                        config.model = first.id
+                        // Off where the model has an Off; Default for one that does not reason.
+                        config.reasoningEffort = LLMConfig.clampThinking(
+                            config.reasoningEffort, for: provider, format: config.format, levels: first.reasoningLevels)
+                    } else {
+                        failure = L("onboarding.ai.test.magpieNoModel")
+                    }
+                } catch {
+                    // Magpie not running, or not answering: said once, not
+                    // again after a second wait in the test.
+                    failure = ConnectionProblem(error).localizedText
+                }
+                let found = config
+                let stop = await MainActor.run { () -> Bool in
+                    guard let self, !Task.isCancelled else { return true }
+                    if let failure {
+                        self.testState = .failed(failure)
+                        return true
+                    }
+                    settings.setModel(found.model)
+                    settings.setReasoningEffort(found.reasoningEffort)
+                    return false
+                }
+                if stop { return }
+            }
             let result = await llm.testConnection(config)
             await MainActor.run {
                 guard let self, !Task.isCancelled else { return }

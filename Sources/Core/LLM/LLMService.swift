@@ -41,12 +41,23 @@ final class LLMService: ObservableObject {
     // MARK: - Config resolution (for tools)
 
     /// The app-wide default config, or nil when the default provider has no key.
-    func defaultConfig() -> LLMConfig? { settings.defaultConfig() }
+    func defaultConfig() -> LLMConfig? { settings.defaultConfig().map(fitToModel) }
 
     /// A config for an explicit provider/model/effort (per-action override). nil
     /// when that provider has no key (and isn't Ollama).
     func config(forProvider provider: String, model: String, effort: String) -> LLMConfig? {
-        settings.config(provider: provider, model: model, effort: effort)
+        settings.config(provider: provider, model: model, effort: effort).map(fitToModel)
+    }
+
+    /// The thinking level brought inside what the model itself takes, when its
+    /// provider's list said and is loaded (Magpie): a level stored for another
+    /// model, or Off for a model that does not reason, is not sent.
+    private func fitToModel(_ config: LLMConfig) -> LLMConfig {
+        guard let levels = models.reasoningLevels(for: config.provider, model: config.model) else { return config }
+        var fitted = config
+        fitted.reasoningEffort = LLMConfig.clampThinking(config.reasoningEffort, for: config.provider,
+                                                         format: config.format, levels: levels)
+        return fitted
     }
 
     /// Whether a given provider is configured (has a key, or is Ollama).

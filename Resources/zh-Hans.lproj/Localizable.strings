@@ -111,13 +111,13 @@
 "models.key.missing" = "未设置";
 "models.key.clear" = "清除";
 "models.key.notNeeded" = "无需密钥";
-"models.key.footer" = "每个服务商一个密钥，保存在 macOS 钥匙串中。密钥设置后，任何工具都能使用该服务商。Ollama 无需密钥，「自定义」的密钥可以不填。";
+"models.key.footer" = "每个服务商一个密钥，保存在 macOS 钥匙串中。密钥设置后，任何工具都能使用该服务商。Ollama 和 Magpie 无需密钥，「自定义」的密钥可以不填。";
 "models.custom" = "自定义";
 "models.format" = "接口标准";
 "models.format.openai" = "OpenAI 兼容（Chat Completions）";
 "models.format.anthropic" = "Anthropic（Messages）";
 "models.format.gemini" = "Gemini（generateContent）";
-"models.custom.footer" = "「自定义」可以接入任何使用这三种接口标准之一的服务，比如 Magpie、OpenRouter、LM Studio。地址按那个服务文档里写的填就行，密钥可以不填。";
+"models.custom.footer" = "「自定义」可以接入任何使用这三种接口标准之一的服务，比如 OpenRouter、LM Studio、公司内部的代理。地址按那个服务文档里写的填就行，密钥可以不填。";
 "models.list.choose" = "选择模型";
 "models.list.manual" = "手动输入…";
 "models.list.backToList" = "从列表中选择";
@@ -427,6 +427,8 @@
 "onboarding.ai.key.label" = "%@ 密钥";
 "onboarding.ai.key.label.generic" = "密钥";
 "onboarding.ai.key.ollama" = "无需密钥 · 需要本机已经在运行 Ollama";
+"onboarding.ai.key.magpie" = "无需密钥 · 需要本机已经在运行 Magpie";
+"onboarding.ai.test.magpieNoModel" = "Magpie 没有列出任何模型。先在 Magpie 里添加服务商和模型，再测试。";
 "onboarding.ai.key.placeholder" = "粘贴 API 密钥…";
 "onboarding.ai.key.saved" = "这个服务商的密钥已经保存。";
 "onboarding.ai.key.none" = "还没有密钥？";

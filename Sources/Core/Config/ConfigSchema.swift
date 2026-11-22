@@ -202,15 +202,15 @@ enum ConfigSchema {
           "type": "object",
           "description": "The default model for AI actions. The API key is NOT here — it is in the Keychain.",
           "properties": {
-            "provider": { "type": "string", "enum": ["deepseek", "openai", "anthropic", "gemini", "doubao", "alibaba", "ollama", "custom"],
+            "provider": { "type": "string", "enum": ["deepseek", "openai", "anthropic", "gemini", "doubao", "alibaba", "ollama", "magpie", "custom"],
               "description": "Which service. custom = any other service, at custom.apiURL, called through custom.format. Changing this in Settings resets model and apiURL to that provider's defaults." },
             "model": { "type": "string", "description": "Model id, as the provider spells it. Settings offers the provider's own list." },
             "apiURL": { "type": "string", "description": "The provider's address. Any shape works: the bare host, the versioned root (…/v1) or the full chat address copied from the provider's docs." },
             "custom": {
               "type": "object",
-              "description": "The custom provider: a service QDuo has no preset for, such as a gateway (Magpie, OpenRouter, LM Studio) or a company proxy.",
+              "description": "The custom provider: a service QDuo has no preset for, such as a gateway (OpenRouter, LM Studio) or a company proxy.",
               "properties": {
-                "apiURL": { "type": "string", "description": "Its address, e.g. http://localhost:3425/v1." },
+                "apiURL": { "type": "string", "description": "Its address, e.g. http://localhost:1234/v1." },
                 "model": { "type": "string", "description": "Its model, kept for when custom is picked again." },
                 "format": { "type": "string", "enum": ["openai", "anthropic", "gemini"],
                   "description": "The standard it speaks: openai (Chat Completions), anthropic (Messages) or gemini (generateContent)." }

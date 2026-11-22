@@ -51,6 +51,13 @@ final class ModelListStore: ObservableObject {
 
     func state(for provider: String) -> State { states[cacheKey(for: provider)] ?? .idle }
 
+    /// The thinking levels `model` takes, when the provider's loaded list says
+    /// (Magpie does); nil when unknown.
+    func reasoningLevels(for provider: String, model: String) -> [String]? {
+        guard case .loaded(let models) = state(for: provider) else { return nil }
+        return models.first { $0.id == model }?.reasoningLevels
+    }
+
     /// Fetches the provider's list unless it is already loaded or loading.
     /// `force` fetches again whatever the state (the Refresh / Retry button).
     func load(_ provider: String, force: Bool = false) {

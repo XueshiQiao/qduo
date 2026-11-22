@@ -112,13 +112,13 @@
 "models.key.missing" = "Not set";
 "models.key.clear" = "Clear";
 "models.key.notNeeded" = "Not required";
-"models.key.footer" = "One key per provider, stored in your macOS Keychain. Any tool can use a provider once its key is set. Ollama needs no key, and for Custom it is optional.";
+"models.key.footer" = "One key per provider, stored in your macOS Keychain. Any tool can use a provider once its key is set. Ollama and Magpie need no key, and for Custom it is optional.";
 "models.custom" = "Custom";
 "models.format" = "API standard";
 "models.format.openai" = "OpenAI-compatible (Chat Completions)";
 "models.format.anthropic" = "Anthropic (Messages)";
 "models.format.gemini" = "Gemini (generateContent)";
-"models.custom.footer" = "Custom connects any service that speaks one of these three standards, such as Magpie, OpenRouter or LM Studio. Paste its address as the service documents it; the key is optional.";
+"models.custom.footer" = "Custom connects any service that speaks one of these three standards, such as OpenRouter, LM Studio or a company proxy. Paste its address as the service documents it; the key is optional.";
 "models.list.choose" = "Choose a model";
 "models.list.manual" = "Type a name…";
 "models.list.backToList" = "Choose from the list";
@@ -428,6 +428,8 @@
 "onboarding.ai.key.label" = "%@ key";
 "onboarding.ai.key.label.generic" = "Key";
 "onboarding.ai.key.ollama" = "No key needed · Ollama must be running on this Mac";
+"onboarding.ai.key.magpie" = "No key needed · Magpie must be running on this Mac";
+"onboarding.ai.test.magpieNoModel" = "Magpie lists no models. Add a provider and a model in Magpie, then test again.";
 "onboarding.ai.key.placeholder" = "Paste API key…";
 "onboarding.ai.key.saved" = "A key is saved for this provider.";
 "onboarding.ai.key.none" = "No key yet?";

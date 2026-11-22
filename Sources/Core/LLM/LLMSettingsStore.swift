@@ -10,7 +10,7 @@ import AIModelKit
 /// config — created once and shared by every tool through `LLMService`.
 ///
 /// The custom provider (a service the provider table does not know — a gateway
-/// such as Magpie, LM Studio, a company proxy) also keeps its own address and
+/// such as OpenRouter, LM Studio, a company proxy) also keeps its own address and
 /// wire standard, so switching to another provider and back does not lose them.
 ///
 /// Main-thread only by convention (SwiftUI `@Published` + settings UI).
@@ -91,10 +91,6 @@ final class LLMSettingsStore: ObservableObject {
     }
 
     var format: APIFormat { format(for: provider) }
-
-    var thinkingOptions: [(tag: String, label: String)] {
-        LLMConfig.thinkingOptions(for: provider, format: format)
-    }
 
     // MARK: - Edits (settings UI)
 
