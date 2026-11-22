@@ -85,6 +85,14 @@ row on the About page, `AppState.moreApps` / `showMoreApps(from:)`, the menu
 item's target (`MainWindowController.show(moreAppsFrom:)`) and
 `Analytics.trackMoreApps`. See the package's README for the catalog format.
 
+Talking to model services is not QDuo code either: the shared `AIModelKit`
+package (github.com/XueshiQiao/AIModelKit) holds the three wire standards
+(OpenAI-compatible, Anthropic, Gemini), the address handling, the model lists,
+the request bodies and the provider table with each provider's thinking knob.
+QDuo keeps the settings (`LLMSettingsStore`), the keys (`LLMKeyStore`), the
+in-memory model lists (`ModelListStore`) and the picker (`UI/ModelPicker.swift`).
+A new provider is a row in the package's `Provider.all`, not a change here.
+
 `PopBar` is the internal name of the popup machinery and is unrelated to what the
 app is called — renaming the product does not touch it.
 

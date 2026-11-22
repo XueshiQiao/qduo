@@ -1,70 +1,86 @@
 import Foundation
+import AIModelKit
 
-/// Multi-provider LLM configuration — ported from Flowy's `LlmConfig`. The value
-/// of this design is that ONE OpenAI-compatible client serves OpenAI / DeepSeek /
-/// Doubao / Qwen / Ollama by varying base URL, model, and a *per-provider*
-/// thinking knob — DeepSeek's `deepseek-v4-flash` exposes graded reasoning levels
-/// rather than a separate "reasoner" model, so thinking is a level, not a model
-/// swap.
+/// One resolved model to call: provider, key, address, model and thinking level.
+///
+/// Everything that differs between services — the three wire standards
+/// (OpenAI-compatible, Anthropic, Gemini), the address each one wants, how the
+/// model list is read, each provider's thinking knob — lives in the shared
+/// `AIModelKit` package, which Flowy and PastePaw can embed too. This type is
+/// QDuo's handle on it: what the settings store resolves and what history records.
 struct LLMConfig: Equatable {
-    var provider: String      // "deepseek" | "openai" | "doubao" | "alibaba" | "ollama"
+    var provider: String      // a `Provider.id`: "deepseek", "openai", …, "custom"
+    /// The standard the provider is called through: the provider's own, except
+    /// for "custom", where the user picks it.
+    var format: APIFormat
     var apiKey: String
     var apiURL: String
     var model: String
     /// "" (provider default) | "none" (off) | "minimal" | "low" | "medium" | "high" | "max"
     var reasoningEffort: String
 
-    static let providers = ["deepseek", "openai", "doubao", "alibaba", "ollama"]
+    init(provider: String, format: APIFormat? = nil, apiKey: String, apiURL: String, model: String,
+         reasoningEffort: String) {
+        self.provider = provider
+        self.format = format ?? (Provider.named(provider) ?? .custom).format
+        self.apiKey = apiKey
+        self.apiURL = apiURL
+        self.model = model
+        self.reasoningEffort = reasoningEffort
+    }
+
+    /// What `AIModelKit` calls the model with.
+    var connection: ModelConnection {
+        ModelConnection(providerID: provider, format: format, url: apiURL, apiKey: apiKey,
+                        model: model, effort: reasoningEffort)
+    }
+
+    // MARK: - The provider table (from AIModelKit)
+
+    static let custom = Provider.custom.id
+
+    /// Every provider id, in picker order.
+    static var providers: [String] { Provider.all.map(\.id) }
+
+    static func preset(_ provider: String) -> Provider { Provider.named(provider) ?? .custom }
 
     /// Display name for the provider picker.
     static func displayName(_ provider: String) -> String {
-        switch provider {
-        case "deepseek": return "DeepSeek"
-        case "openai":   return "OpenAI"
-        case "doubao":   return "Doubao (Ark)"
-        case "alibaba":  return "Qwen (DashScope)"
-        case "ollama":   return "Ollama"
-        default:         return provider
-        }
+        if provider == custom { return L("models.custom") }
+        return Provider.named(provider)?.displayName ?? provider
     }
 
-    /// Default base URL + model per provider (Flowy's defaults; DeepSeek updated
-    /// to the current `deepseek-v4-flash` — `deepseek-chat`/`-reasoner` retire
-    /// 2026-07-24).
+    /// Default base URL + model per provider.
     static func providerDefaults(_ provider: String) -> (apiURL: String, model: String) {
-        switch provider {
-        case "openai":   return ("https://api.openai.com/v1/chat/completions", "gpt-4o-mini")
-        case "doubao":   return ("https://ark.cn-beijing.volces.com/api/v3", "")
-        case "deepseek": return ("https://api.deepseek.com", "deepseek-v4-flash")
-        case "alibaba":  return ("https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus")
-        case "ollama":   return ("http://localhost:11434/api/chat", "qwen2.5:7b")
-        default:         return ("https://api.deepseek.com", "deepseek-v4-flash")
-        }
+        let p = preset(provider)
+        return (p.defaultURL, p.defaultModel)
     }
 
-    /// Single source of truth for the 思考模式 picker, per provider (Flowy's
-    /// table): ordered (stored tag, display label). Qwen on/off; Doubao off + 4
-    /// levels; DeepSeek off + High/Max; OpenAI/Ollama graded effort, no off.
-    static func thinkingOptions(for provider: String) -> [(tag: String, label: String)] {
-        switch provider {
-        case "alibaba":
-            return [("", "On"), ("none", "Off")]
-        case "doubao":
-            return [("none", "Off"), ("minimal", "Minimal"), ("low", "Low"),
-                    ("medium", "Medium"), ("high", "High")]
-        case "deepseek":
-            return [("none", "Off"), ("high", "High"), ("max", "Max")]
-        default: // openai / ollama
-            return [("", "Default"), ("none", "Off"), ("low", "Low"),
-                    ("medium", "Medium"), ("high", "High")]
-        }
+    /// Whether the provider answers without a key (Ollama, and a custom service,
+    /// which is often a gateway on this machine).
+    static func needsKey(_ provider: String) -> Bool { preset(provider).needsKey }
+
+    /// The 思考 picker's choices, per provider (and, for custom, per format).
+    /// `levels`: the chosen model's own levels, when its list says (Magpie).
+    static func thinkingOptions(for provider: String, format: APIFormat? = nil,
+                                levels: [String]? = nil) -> [(tag: String, label: String)] {
+        preset(provider).thinkingOptions(for: format, levels: levels)
     }
 
     /// Clamp a stored effort into the provider's valid set: invalid → "none"
     /// where there is an off-switch, else "" (model default).
-    static func clampThinking(_ effort: String, for provider: String) -> String {
-        let tags = thinkingOptions(for: provider).map(\.tag)
-        if tags.contains(effort) { return effort }
-        return tags.contains("none") ? "none" : ""
+    static func clampThinking(_ effort: String, for provider: String, format: APIFormat? = nil,
+                              levels: [String]? = nil) -> String {
+        preset(provider).clampThinking(effort, for: format, levels: levels)
     }
+
+    /// The level a newly picked provider starts at (off where possible, else fastest).
+    static func initialEffort(for provider: String, format: APIFormat? = nil) -> String {
+        preset(provider).initialEffort(for: format)
+    }
+
+    /// Whether the first model the provider lists becomes the model while none
+    /// is set. Only Magpie: its list is the models the user set up in Magpie, so
+    /// any of them is one they chose. A vendor's list is its whole catalogue.
+    static func picksFirstListedModel(_ provider: String) -> Bool { provider == Provider.magpie.id }
 }

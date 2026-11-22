@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import Combine
+import AIModelKit
 
 /// The app-level shared LLM facade. ONE instance is created by `AppState` at
 /// launch and injected into any tool that needs a model, so the LLM capability is
@@ -15,17 +16,21 @@ import Combine
 /// service stay in sync.
 ///
 /// Main-thread only by convention (matches the rest of the SwiftUI/AppKit layer);
-/// the actual network calls run off-main inside `LLMClient`.
+/// the actual network calls run off-main inside `AIModelKit.ModelClient`.
 final class LLMService: ObservableObject {
 
     /// The observable settings model (default config + per-provider keys). Backs the
     /// AI Models page; tools read it to resolve configs and check key presence.
     let settings: LLMSettingsStore
 
+    /// The model lists fetched so far, shared by every model picker.
+    let models: ModelListStore
+
     private var settingsObserver: AnyCancellable?
 
     init(settings: LLMSettingsStore = LLMSettingsStore()) {
         self.settings = settings
+        self.models = ModelListStore(settings: settings)
         // Republish the nested store's changes so views observing `LLMService`
         // (e.g. PopBar's action tags) refresh when keys/default model change.
         settingsObserver = settings.objectWillChange.sink { [weak self] _ in
@@ -36,12 +41,23 @@ final class LLMService: ObservableObject {
     // MARK: - Config resolution (for tools)
 
     /// The app-wide default config, or nil when the default provider has no key.
-    func defaultConfig() -> LLMConfig? { settings.defaultConfig() }
+    func defaultConfig() -> LLMConfig? { settings.defaultConfig().map(fitToModel) }
 
     /// A config for an explicit provider/model/effort (per-action override). nil
     /// when that provider has no key (and isn't Ollama).
     func config(forProvider provider: String, model: String, effort: String) -> LLMConfig? {
-        settings.config(provider: provider, model: model, effort: effort)
+        settings.config(provider: provider, model: model, effort: effort).map(fitToModel)
+    }
+
+    /// The thinking level brought inside what the model itself takes, when its
+    /// provider's list said and is loaded (Magpie): a level stored for another
+    /// model, or Off for a model that does not reason, is not sent.
+    private func fitToModel(_ config: LLMConfig) -> LLMConfig {
+        guard let levels = models.reasoningLevels(for: config.provider, model: config.model) else { return config }
+        var fitted = config
+        fitted.reasoningEffort = LLMConfig.clampThinking(config.reasoningEffort, for: config.provider,
+                                                         format: config.format, levels: levels)
+        return fitted
     }
 
     /// Whether a given provider is configured (has a key, or is Ollama).
@@ -53,14 +69,14 @@ final class LLMService: ObservableObject {
 
     /// One-shot completion: system + user → assistant text.
     func complete(_ config: LLMConfig, system: String, user: String) async throws -> String {
-        try await LLMClient(config: config).complete(system: system, user: user)
+        try await ModelClient(config.connection).complete(system: system, user: user)
     }
 
-    /// One very small request, to prove a provider + key + model work together
-    /// (the onboarding guide's Test button). Throws the provider's error as is.
-    func testConnection(_ config: LLMConfig) async throws {
-        _ = try await LLMClient(config: config, timeout: 20)
-            .complete(system: "Reply with the single word OK.", user: "ping")
+    /// Proves a provider + key + model work together (the Test buttons on the AI
+    /// Models page and in the first-run guide): fetches the model list, then asks
+    /// for one word. Never throws; a failure comes back sorted into a cause.
+    func testConnection(_ config: LLMConfig) async -> ConnectionTestResult {
+        await ModelClient(config.connection, timeout: 20).testConnection()
     }
 
     /// Streaming completion: deltas (displayed text so far) arrive via `onDelta`;
@@ -68,6 +84,6 @@ final class LLMService: ObservableObject {
     @discardableResult
     func stream(_ config: LLMConfig, system: String, user: String,
                 onDelta: @escaping (String) -> Void) async throws -> String {
-        try await LLMClient(config: config).stream(system: system, user: user, onDelta: onDelta)
+        try await ModelClient(config.connection).stream(system: system, user: user, onDelta: onDelta)
     }
 }

@@ -1,4 +1,5 @@
 import AppKit
+import AIModelKit
 import Combine
 import SwiftUI
 
@@ -191,6 +192,8 @@ final class OnboardingModel: ObservableObject {
         // default every AI action uses.
         settings.setProvider(provider)
         keyDraft = ""
+        // A test of the provider left behind must not report into this one.
+        testTask?.cancel()
         testState = .idle
     }
 
@@ -201,6 +204,8 @@ final class OnboardingModel: ObservableObject {
     /// Save the pasted key (if any), then send one tiny request to prove the
     /// provider, key and default model work together.
     func test() {
+        // Whatever happens below, an earlier test's answer is no longer wanted.
+        testTask?.cancel()
         if let error = saveDraftKey() {
             testState = .failed(error)
             return
@@ -211,28 +216,61 @@ final class OnboardingModel: ObservableObject {
             testState = .failed(L("onboarding.ai.test.doubaoModel"))
             return
         }
-        guard let config = settings.defaultConfig() else {
+        guard var config = settings.defaultConfig() else {
             testState = .failed(L("onboarding.ai.test.noKey"))
             return
         }
         testState = .testing
         testTask?.cancel()
         let llm = appState.llm
+        let settings = settings
         testTask = Task { [weak self] in
-            do {
-                try await llm.testConnection(config)
-                await MainActor.run {
-                    guard let self, !Task.isCancelled else { return }
+            // Magpie has no default model, and the guide has no model picker:
+            // the first model Magpie lists becomes the model. When Magpie cannot
+            // be reached, the test below says so.
+            if LLMConfig.picksFirstListedModel(provider), config.model.trimmingCharacters(in: .whitespaces).isEmpty {
+                let failure: String?
+                do {
+                    let models = try await ModelClient(config.connection).listModels()
+                    if let first = models.first {
+                        failure = nil
+                        config.model = first.id
+                        // Off where the model has an Off; Default for one that does not reason.
+                        config.reasoningEffort = LLMConfig.clampThinking(
+                            config.reasoningEffort, for: provider, format: config.format, levels: first.reasoningLevels)
+                    } else {
+                        failure = L("onboarding.ai.test.magpieNoModel")
+                    }
+                } catch {
+                    // Magpie not running, or not answering: said once, not
+                    // again after a second wait in the test.
+                    failure = ConnectionProblem(error).localizedText
+                }
+                let found = config
+                let stop = await MainActor.run { () -> Bool in
+                    guard let self, !Task.isCancelled else { return true }
+                    if let failure {
+                        self.testState = .failed(failure)
+                        return true
+                    }
+                    settings.setModel(found.model)
+                    settings.setReasoningEffort(found.reasoningEffort)
+                    return false
+                }
+                if stop { return }
+            }
+            let result = await llm.testConnection(config)
+            await MainActor.run {
+                guard let self, !Task.isCancelled else { return }
+                if result.succeeded {
                     self.testState = .ok(model: config.model)
                     self.progress.aiConnected = true
                     self.progress.aiSkipped = false
                     Self.log.info("test request succeeded for \(provider)")
-                }
-            } catch {
-                await MainActor.run {
-                    guard let self, !Task.isCancelled else { return }
-                    self.testState = .failed(error.localizedDescription)
-                    Self.log.warn("test request failed for \(provider): \(error.localizedDescription)")
+                } else {
+                    let text = result.problem?.localizedText ?? L("models.problem.noModel")
+                    self.testState = .failed(text)
+                    Self.log.warn("test request failed for \(provider): \(result.problem?.description ?? "-")")
                 }
             }
         }
@@ -263,7 +301,7 @@ final class OnboardingModel: ObservableObject {
     /// Store whatever is in the key field. nil on success or when empty.
     private func saveDraftKey() -> String? {
         let key = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty, settings.provider != "ollama" else { return nil }
+        guard !key.isEmpty, LLMConfig.needsKey(settings.provider) else { return nil }
         if let error = settings.saveKey(key, for: settings.provider) { return error }
         keyDraft = ""
         return nil
