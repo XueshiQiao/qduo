@@ -608,6 +608,8 @@ private struct AIStepPage: View {
         let selected = settings.provider == p
         return Button { model.selectProvider(p) } label: {
             HStack(spacing: 4) {
+                ProviderLabel.icon(p).resizable().frame(width: 16, height: 16)
+                    .padding(.trailing, 2)
                 Text(Self.providerName(p)).fontWeight(selected ? .semibold : .regular)
                 if let sub = Self.providerNote(p) {
                     Text(sub).font(.system(size: 11)).foregroundStyle(.secondary)

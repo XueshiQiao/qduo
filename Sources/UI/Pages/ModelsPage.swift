@@ -46,7 +46,7 @@ struct ModelsPage: View {
             Picker(selection: Binding(get: { settings.provider },
                                       set: { settings.setProvider($0); keyDraft = ""; keyError = nil; resetTest() })) {
                 ForEach(LLMConfig.providers, id: \.self) { p in
-                    Text(LLMConfig.displayName(p)).tag(p)
+                    ProviderLabel(provider: p).tag(p)
                 }
             } label: { iconLabel("cpu", .indigo, L("models.provider")) }
 

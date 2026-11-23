@@ -689,7 +689,7 @@ struct ActionEditorView: View {
                     draft.modelOverride = ModelOverride(provider: p, model: model,
                                                         reasoningEffort: LLMConfig.initialEffort(for: p, format: s.format(for: p)))
                 })) {
-                ForEach(LLMConfig.providers, id: \.self) { p in Text(LLMConfig.displayName(p)).tag(p) }
+                ForEach(LLMConfig.providers, id: \.self) { p in ProviderLabel(provider: p).tag(p) }
             }
 
             ModelPicker(provider: override.provider,
