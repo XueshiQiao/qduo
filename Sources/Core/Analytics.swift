@@ -123,6 +123,12 @@ enum Analytics {
     /// every app that embeds the page reports them identically. They name which
     /// of the author's own apps the user clicked on that page, by catalog id
     /// such as `anydrag`; nothing about the apps the user runs or has installed.
+    /// The AI Setup page: `install_skill`, `copy_main`, `copy_example`, `copy_cli`.
+    /// Only which button — never the request text or a path.
+    static func trackAISetup(_ step: String) {
+        track("ai_setup", with: ["step": step])
+    }
+
     static func trackMoreApps(_ event: MoreAppsEvent) {
         if event.properties.isEmpty { track(event.name) } else { track(event.name, with: event.properties) }
     }

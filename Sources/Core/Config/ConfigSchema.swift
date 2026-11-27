@@ -43,8 +43,12 @@ enum ConfigSchema {
 
         "popup": {
           "type": "object",
-          "description": "The popup that appears when you select text. It runs whenever the app does — there is no on/off setting; quit the app to stop it.",
+          "description": "The popup that appears when you select text.",
           "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "false = paused: selecting text does not open the popup, as after Pause in the menu bar. The popup hotkey and the screenshot-OCR hotkey still work. Default true."
+            },
             "style": {
               "type": "string",
               "enum": ["capsule", "liquidGlass", "donut"],
@@ -265,6 +269,7 @@ enum ConfigSchema {
         "action": {
           "type": "object",
           "properties": {
+            "schemaVersion": { "type": "integer", "description": "Format version of this action. Written by the app; leave it alone." },
             "id": { "type": "string", "description": "Stable id. Leave it alone; a new action needs a new one." },
             "title": { "type": "string", "description": "What the popup shows." },
             "iconSymbol": { "type": "string", "description": "An SF Symbol name, e.g. \\"doc.on.doc\\". Any name this Mac can draw." },
@@ -305,12 +310,13 @@ enum ConfigSchema {
               "description": "For \\"speak\\": the id of the reader (see speech.readers, or \\"system\\"). Absent = speech.defaultReader." },
             "modelOverride": {
               "type": "object",
-              "description": "Use a different model for THIS action only.",
+              "description": "Use a different model for THIS action only. All three keys are needed: without one of them the override is ignored and the default model is used.",
               "properties": {
-                "provider": { "type": "string" },
-                "model": { "type": "string" },
-                "effort": { "type": "string" }
+                "provider": { "type": "string", "description": "A models.provider value." },
+                "model": { "type": "string", "description": "Model id, as the provider spells it." },
+                "reasoningEffort": { "type": "string", "description": "Thinking value, as for models.thinking. \\"\\" = the model's default." }
               },
+              "required": ["provider", "model", "reasoningEffort"],
               "additionalProperties": true
             },
             "urlName": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,39}$", "description": "Lets other apps run this action by opening qduo://run/<urlName>?text=<percent-encoded text>. Absent = this action cannot be run from a URL, which is the default for every action. Any app, and a link on a web page, can open such a URL, so turn it on only for actions that are safe to run on text you did not choose. Must be unique." },

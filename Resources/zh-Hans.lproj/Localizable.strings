@@ -735,3 +735,37 @@
 "backup.import.partial" = "备份恢复了一部分之后出了错。";
 "backup.import.relaunch.info" = "%@ 现在会重新启动，这样用的才是恢复后的设置、图标和 Key。";
 "backup.error.generic" = "备份文件处理出错了。详细原因记在日志里（高级 → 诊断）。";
+
+/* AI 配置页 */
+"page.aiSetup" = "AI 辅助配置";
+"actions.aiSetup.toolbar" = "AI 配置";
+"actions.aiSetup.lead" = "不想一个个手动添加？";
+"actions.aiSetup.body" = "用大白话让 Claude Code、Codex、Cursor 等 AI 一键配好整套动作";
+"actions.aiSetup.cta" = "去试试 →";
+"actions.aiSetup.dismiss" = "关闭提示";
+"aisetup.hero.title" = "一键交给 AI 配置";
+"aisetup.hero.body" = "复制配置指令发给你常用的 AI，直接用大白话改 %@ 的动作和设置，或者问它能做什么。你的 API Key 一直留在钥匙串里，AI 看不到。";
+"aisetup.copyPrompt" = "一键复制配置指令";
+"aisetup.copy" = "复制";
+"aisetup.copied" = "已复制";
+"aisetup.step1.title" = "复制配置指令";
+"aisetup.step1.desc" = "自带本机命令行路径、配置文件位置与完整配置说明，不用先安装任何东西。";
+"aisetup.step2.title" = "粘贴到 AI 助手，直接说出想法";
+"aisetup.step2.desc" = "把复制的指令粘贴过去，接着用日常大白话说你想加什么动作、改什么设置，或者想了解什么。";
+"aisetup.step2.agents" = "可使用你喜欢的任意 AI 助手";
+"aisetup.step3.title" = "自动校验、备份，重启后生效";
+"aisetup.step3.desc" = "AI 改之前会先校验新配置并保存历史版本，通过后 %@ 会自己重启，新配置马上生效；改错了一句话就能退回。";
+"aisetup.install.hint" = "进阶可选：把内置 Skill 链接到本地 Agent 目录后，无需每次复制配置指令";
+"aisetup.install" = "安装 Skill 到本地 Agent";
+"aisetup.reveal" = "在访达中显示";
+"aisetup.install.done" = "Skill 已安装（已链接到 %d 个 Agent）";
+"aisetup.install.failed" = "安装 Skill 失败：%@";
+"aisetup.skillMissing" = "未找到内置 Skill 文件";
+"aisetup.examples.title" = "参考配置案例";
+"aisetup.examples.subtitle" = "点击任意案例即可复制包含本机路径的完整指令，直接粘贴发送或按需微调。";
+"aisetup.ex.explore.title" = "先看看我有什么";
+"aisetup.ex.translate.title" = "加一个译成日语";
+"aisetup.ex.writing.title" = "写作分组";
+"aisetup.ex.search.title" = "搜索分组";
+"aisetup.ex.apps.title" = "快捷键与不弹出的 App";
+"aisetup.ex.rollback.title" = "查看备份并回滚";

@@ -137,6 +137,12 @@ QDuo 没有启用沙盒：读取别的 app 里选中的文字、在全局监听�
 
 所有设置都在 `~/.config/qduo/config.json`，旁边附带一份 JSON Schema，编辑器可以据此自动补全、提示写错的地方。这个文件可以放进你的 dotfiles 仓库，API Key 不在里面。
 
+### 让 AI 助手帮你配置
+
+打开设置里的「AI 辅助配置」页，复制提示词，发给这台 Mac 上的 Claude Code、Codex、Cursor 等 AI 助手，用平常的话说你想要什么，比如「加一个译成日语的动作」「把几个搜索动作放进一个分组」。提示词里已经写明了 QDuo 自带的配置说明（一份 Agent Skill）在哪里，不用先安装任何东西；想让 AI 助手以后不用提示词也认得 QDuo，可以在同一页把配置说明安装进去。AI 助手会用 QDuo 自带的命令行先检查新设置，再写入；旧设置自动备份，QDuo 会自己重启让新设置生效，改错了可以一条命令退回。API Key 一直留在钥匙串里，AI 助手看不到。
+
+命令行就在 App 里：`/Applications/QDuo.app/Contents/MacOS/QDuo cli help`。
+
 ### 从别的 app 运行动作
 
 Alfred、Raycast 等工具可以打开 `qduo://run/<动作名>?text=<文字>` 这样的网址，让 QDuo 对这段文字运行某个动作。为了安全，每个动作默认都不允许这样运行；要用的话，在动作编辑页底部打开「允许其他 app 通过 URL 运行此动作」，那里也会显示要用的网址。

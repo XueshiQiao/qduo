@@ -71,6 +71,12 @@ targets:
       - Sources
       - Assets.xcassets
       - Resources
+      # The Agent Skill (SKILL.md + references), copied as a folder to
+      # Contents/Resources/skill so `cli install-skill` and the AI Setup page
+      # can hand it to local AI agents. See Sources/Core/AgentSetup/.
+      - path: skill
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: *APP_NAME
@@ -170,6 +176,14 @@ targets:
       - path: Sources/Core/Backup/BackupArchive.swift
       - path: Sources/Core/Backup/BackupKeysFile.swift
       - path: Sources/Core/Backup/BackupLayout.swift
+      - path: Sources/Core/AgentSetup/SchemaCheck.swift
+      - path: Sources/Core/AgentSetup/ConfigValidator.swift
+      - path: Sources/Core/AgentSetup/ConfigFiles.swift
+      - path: Sources/Core/AgentSetup/AgentIPC.swift
+      - path: Sources/Core/AgentSetup/AgentSandbox.swift
+      - path: Sources/Core/AgentSetup/SkillInstaller.swift
+      - path: Sources/Core/AgentSetup/AgentPrompt.swift
+      - path: Sources/Core/AgentSetup/AgentCLI.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.xueshi.qduo.tests

@@ -12,6 +12,10 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let appState: AppState
 
+    /// Marks the settings window among the app's windows, so code that only
+    /// has `NSApp.windows` (`AgentIPCServer`) can tell it from a popup panel.
+    static let windowIdentifier = "settings"
+
     init(appState: AppState) {
         self.appState = appState
 
@@ -30,6 +34,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         window.title = appState.selection.title
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.isReleasedWhenClosed = false
+        window.identifier = NSUserInterfaceItemIdentifier(Self.windowIdentifier)
         window.toolbarStyle = .unified
         window.setContentSize(NSSize(width: 860, height: 600))
         // Keyed off the bundle id rather than the name, so the remembered position
@@ -123,12 +128,14 @@ struct MainView: View {
     private var detail: some View {
         switch appState.selection {
         case .general:    GeneralPage(store: appState.store, openOnboarding: appState.showOnboarding)
-        case .actions:    ActionsPage(actions: appState.actions, llm: appState.llm)
+        case .actions:    ActionsPage(actions: appState.actions, llm: appState.llm,
+                                      openAISetup: { appState.selection = .aiSetup })
         case .history:    HistoryPage()
         case .advanced:   AdvancedPage(store: appState.store)
         case .ocr:        OCRPage(store: appState.store)
         case .models:     ModelsPage(llm: appState.llm)
         case .speech:     SpeechSettingsView()
+        case .aiSetup:    AISetupPage()
         // All content and behaviour come from the shared MoreAppsKit package;
         // this app supplies only the title and the store.
         case .moreApps:

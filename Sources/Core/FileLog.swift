@@ -62,3 +62,12 @@ final class FileLog {
         }
     }
 }
+
+extension FileLog {
+    /// Blocks until every line written so far is on disk. For a process that
+    /// is about to exit (the command line): lines are written on a queue, and
+    /// whatever is still waiting there when the process ends is lost.
+    static func waitForPendingWrites() {
+        queue.sync {}
+    }
+}

@@ -7,6 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let updateController = UpdateController()
     private var appState: AppState?
     private var menuBarController: MenuBarController?
+    /// Answers the command line (`cli info`, `cli apply`). See `AgentIPC`.
+    private var agentIPC: AgentIPCServer?
     /// URLs that arrived before the app finished launching (it was started BY a
     /// URL), run once it has.
     private var pendingURLs: [URL] = []
@@ -91,6 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state.activate(promptForAccessibility: onboarding != .firstLaunch)
 
         menuBarController = MenuBarController(appState: state, updateController: updateController)
+
+        let ipc = AgentIPCServer(appState: state)
+        ipc.start()
+        agentIPC = ipc
 
         // `--settings` forces the window open; scripts/run.sh passes it so a rebuild
         // during development comes back with the window where you left it.

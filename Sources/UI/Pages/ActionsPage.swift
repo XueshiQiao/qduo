@@ -14,14 +14,34 @@ struct ActionsPage: View {
     @State private var editingSource: Analytics.ActionSource?
     @State private var previewFallback = PopBarPreferences.previewFallbackToSearch
     @State private var previewEngine = PopBarPreferences.previewSearchEngine
+    @ObservedObject private var aiTip = AISetupTipStore.shared
+    /// Goes to the AI Setup page (the toolbar button and the tip at the top).
+    private let openAISetup: () -> Void
 
-    init(actions: ActionStore, llm: LLMService) {
+    init(actions: ActionStore, llm: LLMService, openAISetup: @escaping () -> Void = {}) {
         _actions = ObservedObject(wrappedValue: actions)
         _llm = ObservedObject(wrappedValue: llm)
+        self.openAISetup = openAISetup
     }
 
     var body: some View {
         Form {
+            // Until closed or followed once: having an AI agent set the actions
+            // up beats adding them one by one. The toolbar button stays.
+            if !aiTip.isDismissed {
+                Section {
+                    AISetupTipBanner(
+                        onOpen: {
+                            withAnimation(.easeInOut(duration: 0.18)) { aiTip.dismiss() }
+                            Analytics.trackAISetup("open_from_actions_tip")
+                            openAISetup()
+                        },
+                        onDismiss: {
+                            withAnimation(.easeInOut(duration: 0.18)) { aiTip.dismiss() }
+                            Analytics.trackAISetup("dismiss_actions_tip")
+                        })
+                }
+            }
             actionsSection
             // Only shown once such an action exists — a setting for a feature you
             // are not using is noise.
@@ -29,6 +49,14 @@ struct ActionsPage: View {
         }
         .formStyle(.grouped)
         .navigationTitle(L("page.actions"))
+        .toolbar {
+            ToolbarItem {
+                AISetupToolbarButton {
+                    Analytics.trackAISetup("open_from_actions_toolbar")
+                    openAISetup()
+                }
+            }
+        }
         .sheet(item: $editingAction) { action in
             ActionEditorView(action: action, llm: llm,
                              takenURLNames: ActionURL.takenNames(in: actions.actions, except: action.id),

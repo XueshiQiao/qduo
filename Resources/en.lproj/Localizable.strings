@@ -736,3 +736,37 @@
 "backup.import.partial" = "Part of the backup was restored before something went wrong.";
 "backup.import.relaunch.info" = "%@ restarts now, so the restored settings, icons and keys are the ones it uses.";
 "backup.error.generic" = "Something went wrong with the backup file. Details are in the log (Advanced → Diagnostics).";
+
+/* AI Setup page */
+"page.aiSetup" = "AI Setup";
+"actions.aiSetup.toolbar" = "AI Setup";
+"actions.aiSetup.lead" = "Rather not add them one by one?";
+"actions.aiSetup.body" = "Let Claude Code, Codex, Cursor or another AI set them up in plain words";
+"actions.aiSetup.cta" = "Try AI Setup →";
+"actions.aiSetup.dismiss" = "Dismiss tip";
+"aisetup.hero.title" = "Configure with AI";
+"aisetup.hero.body" = "Copy the setup prompt into your favorite AI and change %@'s actions and settings in plain language, or ask what it can do. Your API keys stay in the Keychain, out of the AI's reach.";
+"aisetup.copyPrompt" = "Copy Setup Prompt";
+"aisetup.copy" = "Copy";
+"aisetup.copied" = "Copied";
+"aisetup.step1.title" = "Copy the setup prompt";
+"aisetup.step1.desc" = "Includes this Mac's command line path, your config file and the full guide — nothing to install first.";
+"aisetup.step2.title" = "Paste into your AI assistant and ask in plain language";
+"aisetup.step2.desc" = "Paste the prompt and describe the actions or settings you want to add, change or ask about.";
+"aisetup.step2.agents" = "Use any AI agent you prefer";
+"aisetup.step3.title" = "Checked, backed up and applied by a restart";
+"aisetup.step3.desc" = "The AI checks the new config and saves a backup first; then %@ restarts by itself to use it. One sentence undoes a change.";
+"aisetup.install.hint" = "Optional: link the bundled Skill into local agent folders so you don't need the prompt each time";
+"aisetup.install" = "Install Skill to Local Agents";
+"aisetup.reveal" = "Reveal in Finder";
+"aisetup.install.done" = "Skill installed (linked for %d agent(s))";
+"aisetup.install.failed" = "Failed to install the Skill: %@";
+"aisetup.skillMissing" = "Bundled Skill files not found";
+"aisetup.examples.title" = "Reference Examples";
+"aisetup.examples.subtitle" = "Click any example to copy the full setup prompt with this Mac's paths — paste it straight in or tweak it first.";
+"aisetup.ex.explore.title" = "See what I have";
+"aisetup.ex.translate.title" = "Add \"To Japanese\"";
+"aisetup.ex.writing.title" = "A Writing group";
+"aisetup.ex.search.title" = "A Search group";
+"aisetup.ex.apps.title" = "Hotkey and quiet apps";
+"aisetup.ex.rollback.title" = "Backups and rollback";

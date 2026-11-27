@@ -139,6 +139,12 @@ QDuo is not sandboxed: reading another app's selection and watching the mouse gl
 
 Everything is in `~/.config/qduo/config.json`, with a JSON Schema beside it so editors can complete fields and flag mistakes. Keep it in your dotfiles; API keys are not in it.
 
+### Let an AI agent set it up
+
+Open the AI Setup page in Settings, copy the prompt, send it to Claude Code, Codex, Cursor or another AI agent on this Mac and say what you want in plain words — "add an action that translates into Japanese", "put my searches in a group". The prompt tells the agent where the guide that comes with QDuo (an Agent Skill) is, so there is nothing to install first; to let your agents know QDuo without the prompt, install the guide from the same page. The agent uses QDuo's built-in command line to check the new settings before writing them; the old settings are backed up, QDuo restarts by itself to read the new ones, and one command undoes a change. Your API keys stay in the Keychain, out of the agent's reach.
+
+The command line is inside the app: `/Applications/QDuo.app/Contents/MacOS/QDuo cli help`.
+
 ### Run an action from other apps
 
 Alfred, Raycast and other tools can open `qduo://run/<action name>?text=<text>` to have QDuo run an action on that text. For safety this is off for every action; turn it on at the bottom of an action's editor ("Allow other apps to run this action from a URL"), which also shows the URL to use.

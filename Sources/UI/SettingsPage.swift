@@ -15,6 +15,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
     case history
     case models
     case speech
+    case aiSetup
     case moreApps
     case about
 
@@ -31,7 +32,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .general, .advanced, .actions, .ocr: return .popup
         case .history:                              return .history
-        case .models, .speech:                      return .app
+        case .models, .speech, .aiSetup:            return .app
         case .moreApps, .about:                     return .info
         }
     }
@@ -45,6 +46,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .ocr:        return L("page.ocr")
         case .models:     return L("page.models")
         case .speech:     return L("page.speech")
+        case .aiSetup:    return L("page.aiSetup")
         case .moreApps:   return L("page.moreApps")
         case .about:      return L("page.about")
         }
@@ -59,6 +61,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .ocr:        return "viewfinder"
         case .models:     return "brain.head.profile"
         case .speech:     return "speaker.wave.2.fill"
+        case .aiSetup:    return "sparkles"
         case .moreApps:   return "square.grid.2x2.fill"
         case .about:      return "info.circle.fill"
         }
@@ -73,6 +76,7 @@ enum SettingsPage: String, CaseIterable, Hashable, Identifiable {
         case .ocr:        return .teal
         case .models:     return .blue
         case .speech:     return .orange
+        case .aiSetup:    return .mint
         case .moreApps:   return .cyan
         case .about:      return .pink
         }

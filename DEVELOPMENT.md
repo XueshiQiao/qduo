@@ -34,6 +34,56 @@ recognise are preserved, and a version of the file that differs from what the ap
 last read is copied aside before being overwritten. API keys are not in it —
 they live in the Keychain. The whole design is in `docs/config-file.html`.
 
+## AI agent setup (the command line and the skill)
+
+An AI coding agent on the user's Mac (Claude Code, Codex, Cursor…) can change
+the config for them. Three parts, all in `Sources/Core/AgentSetup/` plus the
+`skill/` folder:
+
+- **The command line.** `<executable> cli <command>` is handled in `main.swift`
+  before `NSApplication` exists (`AgentCLI`): `info`, `schema`, `validate`,
+  `apply`, `restart`, `backups`, `rollback`, `providers`, `languages`,
+  `install-skill`, `prompt`. Running inside the app's own executable gives it
+  the app's Keychain access and keeps it at the app's version.
+- **The checks.** `ConfigValidator` = the JSON Schema itself (`SchemaCheck`
+  walks `ConfigSchema.json`, so a key added to the schema is checked from that
+  day) + what a schema cannot say: unique ids and urlNames, groups one level
+  deep, the fields each kind needs, hotkeys the app can parse, readers that
+  exist, models without a saved key. Errors block `apply`, warnings block
+  `apply --strict`, notes (script actions) never block.
+- **Replacing the file under a running app.** The app reads the config once, so
+  `apply` restarts it, over `DistributedNotificationCenter` (`AgentIPC`,
+  `AgentIPCServer`): prepare (the app writes any pending change, then stops
+  writing) → the CLI backs up the old file to
+  `~/Library/Application Support/<baseID>/config-backups/` and writes the new
+  one → commit (the app relaunches, reopening the settings page that was open).
+  `apply` refuses when the app saved a different setting during prepare, and
+  when a copy of the app is running that does not answer (a version from
+  before this existed would write its old settings back).
+- **Inside an agent's sandbox** (Codex runs every command in one by default)
+  the system misleads the command line instead of failing: drawing an SF
+  Symbol kills the process, Launch Services says no app is installed, the
+  Keychain errors, `NSRunningApplication` sees nothing. `AgentSandbox` detects
+  the sandbox (`sandbox_check`); there `info` reports the running app as
+  unknown, `validate` skips the app and key checks, and `apply`, `restart`,
+  `rollback`, `install-skill` refuse with a message saying to run them outside
+  it. Symbol names come from the CoreGlyphs list (`SymbolCatalog`), never from
+  `NSImage`, so the command line never touches the window server. Check with
+  `codex sandbox -- <executable> cli info`.
+- **The AI Setup page** ("AI 辅助配置") copies one prompt that carries the path
+  to the bundled skill, so nothing has to be installed first. Its layout is
+  HyperCapslock's AI Setup page; keep the two alike.
+- **The skill** (`skill/SKILL.md`, `skill/references/actions.md`) is bundled as
+  `Contents/Resources/skill/` and optionally installed by the AI Setup page or
+  `cli install-skill` to `~/.agents/skills/<name>`, linked into each agent
+  found on the Mac. The folder name comes from the `name:` in SKILL.md. When a
+  command, a kind or a setting is added, update the skill too —
+  `SkillInstallerTests.testTheRepositorySkillIsNamedAndComplete` checks that
+  every command is documented.
+
+Tests: `Tests/AgentSetupTests.swift`; the CLI runs there against a fake running
+app (`FakeApp`).
+
 ## Releasing
 
 `scripts/bump-version.sh` bumps the version (CalVer `YY.MM.<build>`), commits and
@@ -104,7 +154,8 @@ spells it out — everything reads it back from the built bundle through
 `Sources/Core/Brand.swift`, and strings take it as `%@`.
 
 To rename: edit those five values, rename the GitHub repo, redraw the icon, and
-fix README.md, README.en.md and this file.
+fix README.md, README.en.md, this file and the agent skill (`skill/SKILL.md`,
+`skill/references/actions.md`: its `name:`, the paths and the name in the text).
 
 ## The icon
 
