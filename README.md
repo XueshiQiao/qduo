@@ -109,7 +109,7 @@ brew install --cask qduo
 
 1. 打开 QDuo。它只在菜单栏显示图标，不占用 Dock。
 2. 按引导授予「辅助功能」权限。
-3. 要用 AI 动作，在「设置 → AI 模型」里选一个服务商，填上 API Key。内置 DeepSeek、OpenAI、Doubao (Ark)（豆包）、Qwen (DashScope)（通义千问）和 Ollama；改 Base URL 可以接任何兼容 OpenAI 接口的服务。Ollama 在本机运行，不需要 API Key。
+3. 要用 AI 动作，在「设置 → AI 模型」里选一个服务商，填上 API Key。默认使用 DeepSeek，内置 DeepSeek、OpenAI、Anthropic、Gemini、Doubao (Ark)（豆包）、Qwen (DashScope)（通义千问）、Ollama 和 Magpie；选「自定义」并填写 Base URL 与接口标准可以接其他服务。Ollama 和 Magpie 在本机运行，不需要 API Key。
 4. 在任何地方选中文字，光标旁就会弹出动作。
 
 ### 权限

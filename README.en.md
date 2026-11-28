@@ -111,7 +111,7 @@ Download `QDuo.dmg` from [GitHub Releases](https://github.com/XueshiQiao/qduo/re
 
 1. Open QDuo. It lives in the menu bar, with no Dock icon.
 2. Grant Accessibility when the guide asks.
-3. For AI actions, pick a provider in Settings → AI Models and paste an API key. DeepSeek, OpenAI, Doubao (Ark), Qwen (DashScope) and Ollama are built in; change the Base URL to use any OpenAI-compatible service. Ollama runs on your Mac and needs no key.
+3. For AI actions, pick a provider in Settings → AI Models and paste an API key. DeepSeek is selected by default; DeepSeek, OpenAI, Anthropic, Gemini, Doubao (Ark), Qwen (DashScope), Ollama and Magpie are built in, and Custom supports other endpoints. Ollama and Magpie run on your Mac and need no key.
 4. Select text anywhere, and the popup appears at the cursor.
 
 ### Permissions
